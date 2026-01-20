@@ -7,11 +7,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_DB=mydb
+      - POSTGRES_DB=mygym
       - POSTGRES_USER=myuser
       - POSTGRES_PASSWORD=mypassword
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   backend:
     build: ./backend
@@ -22,12 +22,12 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DB_NAME=mydb
+      - DB_NAME=mygym
       - DB_USER=myuser
       - DB_PASSWORD=mypassword
       - DB_HOST=db
       - DB_PORT=5432
-      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mydb
+      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mygym
     depends_on:
       - db
 

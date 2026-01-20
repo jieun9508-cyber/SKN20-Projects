@@ -4,19 +4,23 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from core.views import (
-    SampleViewSet,
+
     UserProfileViewSet,
     ProductViewSet,
     OrderViewSet,
     PostViewSet,
     ReviewViewSet,
-    DashboardLogViewSet
+    DashboardLogViewSet,
+    DashboardLogViewSet,
+    CommonViewSet
 )
+# [2026-01-21] 인증 관련 View Import
+from core.views.auth_view import LoginView, LogoutView, SessionCheckView
 
 router = DefaultRouter()
 
 # 공통 예시
-router.register(r'samples', SampleViewSet)
+
 
 # 담당자 A (User)
 router.register(r'users', UserProfileViewSet)
@@ -36,6 +40,14 @@ router.register(r'reviews', ReviewViewSet)
 # 담당자 F (Dashboard)
 router.register(r'dashboard', DashboardLogViewSet)
 
+# 공통 코드
+router.register(r'commons', CommonViewSet)
+
 urlpatterns = [
     path('', include(router.urls)),
+    
+    # [2026-01-21] 인증 API
+    path('auth/login/', LoginView.as_view(), name='login'),
+    path('auth/logout/', LogoutView.as_view(), name='logout'),
+    path('auth/me/', SessionCheckView.as_view(), name='session_check'),
 ]

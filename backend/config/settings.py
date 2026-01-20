@@ -75,7 +75,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database 설정 (PostgreSQL)
 DATABASES = {
-    'default': env.db('DATABASE_URL', default=f"postgres://{os.getenv('DB_USER', 'myuser')}:{os.getenv('DB_PASSWORD', 'mypassword')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'mydb')}")
+    'default': env.db('DATABASE_URL', default=f"postgres://{os.getenv('DB_USER', 'myuser')}:{os.getenv('DB_PASSWORD', 'mypassword')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'mygym')}")
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -100,3 +100,4 @@ REST_FRAMEWORK = {
 
 # CORS 설정 (프론트엔드 연동용)
 CORS_ALLOW_ALL_ORIGINS = True 
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000'] 
