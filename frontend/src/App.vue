@@ -4,6 +4,11 @@
 -->
 <template>
   <div id="app" v-cloak>
+    <!-- [라우터 뷰 - Logic Mirror 페이지] -->
+    <router-view v-if="$route.name === 'CodePracticeLogicMirror'"></router-view>
+
+    <!-- [메인 페이지] -->
+    <template v-else>
     <!-- [상단 네비게이션 바] -->
     <nav class="navbar">
       <div class="logo">
@@ -418,7 +423,7 @@
         <span>잠깐! 🚧 로그인이 필요해요</span>
         <button @click="handleLogin" style="background: #1e293b; color: white; border: none; padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; cursor: pointer; margin-left: 5px; font-weight: 700;">로그인하기</button>
     </div>
-
+    </template>
   </div>
 </template>
 
@@ -527,8 +532,11 @@ export default {
             this.activeProblem = problem;
             this.activeChapter = chapter;
             
-            // Simple logic for now
-            if (chapter?.name === 'Agent Practice') {
+            // [수정일: 2026-01-21] Code Practice 모든 문제를 Logic Mirror로 라우팅
+            if (chapter?.name === 'Code Practice') {
+                // Logic Mirror 기능으로 라우팅
+                this.$router.push('/practice/logic-mirror');
+            } else if (chapter?.name === 'Agent Practice') {
                 this.isAgentModalOpen = true;
                 this.$nextTick(() => {
                     if (window.lucide) window.lucide.createIcons();
