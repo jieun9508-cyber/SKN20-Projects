@@ -4,14 +4,11 @@
 -->
 <template>
   <div id="app" v-cloak>
-    <!-- [라우터 뷰 - Logic Mirror 페이지] -->
-    <router-view v-if="$route.name === 'CodePracticeLogicMirror'"></router-view>
-    <router-view v-if="$route.name === 'SystemArchitecturePractice'"></router-view>
-    <router-view v-if="$route.name === 'DebugPractice'"></router-view>
-    <router-view v-if="$route.name === 'OpsPractice'"></router-view>
+    <!-- [라우터 뷰 - Practice 페이지 (메인 레이아웃 없이 단독 표시)] -->
+    <router-view v-if="isPracticePage"></router-view>
 
     <!-- [메인 페이지] -->
-    <template v-else>
+    <template v-if="!isPracticePage">
     <!-- [상단 네비게이션 바] -->
     <nav class="navbar">
       <div class="logo">
@@ -548,19 +545,15 @@ export default {
             }
             this.activeProblem = problem;
             this.activeChapter = chapter;
-            
-            // [수정일: 2026-01-21] Code Practice 모든 문제를 Logic Mirror로 라우팅
+
+            // [수정일: 2026-01-21] Practice 페이지들은 메인 레이아웃 없이 단독 표시
             if (chapter?.name === 'Code Practice') {
-                // Logic Mirror 기능으로 라우팅
                 this.$router.push('/practice/logic-mirror');
             } else if (chapter?.name === 'System Practice') {
-                // System Architecture 기능으로 라우팅
                 this.$router.push('/practice/system-architecture');
             } else if (chapter?.name === 'Debug Practice') {
-                // Debug Practice 기능으로 라우팅
                 this.$router.push('/practice/debug-practice');
             } else if (chapter?.name === 'Ops Practice') {
-                // Ops Practice 기능으로 라우팅
                 this.$router.push('/practice/ops-practice');
             } else if (chapter?.name === 'Agent Practice') {
                 this.isAgentModalOpen = true;
@@ -569,7 +562,7 @@ export default {
                     // Chart init would go here
                 });
             } else {
-                 this.isConstructionModalOpen = true; 
+                 this.isConstructionModalOpen = true;
             }
         },
         handleLogin() { this.isLoginModalOpen = true; },
@@ -652,6 +645,10 @@ export default {
         }
     },
     computed: {
+        isPracticePage() {
+            const practiceRoutes = ['CodePracticeLogicMirror', 'SystemArchitecturePractice', 'DebugPractice', 'OpsPractice'];
+            return practiceRoutes.includes(this.$route.name);
+        },
         unitBadge() { return this.activeChapter?.name || 'Practice'; },
         editorLabel() { return 'SYSTEM PROMPT EDITOR'; },
         editorPlaceholder() { return 'Enter your system prompt here...'; },
