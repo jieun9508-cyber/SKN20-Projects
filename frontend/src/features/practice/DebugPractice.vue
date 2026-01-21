@@ -1,183 +1,108 @@
 <template>
-  <div class="container">
-    <div class="header">
-      <div class="header-left">
-        <span class="title">Debug Gym: Login Scenario</span>
-      </div>
+  <div class="ops-debug-page">
+    <div class="game-container">
+      <header class="header">
+        <h1>DEBUG GYM</h1>
+        <div class="subtitle">// ADVANCED BUG HUNTING SYSTEM v2.4</div>
+      </header>
 
-      <div class="header-right">
-        <div class="trigger-indicator" :class="{ active: hasTrigger }">
-          <template v-if="hasTrigger">
-            <span>Trigger: main.py:12</span>
-            <button class="clear-trigger-btn" @click="hasTrigger = false">✕</button>
-          </template>
-          <span v-else style="color: #666;">No trigger set</span>
-        </div>
-
-        <button class="btn btn-hint" :disabled="isLoading" @click="mockHint">
-          💡 힌트 받기
-        </button>
-        <button class="btn btn-debug" :disabled="isLoading" @click="mockDebug">
-          🐞 디버깅
-        </button>
-        <button class="btn btn-submit" :disabled="isLoading" @click="mockSubmit">
-          🚀 제출
-        </button>
-      </div>
-    </div>
-
-    <div class="main-layout">
-      <div class="left-sidebar">
+      <div class="main-layout-grid">
         
-        <div class="problem-section">
-          <div class="section-header">
-            <span class="section-icon">📝</span> Scenario
+        <aside class="side-panel">
+          <div class="panel-box scenario-box">
+            <div class="panel-title">MISSION SCENARIO</div>
+            <div class="scenario-content">
+              <h3 class="target-name">Critical Crash: User Lookup Failure</h3>
+              <p class="long-desc">
+                현재 사용자 인증 모듈에서 치명적인 런타임 에러가 보고되었습니다. 
+                <br><br>
+                <code>main.py</code>의 12번 라인에서 존재하지 않는 ID를 조회할 때 반환되는 <code>None</code> 객체에 대한 예외 처리가 누락되어 있습니다.
+                <br><br>
+                <strong>[요구사항]</strong><br>
+                1. <code>user</code> 변수의 <code>None</code> 여부를 체크하세요.<br>
+                2. 크래시 없이 안전하게 종료되도록 로직을 수정하십시오.
+              </p>
+            </div>
           </div>
-          <div class="problem-content">
-            <h3 class="problem-title">로그인 로직 버그 수정</h3>
-            <p class="problem-desc">
-              사용자가 존재하지 않을 때(None) 시스템이 멈추는 버그가 발견되었습니다.
-              모듈 간의 데이터 흐름을 파악하고 안전하게 로그인을 처리하세요.
-            </p>
+
+          <div class="panel-box explorer-box">
+            <div class="panel-title">FILE SYSTEM</div>
+            <div class="explorer-tree">
+              <div 
+                v-for="(content, filename) in files" 
+                :key="filename"
+                class="explorer-item"
+                :class="{ active: currentFileName === filename }"
+                @click="switchFile(filename)"
+              >
+                <span class="file-icon">{{ filename.endsWith('.json') ? '📊' : '🐍' }}</span>
+                <span class="file-name">{{ filename }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-controls">
+            <button class="action-btn hint-btn" @click="showHintSystem">
+              <span class="btn-glitch"></span>💡 ACCESS HINT
+            </button>
+            <button class="action-btn debug-btn" @click="mockDebug" :class="{ loading: isLoading }">
+              <span class="btn-glitch"></span>🐞 EXECUTE DEBUG
+            </button>
+            <button class="action-btn submit-btn" @click="mockSubmit">
+              <span class="btn-glitch"></span>🚀 DEPLOY FIX
+            </button>
+          </div>
+        </aside>
+
+        <main class="monitor-frame">
+          <div class="screen-content">
+            <transition name="slide-down">
+              <div v-if="hintVisible" class="hint-guide-panel">
+                <div class="hint-label">INTELLIGENCE GUIDE</div>
+                <div class="hint-text">{{ currentHint }}</div>
+                <button class="close-hint" @click="hintVisible = false">×</button>
+              </div>
+            </transition>
+
+            <div class="editor-header">
+              <div class="file-info">
+                <span class="status-dot"></span>
+                <span class="current-file">EDITING: {{ currentFileName }}</span>
+              </div>
+              <div v-if="runStatus" class="run-status-tag" :class="runStatus.toLowerCase()">
+                {{ runStatus }}
+              </div>
+            </div>
             
-            <div class="mission-box">
-              <strong>🎯 Mission:</strong>
-              <ul>
-                <li>`user`가 None일 때 크래시 방지</li>
-                <li>올바른 에러 메시지 출력</li>
-                <li>정상 유저 로그인 성공 확인</li>
-              </ul>
+            <div class="editor-container">
+              <div class="line-numbers">
+                <div v-for="n in lineCount" :key="n">{{ n }}</div>
+              </div>
+              <textarea 
+                class="code-textarea" 
+                v-model="files[currentFileName]" 
+                spellcheck="false"
+                wrap="off"
+              ></textarea>
+            </div>
+
+            <div class="terminal-section">
+              <div class="terminal-header">DIAGNOSTIC TERMINAL</div>
+              <div class="terminal-body" :class="{ error: runStatus === 'FAILURE' }">
+                <span class="prompt">></span> 
+                <span class="terminal-text">{{ terminalText }}</span>
+              </div>
             </div>
           </div>
-        </div>
-
-<div class="visual-section">
-  <div class="section-header">
-    <span class="section-icon">📂</span> Explorer
-  </div>
-  <div class="explorer-container">
-    <div class="explorer-item folder">
-      <span class="chevron">▼</span>
-      <span class="file-icon">📁</span>
-      <span class="file-name">debug-gym-project</span>
-    </div>
-    
-    <div class="explorer-tree">
-      <div 
-        v-for="(content, filename) in files" 
-        :key="filename"
-        class="explorer-item file"
-        :class="{ active: currentFileName === filename }"
-        @click="switchFile(filename)"
-      >
-        <span class="indent"></span>
-        <span class="file-icon">{{ filename.endsWith('.json') ? '📄' : '🐍' }}</span>
-        <span class="file-name">{{ filename }}</span>
-        <span v-if="isModified && currentFileName === filename" class="modified-dot"></span>
-      </div>
-    </div>
-  </div>
-</div>
+        </main>
       </div>
 
-      <div class="right-content">
-        <div class="editor-container">
-          <div class="editor-tab">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>📄 {{ currentFileName }}</span>
-              <span v-if="isModified" class="unsaved-dot"></span>
-            </div>
-            <span v-if="hasTrigger && currentFileName === 'main.py'" style="color: #ffcc00; font-size: 11px;">
-              ● Breakpoint at line 12
-            </span>
-          </div>
-          
-          <div class="editor-wrapper">
-            <div class="line-numbers">
-              <div v-for="n in lineCount" :key="n">{{ n }}</div>
-            </div>
-            <textarea 
-              class="code-textarea" 
-              v-model="files[currentFileName]" 
-              @input="isModified = true"
-              spellcheck="false"
-            ></textarea>
-          </div>
-        </div>
-
-        <div class="terminal">
-          <div class="terminal-header">
-            <span>Terminal</span>
-            <span v-if="runStatus" class="status-badge" :class="runStatus === 'SUCCESS' ? 'badge-success' : 'badge-failure'">
-              {{ runStatus }}
-            </span>
-          </div>
-
-          <div class="error-lines-container" v-if="showStackTrace">
-            <div class="error-line" @click="hasTrigger = true">
-              <span>TypeError: 'NoneType' object is not subscriptable</span>
-              <span style="color: #ccc; font-size: 11px;"> main.py:12 (click to trigger)</span>
-            </div>
-          </div>
-
-          <div class="terminal-output">
-            <span v-if="isLoading">Running code...</span>
-            <span v-else>{{ terminalText }}</span>
-          </div>
-
-          <div v-if="showDiagnosis" class="diagnosis-panel">
-            <strong>🤖 AI Diagnosis:</strong> <span>변수 `user`가 None 상태에서 속성에 접근하려 하여 오류가 발생했습니다.</span>
-          </div>
-
-          <div v-if="showHint" class="hint-panel">
-            <div class="hint-header">
-              <strong>💡 힌트 (Level 2)</strong>
-              <button class="close-btn" @click="showHint = false">×</button>
-            </div>
-            <div class="hint-content">
-              main.py 파일의 12번째 줄을 확인해보세요.
-              `user` 변수가 None일 때 예외 처리가 되어있지 않습니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showModal" class="modal show" @click.self="showModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <span class="modal-title">채점 결과</span>
-          <button class="close-button" @click="showModal = false">×</button>
-        </div>
-
-        <div v-if="isEvaluating" style="text-align: center; padding: 40px;">
-          <div class="spinner"></div>
-          <p style="margin-top:10px; color: #ccc;">코드를 분석하고 있습니다...</p>
-        </div>
-
-        <div v-else>
-          <div class="evaluation-section">
-            <div class="evaluation-label">점수</div>
-            <div class="score-bar">
-              <div class="score-fill" :style="{ width: score + '%', backgroundColor: score >= 80 ? '#4ec9b0' : '#ffcc00' }"></div>
-            </div>
-            <div style="text-align: center; font-size: 24px; font-weight: bold; color: white;">
-              <span>{{ score }}</span>점
-            </div>
-          </div>
-
-          <div class="evaluation-section">
-            <div class="evaluation-label">피드백</div>
-            <div class="evaluation-text">{{ feedbackText }}</div>
-          </div>
-          
-           <div class="evaluation-section">
-            <div class="evaluation-label">학습 포인트</div>
-             <div class="learning-point">Python의 NoneType 예외 처리</div>
-             <div class="learning-point">디버깅 도구(Trigger) 활용 능력</div>
-          </div>
-          
-          <button class="btn btn-submit full-width" @click="showModal = false">닫기</button>
+      <div v-if="showModal" class="result-overlay">
+        <div class="result-screen">
+          <h2 class="result-title">{{ score === 100 ? 'MISSION CLEAR' : 'FIX REJECTED' }}</h2>
+          <div class="score-display">{{ score }}%</div>
+          <p class="feedback-txt">{{ feedbackText }}</p>
+          <button class="confirm-btn" @click="showModal = false">RETURN TO BASE</button>
         </div>
       </div>
     </div>
@@ -187,513 +112,231 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
 
-// --- State ---
 const files = reactive({
-  'main.py': `import json
-from auth import login
-
-def main():
-    # 데이터를 불러옵니다.
-    with open("users.json", "r") as f:
-        users = json.load(f)
-
-    # ID가 99인 유저를 찾습니다 (없음 -> None 반환)
-    user = next((u for u in users if u["id"] == 99), None)
-
-    # BUG: 여기서 user가 None일 수 있는데 체크하지 않음
-    print(f"Logging in {user['username']}...")
-
-    if login(user):
-        print("LOGIN SUCCESS")
-    else:
-        print("LOGIN FAILED")
-
-if __name__ == "__main__":
-    main()`,
-  'auth.py': `def login(user):
-    if not user:
-        return False
-    if user.get('isActive'):
-        return True
-    return False`,
-  'users.json': `[
-  {"id": 1, "username": "admin", "isActive": true},
-  {"id": 2, "username": "guest", "isActive": false}
-]`
+  'main.py': `import json\nfrom auth import login\n\ndef main():\n    with open("users.json", "r") as f:\n        users = json.load(f)\n\n    # 유저 ID 99번은 존재하지 않음\n    user = next((u for u in users if u["id"] == 99), None)\n\n    # ERROR: user가 None일 경우 여기서 크래시 발생\n    print(f"Logging in {user['username']}...")\n\n    if login(user):\n        print("SUCCESS")`,
+  'auth.py': `def login(user):\n    return user.get('isActive', False)`,
+  'users.json': `[{"id": 1, "username": "admin"}]`
 });
 
 const currentFileName = ref('main.py');
-const terminalText = ref('준비 완료. "디버깅" 버튼을 눌러 코드를 실행해보세요.');
+const terminalText = ref('SYSTEM READY...');
 const isLoading = ref(false);
-const showStackTrace = ref(false);
-const showDiagnosis = ref(false);
-const hasTrigger = ref(false);
 const runStatus = ref(null);
-const isModified = ref(false);
-
-// Hint & Evaluation State
-const showHint = ref(false);
-const showModal = ref(false);
-const isEvaluating = ref(false);
 const score = ref(0);
+const showModal = ref(false);
 const feedbackText = ref('');
+const hintVisible = ref(false);
+const currentHint = ref("파이썬의 'if user:' 구문을 사용하여 None 여부를 먼저 체크하세요.");
 
-// Computed
 const lineCount = computed(() => files[currentFileName.value].split('\n').length);
+const switchFile = (name) => currentFileName.value = name;
 
-// --- Actions ---
-
-const switchFile = (filename) => {
-  currentFileName.value = filename;
+const showHintSystem = () => { hintVisible.value = true; };
+const mockDebug = () => {
+  isLoading.value = true;
+  terminalText.value = "ANALYZING CODE...";
+  setTimeout(() => {
+    isLoading.value = false;
+    if (files['main.py'].includes('if user')) {
+      runStatus.value = 'SUCCESS';
+      terminalText.value = 'Execution finished. No errors found.';
+    } else {
+      runStatus.value = 'FAILURE';
+      terminalText.value = 'TypeError: NoneType object is not subscriptable';
+    }
+  }, 1000);
 };
-
-// 1. 힌트 받기
-function mockHint() {
-  isLoading.value = true;
-  terminalText.value = "AI가 힌트를 생성하고 있습니다...";
-  
-  setTimeout(() => {
-    isLoading.value = false;
-    showHint.value = true;
-    terminalText.value += "\n\n[System] 힌트가 도착했습니다.";
-  }, 600);
-}
-
-// 2. 디버깅 (단순 실행)
-function mockDebug() {
-  isLoading.value = true;
-  terminalText.value = "Running python3 main.py...";
-  showStackTrace.value = false;
-  showDiagnosis.value = false;
-  runStatus.value = null;
-
-  // Simulate execution
-  setTimeout(() => {
-    isLoading.value = false;
-    
-    // Check code simply
-    const code = files['main.py'];
-    const isFixed = code.includes('if user') || code.includes('if not user') || code.includes('try:');
-
-    if (isFixed) {
-      terminalText.value = `User not found (Handled safely)
-LOGIN FAILED
-
-Process finished with exit code 0`;
-      runStatus.value = "SUCCESS";
-    } else {
-      terminalText.value = `Traceback (most recent call last):
-  File "main.py", line 12, in main
-    print(f"Logging in {user['username']}...")
-TypeError: 'NoneType' object is not subscriptable`;
-      
-      showStackTrace.value = true;
-      showDiagnosis.value = true;
-      runStatus.value = "FAILURE";
-    }
-  }, 800);
-}
-
-// 3. 제출 (평가)
-function mockSubmit() {
+const mockSubmit = () => {
+  score.value = files['main.py'].includes('if user') ? 100 : 0;
+  feedbackText.value = score.value === 100 ? "완벽한 수정입니다." : "여전히 에러가 발생합니다.";
   showModal.value = true;
-  isEvaluating.value = true;
-  
-  // Simulate Backend Evaluation
-  setTimeout(() => {
-    isEvaluating.value = false;
-    const code = files['main.py'];
-    const isFixed = code.includes('if user') || code.includes('if not user') || code.includes('try:');
-
-    if (isFixed) {
-      score.value = 100;
-      feedbackText.value = "완벽합니다! NoneType 예외 처리가 적절하게 적용되었으며, 프로그램이 크래시 없이 안전하게 종료됩니다.";
-    } else {
-      score.value = 30;
-      feedbackText.value = "아직 버그가 수정되지 않았습니다. 사용자(user)가 존재하지 않을 때의 상황을 코드에서 처리해야 합니다.";
-    }
-  }, 1500);
-}
+};
 </script>
 
 <style scoped>
-/* --- Reset & Base Layout --- */
-* { box-sizing: border-box; }
-
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  font-family: Consolas, 'Courier New', monospace;
-  overflow: hidden;
+/* OpsPractice 스타일 테마 */
+.ops-debug-page {
+  --neon-cyan: #00f3ff;
+  --neon-magenta: #ff00ff;
+  --neon-yellow: #ffff00;
+  --bg-dark: #0a0e17;
+  --panel-bg: rgba(26, 31, 46, 0.9);
+  
+  background: var(--bg-dark);
+  color: var(--neon-cyan);
+  min-height: 100vh;
+  padding: 30px;
+  font-family: 'Rajdhani', sans-serif;
 }
 
-/* --- Header --- */
-.header {
-  height: 50px;
-  background-color: #252526;
-  border-bottom: 1px solid #111;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  flex-shrink: 0;
+.main-layout-grid {
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 30px;
+  height: 85vh; /* 화면 높이에 맞춤 */
 }
 
-.title {
-  font-weight: bold;
-  color: #fff;
-  font-size: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.header-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* --- Buttons --- */
-.btn {
-  border: none;
-  border-radius: 4px;
-  padding: 6px 14px;
-  color: #fff;
-  font-weight: bold;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 13px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn:hover { opacity: 0.9; }
-
-.btn-hint { background-color: #8b7b00; }
-.btn-debug { background-color: #0e639c; }
-.btn-submit { background-color: #2da042; }
-
-/* --- Trigger Indicator --- */
-.trigger-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  background: #333;
-  border-radius: 4px;
-  font-size: 12px;
-  margin-right: 10px;
-  font-family: sans-serif;
-}
-.trigger-indicator.active {
-  border: 1px solid #cca700;
-  background: #423e24;
-  color: #fff;
-}
-.clear-trigger-btn {
-  background: none;
-  border: none;
-  color: #f14c4c;
-  padding: 0;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-/* --- Main Layout --- */
-.main-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* --- Left Sidebar (Fixed Width) --- */
-.left-sidebar {
-  width: 350px;
-  background-color: #252526;
-  border-right: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Sidebar Common Styles */
-.section-header {
-  padding: 10px 15px;
-  background-color: #333;
-  font-size: 12px;
-  font-weight: bold;
-  color: #ccc;
-  text-transform: uppercase;
-  font-family: sans-serif;
-  border-bottom: 1px solid #111;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.section-icon { font-size: 14px; }
-
-/* 1. Problem Section */
-.problem-section {
-  flex: 1;
+/* 사이드 패널 */
+.side-panel {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  border-bottom: 1px solid #333;
 }
-.problem-content {
-  padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-.problem-title {
-  margin: 0 0 10px 0;
-  font-size: 18px;
-  color: #fff;
-}
-.problem-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #ccc;
+
+.panel-box {
+  background: var(--panel-bg);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  padding: 25px;
   margin-bottom: 20px;
-}
-.mission-box {
-  background-color: #2d2d2d;
-  border-left: 3px solid #0e639c;
-  padding: 15px;
-  font-size: 13px;
-  color: #ddd;
-  line-height: 1.6;
-}
-.mission-box ul { margin: 5px 0 0 0; padding-left: 20px; }
-
-/* 2. Visual Section */
-.visual-section {
-  height: 45%;
-  min-height: 250px;
-  background-color: #1e1e1e;
-  display: flex;
-  flex-direction: column;
-}
-.visual-container {
-  flex: 1;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  overflow-y: auto;
+  border-radius: 4px;
 }
 
-/* Module Nodes */
-.module-node {
-  width: 220px;
-  background-color: #2d2d2d;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 10px 15px;
+.panel-title {
+  color: var(--neon-cyan);
+  font-family: 'Orbitron';
+  font-size: 0.9em;
+  margin-bottom: 15px;
+  border-left: 4px solid var(--neon-cyan);
+  padding-left: 10px;
+}
+
+.long-desc { color: #a0aec0; line-height: 1.6; }
+
+/* 버튼 디자인 (색상 강조) */
+.side-controls { display: flex; flex-direction: column; gap: 15px; }
+
+.action-btn {
+  padding: 18px;
+  font-family: 'Orbitron';
+  font-weight: bold;
+  background: transparent;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s;
-}
-.module-node:hover {
-  border-color: #0e639c;
-  transform: translateY(-2px);
-  background-color: #353535;
-}
-.module-node.active {
-  border-color: #cca700;
-  background-color: #3c3c3c;
-  box-shadow: 0 0 0 1px #cca700 inset;
-}
-.module-icon { font-size: 24px; }
-.module-info { text-align: left; }
-.module-name { font-weight: bold; font-size: 14px; color: #fff; font-family: sans-serif; }
-.module-desc { font-size: 11px; color: #888; margin-top: 2px; font-family: sans-serif; }
-
-.arrow-down {
-  width: 0; 
-  height: 0; 
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid #666;
-}
-
-/* --- Right Content --- */
-.right-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: #1e1e1e;
-}
-
-/* Editor */
-.editor-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.editor-tab {
-  height: 35px;
-  background-color: #2d2d2d;
-  border-bottom: 1px solid #111;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 15px;
-  font-size: 13px;
-  font-family: sans-serif;
-  border-top: 2px solid #0e639c;
-}
-.unsaved-dot { width: 8px; height: 8px; background: #fff; border-radius: 50%; }
-
-.editor-wrapper {
-  flex: 1;
-  display: flex;
+  transition: 0.3s;
+  border-radius: 4px;
+  text-align: center;
   position: relative;
+  overflow: hidden;
 }
+
+.hint-btn { border: 2px solid var(--neon-yellow); color: var(--neon-yellow); }
+.hint-btn:hover { background: var(--neon-yellow); color: #000; box-shadow: 0 0 15px var(--neon-yellow); }
+
+.debug-btn { border: 2px solid var(--neon-cyan); color: var(--neon-cyan); }
+.debug-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
+
+.submit-btn { border: 2px solid var(--neon-magenta); color: var(--neon-magenta); }
+.submit-btn:hover { background: var(--neon-magenta); color: #000; box-shadow: 0 0 15px var(--neon-magenta); }
+
+/* 에디터 모니터 프레임 (깨짐 방지 핵심) */
+.monitor-frame {
+  background: #000;
+  border: 2px solid #2d3748;
+  border-radius: 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 내부 요소 탈출 방지 */
+}
+
+.screen-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor-header {
+  background: #1a202c;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #2d3748;
+}
+
+/* 코드 입력창 영역 */
+.editor-container {
+  flex: 1; /* 남은 공간 모두 차지 */
+  display: flex;
+  background: #0d1117;
+  overflow: hidden;
+}
+
 .line-numbers {
-  width: 45px;
-  background-color: #1e1e1e;
-  color: #6e7681;
+  width: 50px;
+  padding: 20px 0;
+  background: #080b10;
+  color: #4b5563;
   text-align: right;
-  padding: 10px 10px 10px 0;
+  padding-right: 15px;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
-  line-height: 1.5;
-  border-right: 1px solid #333;
   user-select: none;
 }
+
 .code-textarea {
   flex: 1;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
+  background: transparent;
   border: none;
-  resize: none;
-  padding: 10px;
-  font-family: Consolas, 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.5;
   outline: none;
+  color: #e5e7eb;
+  padding: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  line-height: 1.6;
+  resize: none;
   white-space: pre;
+  overflow: auto; /* 내용 많을 때 스크롤 */
 }
 
-/* Terminal */
-.terminal {
-  height: 250px;
-  background-color: #1e1e1e;
-  border-top: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+/* 터미널 섹션 */
+.terminal-section {
+  height: 150px;
+  background: #000;
+  border-top: 2px solid #2d3748;
+  padding: 15px 25px;
 }
+
 .terminal-header {
-  height: 35px;
-  background-color: #252526;
-  padding: 0 15px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #ccc;
-  font-family: sans-serif;
-}
-.terminal-output {
-  flex: 1;
-  padding: 10px;
-  font-size: 13px;
-  overflow-y: auto;
-  color: #ccc;
-  white-space: pre-wrap;
+  font-size: 11px;
+  color: #718096;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
 }
 
-/* Badges & Errors */
-.status-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
-.badge-success { background: #4ec9b0; color: #000; }
-.badge-failure { background: #f14c4c; color: #fff; }
+.terminal-body { font-family: 'JetBrains Mono'; font-size: 14px; }
+.terminal-body.error { color: var(--danger-red); }
+.prompt { color: var(--neon-yellow); margin-right: 10px; }
 
-.error-lines-container { padding: 5px; background-color: #2d2d2d; }
-.error-line {
-  background-color: #5a1d1d;
-  color: #ffcccc;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  justify-content: space-between;
-}
-.error-line:hover { background-color: #7a2d2d; }
-
-/* Overlays (Diagnosis & Hint) */
-.diagnosis-panel {
-  padding: 10px;
-  background-color: #252526;
-  color: #9cdcfe;
-  font-size: 12px;
-  border-top: 1px solid #333;
-}
-.hint-panel {
+/* 힌트 애니메이션 */
+.hint-guide-panel {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 320px;
-  background-color: #2d2d2d;
-  border: 1px solid #8b7b00;
-  border-radius: 6px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-  z-index: 10;
-  overflow: hidden;
-}
-.hint-header {
-  background-color: #3d3d00;
-  padding: 10px 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: #fff;
-}
-.hint-content { padding: 15px; font-size: 13px; line-height: 1.5; color: #ddd; white-space: pre-wrap; }
-.close-btn { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; }
-
-/* Modal */
-.modal {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-}
-.modal-content {
-  background: #252526;
-  width: 450px;
+  top: 0; left: 0; right: 0;
+  background: rgba(255, 255, 0, 0.1);
+  backdrop-filter: blur(8px);
+  border-bottom: 2px solid var(--neon-yellow);
   padding: 25px;
-  border-radius: 8px;
-  border: 1px solid #444;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  z-index: 20;
 }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444; }
-.modal-title { font-size: 18px; font-weight: bold; color: white; }
-.close-button { background: none; border: none; font-size: 24px; color: #888; cursor: pointer; }
 
-.evaluation-section { margin-bottom: 20px; }
-.evaluation-label { color: #888; font-size: 12px; margin-bottom: 8px; text-transform: uppercase; font-family: sans-serif; }
-.score-bar { background: #333; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
-.score-fill { height: 100%; transition: width 0.8s ease; }
-.evaluation-text { font-size: 14px; line-height: 1.5; color: #ddd; }
-.learning-point { background: #1a2e1a; color: #4ec9b0; padding: 8px; margin-bottom: 5px; border-left: 3px solid #4ec9b0; font-size: 13px; }
-.full-width { width: 100%; margin-top: 10px; }
-
-/* Spinner */
-.spinner {
-  width: 30px; height: 30px;
-  border: 3px solid #333;
-  border-top: 3px solid #0e639c;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
+.result-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
 }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.result-screen {
+  background: var(--panel-bg);
+  border: 2px solid var(--neon-cyan);
+  padding: 60px;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.score-display {
+  font-size: 4em;
+  font-family: 'Orbitron';
+  color: var(--neon-yellow);
+  margin: 20px 0;
+}
 </style>
