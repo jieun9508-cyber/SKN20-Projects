@@ -100,4 +100,6 @@ REST_FRAMEWORK = {
 
 # CORS 설정 (프론트엔드 연동용)
 CORS_ALLOW_ALL_ORIGINS = True 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000'] 
+# 수정일: 2026-01-21
+# 수정내용: 프론트엔드(localhost:5173)와의 통신을 위해 CSRF 신뢰 도메인 추가
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost:5173'] 
