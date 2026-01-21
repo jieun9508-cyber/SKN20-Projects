@@ -11,10 +11,6 @@ Django의 `dumpdata`와 `loaddata` 기능을 사용하여 데이터를 JSON 파�
 
 데이터를 생성한 팀원이 자신의 DB에서 데이터를 추출하여 파일로 만듭니다.
 
-### 1-1. 공통 코드(`Common` 모델)만 추출하기
-`core` 앱의 `Common` 모델 데이터만 `common_data.json` 파일로 저장합니다.
-
-```bash
 # Docker 환경에서 실행 시
 docker-compose exec backend python -Xutf8 manage.py dumpdata core.Common --indent 4 > backend/core/fixtures/common_data.json
 
