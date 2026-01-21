@@ -42,9 +42,14 @@
     <!-- [히어로 섹션] -->
     <header class="hero">
       <!-- Video Path needs to be correct. Assuming handled by backend static serving or copied to public -->
-      <video autoplay muted loop id="hero-video">
-        <source src="/image/sports_gym.mp4" type="video/mp4">
-      </video>
+<video
+  id="hero-video"
+  src="/image/sports_gym.mp4"
+  autoplay
+  muted
+  loop
+  playsinline
+></video>
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <h1 class="main-title bounce-in">Engineer Playground!</h1>
