@@ -1,5 +1,5 @@
 # 수정일: 2026-01-22
-# 수정내용: Antigravity - BaseModel 상속 적용 및 중복 필드 제거
+# 수정내용: Antigravity - common_id를 Django 표준인 id로 변경
 
 from django.db import models
 from .base_model import BaseModel
@@ -12,7 +12,8 @@ class Common(BaseModel):
         db_table = 'gym_common'
         ordering = ['order_number', 'code_name']  # 정렬 기준 추가
 
-    common_id = models.AutoField(primary_key=True)
+    # 2026-01-22 수정: common_id -> id 변경
+    id = models.AutoField(primary_key=True)
     top_code = models.CharField(max_length=50, null=True, blank=True)  # 상위 코드 (그룹 코드)
     code_id = models.CharField(max_length=50, null=True, blank=True)   # 상세 코드 ID
     code_name = models.CharField(max_length=200)                       # 상세 코드 명 (기존 common_name 대체)

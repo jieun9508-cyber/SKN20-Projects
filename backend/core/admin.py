@@ -7,7 +7,7 @@ from core.models import Common, UserProfile, UserDetail, Product, Order, Post, R
 # 1. Common (공통 코드) Admin
 @admin.register(Common)
 class CommonAdmin(admin.ModelAdmin):
-    list_display = ('common_id', 'top_code', 'code_id', 'code_name', 'order_number', 'use_yn')
+    list_display = ('id', 'top_code', 'code_id', 'code_name', 'order_number', 'use_yn')
     search_fields = ('top_code', 'code_name', 'code_id')
     list_filter = ('top_code', 'use_yn')
     list_editable = ('order_number', 'use_yn') # 목록에서 바로 수정 가능
@@ -20,8 +20,8 @@ class UserDetailInline(admin.StackedInline):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user_name', 'user_id', 'email', 'create_date')
-    search_fields = ('user_name', 'user_id', 'email')
+    list_display = ('user_name', 'id', 'email', 'create_date')
+    search_fields = ('user_name', 'id', 'email')
     inlines = (UserDetailInline,)
 
 # 3. Product (상품) Admin

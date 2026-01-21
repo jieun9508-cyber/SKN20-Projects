@@ -1,5 +1,5 @@
-# 수정일: 2026-01-20
-# 수정내용: 팀원 A (User 담당) - 회원 관련 뷰 정의
+# 수정일: 2026-01-22
+# 수정내용: Antigravity - PK 명칭 id 통일에 따른 참조 필드 수정
 
 from rest_framework import viewsets, serializers
 from django.contrib.auth.hashers import make_password
@@ -102,7 +102,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         raw_password = validated_data.get('password') # 평문 비밀번호 보관 (User 생성용)
         email = validated_data.get('email')
-        user_id = validated_data.get('user_id')
+        id = validated_data.get('id')
 
         # 2. 비밀번호 암호화 (UserProfile용)
         if 'password' in validated_data:
@@ -112,16 +112,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
         try:
             with transaction.atomic():
                 # 3. Django 기본 인증 유저(auth.User) 생성
-                # user_id(이메일)를 username으로 사용
-                if user_id and raw_password:
+                # id(이메일)를 username으로 사용
+                if id and raw_password:
                     try:
                         # auth.User 중복 체크 및 생성
-                        if User.objects.filter(username=user_id).exists():
+                        if User.objects.filter(username=id).exists():
                             raise serializers.ValidationError({"detail": "이미 가입된 계정입니다."})
                         if User.objects.filter(email=email).exists():
                             raise serializers.ValidationError({"detail": "이미 가입된 이메일입니다."})
 
-                        User.objects.create_user(username=user_id, email=email, password=raw_password)
+                        User.objects.create_user(username=id, email=email, password=raw_password)
                     except serializers.ValidationError:
                         raise  # ValidationError는 그대로 전파
                     except Exception as e:
@@ -141,7 +141,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
                 if 'interests' in detail_data and isinstance(detail_data['interests'], list):
                     detail_data['interests'] = ','.join(detail_data['interests'])
 
-                UserDetail.objects.create(user_id=user, **detail_data)
+                UserDetail.objects.create(user=user, **detail_data)
 
                 return user
 

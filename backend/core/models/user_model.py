@@ -1,5 +1,5 @@
 # 수정일: 2026-01-22
-# 수정내용: Antigravity - BaseModel 상속 적용 및 중복 필드 제거, user_seq 삭제 완료
+# 수정내용: Antigravity - user_id를 id로, UserDetail의 외래키 필드명을 user로 변경
 
 from django.db import models
 from .base_model import BaseModel
@@ -12,9 +12,8 @@ class UserProfile(BaseModel):
     class Meta:
         db_table = 'gym_user'
 
-    # [수정일: 2026-01-21] user_id를 PK로 변경
-    # [수정일: 2026-01-22] user_seq 삭제
-    user_id = models.CharField(max_length=50, primary_key=True)  # 로그인 아이디 (PK)
+    # [수정일: 2026-01-22] user_id -> id 변경 (상징적인 PK 명칭 통일을 위함)
+    id = models.CharField(max_length=50, primary_key=True)  # 로그인 아이디 (PK)
     
     user_name = models.CharField(max_length=50)  # 사용자 이름
     user_nickname = models.CharField(max_length=50, null=True, blank=True)  # 사용자 닉네임
@@ -23,15 +22,15 @@ class UserProfile(BaseModel):
     password = models.CharField(max_length=128)  # 비밀번호   
     
     def save(self, *args, **kwargs):
-        # 1. user_id 자동 생성 (email @ 앞부분)
-        if not self.user_id and self.email:
-            # [수정일: 2026-01-21] user_id 길이 초과 방지 (최대 50자)
-            self.user_id = self.email.split('@')[0][:50]
+        # 1. id 자동 생성 (email @ 앞부분)
+        if not self.id and self.email:
+            # [수정일: 2026-01-21] id 길이 초과 방지 (최대 50자)
+            self.id = self.email.split('@')[0][:50]
             
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"{self.user_name} ({self.user_id})"
+        return f"{self.user_name} ({self.id})"
 
 class UserDetail(models.Model):
     """
@@ -42,8 +41,8 @@ class UserDetail(models.Model):
         db_table = 'gym_userdetail'
 
     # [수정일: 2026-01-21] user_id를 PK로 설정 (식별 관계)
-    # [수정일: 2026-01-22] detail_seq 삭제
-    user_id = models.OneToOneField(
+    # [수정일: 2026-01-22] 필드명을 user로 변경 (Django 표준 관례)
+    user = models.OneToOneField(
         UserProfile, 
         on_delete=models.CASCADE, 
         primary_key=True, 
