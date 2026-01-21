@@ -1,9 +1,10 @@
-# 수정일: 2026-01-20
-# 수정내용: 팀원 B (Product 담당) - 상품 관련 모델 정의
+# 수정일: 2026-01-22
+# 수정내용: Antigravity - BaseModel 상속 적용 및 중복 필드 제거
 
 from django.db import models
+from .base_model import BaseModel
 
-class Common(models.Model):
+class Common(BaseModel):
     """
     팀원 B 담당: 공통 모델
     """
@@ -16,12 +17,6 @@ class Common(models.Model):
     code_id = models.CharField(max_length=50, null=True, blank=True)   # 상세 코드 ID
     code_name = models.CharField(max_length=200)                       # 상세 코드 명 (기존 common_name 대체)
     order_number = models.IntegerField(default=10)                     # 정렬 순서
-
-    create_date = models.DateTimeField(auto_now_add=True)
-    update_date = models.DateTimeField(auto_now=True)
-    create_id = models.CharField(max_length=50, null=True, blank=True)
-    update_id = models.CharField(max_length=50, null=True, blank=True)
-    use_yn = models.CharField(max_length=1, default='Y')
 
     # 수정일: 2026-01-20
     # 수정내용: __str__ 메서드 추가 - 모델 인스턴스를 문자열로 표현할 때 code_name과 code_id를 반환하여 식별을 용이하게 함
