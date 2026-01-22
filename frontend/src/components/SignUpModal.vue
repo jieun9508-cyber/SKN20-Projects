@@ -214,7 +214,7 @@ export default {
       const formData = {
         user_nickname: this.nickname,
         user_name: this.nickname, // 이름은 닉네임으로 대체 (필요 시 별도 입력 필드 추가)
-        user_id: this.email,      // 이메일을 ID로 사용
+        id: this.email,           // [수정일: 2026-01-22] user_id -> id로 변경 (Back-end 모델 리팩토링 반영)
         email: this.email,
         password: this.password,
         birth_date: this.birthDate || null,

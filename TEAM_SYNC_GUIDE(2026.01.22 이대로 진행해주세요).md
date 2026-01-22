@@ -17,7 +17,7 @@
 
 2. **Docker 컨테이너 다시 실행**
    ```bash
-   docker-compose up -d
+  docker-compose up -d --build
    ```
 
 3. **마이그레이션 적용**

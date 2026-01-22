@@ -101,8 +101,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         detail_data = validated_data.pop('user_detail', {})
 
         raw_password = validated_data.get('password') # 평문 비밀번호 보관 (User 생성용)
-        email = validated_data.get('email')
+        # [수정일: 2026-01-22] id가 없으면 이메일에서 생성 (save 메서드와 동기화)
         id = validated_data.get('id')
+        email = validated_data.get('email')
+        if not id and email:
+            id = email.split('@')[0][:50]
+            validated_data['id'] = id
 
         # 2. 비밀번호 암호화 (UserProfile용)
         if 'password' in validated_data:
@@ -137,10 +141,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
                 if 'job_role' in detail_data and isinstance(detail_data['job_role'], list):
                     detail_data['job_role'] = ','.join(detail_data['job_role'])
 
-                # interests가 리스트라면 콤마 문자열로 변환
                 if 'interests' in detail_data and isinstance(detail_data['interests'], list):
                     detail_data['interests'] = ','.join(detail_data['interests'])
 
+                # [수정일: 2026-01-22] UserDetail 생성 로직 확인
                 UserDetail.objects.create(user=user, **detail_data)
 
                 return user
