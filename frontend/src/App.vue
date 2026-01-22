@@ -42,9 +42,14 @@
     <!-- [히어로 섹션] -->
     <header class="hero">
       <!-- Video Path needs to be correct. Assuming handled by backend static serving or copied to public -->
-      <video autoplay muted loop id="hero-video">
-        <source src="/image/sports_gym.mp4" type="video/mp4">
-      </video>
+<video
+  id="hero-video"
+  src="/image/sports_gym.mp4"
+  autoplay
+  muted
+  loop
+  playsinline
+></video>
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <h1 class="main-title bounce-in">Engineer Playground!</h1>
@@ -437,6 +442,7 @@
 <script>
 // Import external stylesheet (or rely on global style.css if imported in main.js)
 import './style.css';
+import axios from 'axios'; // [수정일: 2026-01-22] axios 임포트 누락 수정 (Antigravity)
 import NoticeModal from './components/NoticeModal.vue';
 import LoginModal from './components/LoginModal.vue';
 import SignUpModal from './components/SignUpModal.vue';

@@ -80,6 +80,7 @@ body {
 }
 
 /* Hero Section */
+/* Hero Section */
 .hero {
     position: relative;
     height: 100vh;
@@ -93,25 +94,27 @@ body {
 
 #hero-video {
     position: absolute;
+    /* [수정일: 2026-01-22] 기존 중앙 정렬 방식 주석 처리 (전체 화면 꽉 채우기 위해 변경)
     top: 50%;
     left: 50%;
     min-width: 100%;
     min-height: 100%;
     width: auto;
     height: auto;
-    z-index: -2;
     transform: translate(-50%, -50%);
-    object-fit: cover;
-}
-
-.hero-overlay {
-    position: absolute;
+    */
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4));
-    z-index: -2;
+    object-fit: cover;
+    z-index: 0;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
 }
 
 .navbar {
@@ -1841,7 +1844,7 @@ footer {
 .platform-circle-v3 {
     width: 100px;
     height: 100px;
-    background: #2d384d;
+    background: transparent;
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -1853,7 +1856,7 @@ footer {
 
 /* 활성 노드 특수 효과 */
 .node-platform-v3.active .platform-circle-v3 {
-    background: #b6ff40;
+    background: transparent;
     box-shadow: 0 8px 0 #7fa32d, 0 0 30px rgba(182, 255, 64, 0.6);
 }
 
@@ -1893,7 +1896,7 @@ footer {
     z-index: 10;
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
     animation: duckBounceV3 2s ease-in-out infinite;
-    mix-blend-mode: screen;
+    mix-blend-mode: normal;
     /* 검은색 배경을 투명하게 처리 */
 }
 
@@ -2733,4 +2736,41 @@ footer {
 
 [v-cloak] {
     display: none;
+}
+
+/* =========================
+   HERO VIDEO FIX
+========================= */
+
+.hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    /* ⭐ 이게 제일 중요 */
+    overflow: hidden;
+    background: black;
+}
+
+#hero-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* ⭐ 영상이 화면에 꽉 차게 */
+    z-index: 0;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    /* 글자가 영상 위로 */
 }
