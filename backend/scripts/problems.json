@@ -1,0 +1,162 @@
+[
+  {
+    "id": 11,
+    "difficulty": "introductory",
+    "title": "Logic Practice 11",
+    "description": "Write a python function to remove first and last occurrence of a given character from the string.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert remove_Occ(\"hello\",\"l\") == \"heo\""
+      }
+    ],
+    "solution_code": "def remove_Occ(s,ch): \r\n    for i in range(len(s)): \r\n        if (s[i] == ch): \r\n            s = s[0 : i] + s[i + 1:] \r\n            break\r\n    for i in range(len(s) - 1,-1,-1):  \r\n        if (s[i] == ch): \r\n            s = s[0 : i] + s[i + 1:] \r\n            break\r\n    return s ",
+    "title_ko": "논리연습11",
+    "description_ko": "문자열에서 주어진 문자의 첫 번째와 마지막 항목을 제거하는 Python 함수를 작성하십시오.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 12,
+    "difficulty": "introductory",
+    "title": "Logic Practice 12",
+    "description": "Write a function to sort a given matrix in ascending order according to the sum of its rows.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert sort_matrix([[1, 2, 3], [2, 4, 5], [1, 1, 1]])==[[1, 1, 1], [1, 2, 3], [2, 4, 5]]"
+      }
+    ],
+    "solution_code": "def sort_matrix(M):\r\n    result = sorted(M, key=sum)\r\n    return result",
+    "title_ko": "논리연습12",
+    "description_ko": "주어진 행렬을 행의 합에 따라 오름차순으로 정렬하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 13,
+    "difficulty": "introductory",
+    "title": "Logic Practice 13",
+    "description": "Write a function to count the most common words in a dictionary.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert count_common(['red','green','black','pink','black','white','black','eyes','white','black','orange','pink','pink','red','red','white','orange','white',\"black\",'pink','green','green','pink','green','pink','white','orange',\"orange\",'red']) == [('pink', 6), ('black', 5), ('white', 5), ('red', 4)]"
+      }
+    ],
+    "solution_code": "from collections import Counter\r\ndef count_common(words):\r\n  word_counts = Counter(words)\r\n  top_four = word_counts.most_common(4)\r\n  return (top_four)\r\n",
+    "title_ko": "논리연습 13",
+    "description_ko": "사전에서 가장 일반적인 단어를 세는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 14,
+    "difficulty": "introductory",
+    "title": "Logic Practice 14",
+    "description": "Write a python function to find the volume of a triangular prism.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert find_Volume(10,8,6) == 240"
+      }
+    ],
+    "solution_code": "def find_Volume(l,b,h) : \r\n    return ((l * b * h) / 2) ",
+    "title_ko": "논리연습 14",
+    "description_ko": "삼각기둥의 부피를 구하는 파이썬 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 15,
+    "difficulty": "introductory",
+    "title": "Logic Practice 15",
+    "description": "Write a function to split a string at lowercase letters.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert split_lowerstring(\"AbCd\")==['bC','d']"
+      }
+    ],
+    "solution_code": "import re\r\ndef split_lowerstring(text):\r\n return (re.findall('[a-z][^a-z]*', text))",
+    "title_ko": "논리연습 15",
+    "description_ko": "문자열을 소문자로 분할하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 16,
+    "difficulty": "introductory",
+    "title": "Logic Practice 16",
+    "description": "Write a function to find sequences of lowercase letters joined with an underscore.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert text_lowercase_underscore(\"aab_cbbbc\")==('Found a match!')"
+      }
+    ],
+    "solution_code": "import re\r\ndef text_lowercase_underscore(text):\r\n        patterns = '^[a-z]+_[a-z]+$'\r\n        if re.search(patterns,  text):\r\n                return 'Found a match!'\r\n        else:\r\n                return('Not matched!')",
+    "title_ko": "논리연습 16",
+    "description_ko": "밑줄과 결합된 일련의 소문자를 찾는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 17,
+    "difficulty": "introductory",
+    "title": "Logic Practice 17",
+    "description": "Write a function to find the perimeter of a square.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert square_perimeter(10)==40"
+      }
+    ],
+    "solution_code": "def square_perimeter(a):\r\n  perimeter=4*a\r\n  return perimeter",
+    "title_ko": "논리연습 17",
+    "description_ko": "정사각형의 둘레를 구하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 18,
+    "difficulty": "introductory",
+    "title": "Logic Practice 18",
+    "description": "Write a function to remove characters from the first string which are present in the second string.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert remove_dirty_chars(\"probasscurve\", \"pros\") == 'bacuve'"
+      }
+    ],
+    "solution_code": "NO_OF_CHARS = 256\r\ndef str_to_list(string): \r\n\ttemp = [] \r\n\tfor x in string: \r\n\t\ttemp.append(x) \r\n\treturn temp \r\ndef lst_to_string(List): \r\n\treturn ''.join(List) \r\ndef get_char_count_array(string): \r\n\tcount = [0] * NO_OF_CHARS \r\n\tfor i in string: \r\n\t\tcount[ord(i)] += 1\r\n\treturn count \r\ndef remove_dirty_chars(string, second_string): \r\n\tcount = get_char_count_array(second_string) \r\n\tip_ind = 0\r\n\tres_ind = 0\r\n\ttemp = '' \r\n\tstr_list = str_to_list(string) \r\n\twhile ip_ind != len(str_list): \r\n\t\ttemp = str_list[ip_ind] \r\n\t\tif count[ord(temp)] == 0: \r\n\t\t\tstr_list[res_ind] = str_list[ip_ind] \r\n\t\t\tres_ind += 1\r\n\t\tip_ind+=1\r\n\treturn lst_to_string(str_list[0:res_ind]) ",
+    "title_ko": "논리연습 18",
+    "description_ko": "두 번째 문자열에 있는 첫 번째 문자열에서 문자를 제거하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 19,
+    "difficulty": "introductory",
+    "title": "Logic Practice 19",
+    "description": "Write a function to find whether a given array of integers contains any duplicate element.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert test_duplicate(([1,2,3,4,5]))==False"
+      }
+    ],
+    "solution_code": "def test_duplicate(arraynums):\r\n    nums_set = set(arraynums)    \r\n    return len(arraynums) != len(nums_set)     ",
+    "title_ko": "논리연습 19",
+    "description_ko": "주어진 정수 배열에 중복 요소가 포함되어 있는지 확인하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  },
+  {
+    "id": 20,
+    "difficulty": "introductory",
+    "title": "Logic Practice 20",
+    "description": "Write a function to check if the given number is woodball or not.",
+    "examples": [
+      {
+        "input": "Sample test",
+        "output": "assert is_woodall(383) == True"
+      }
+    ],
+    "solution_code": "def is_woodall(x): \r\n\tif (x % 2 == 0): \r\n\t\treturn False\r\n\tif (x == 1): \r\n\t\treturn True\r\n\tx = x + 1 \r\n\tp = 0\r\n\twhile (x % 2 == 0): \r\n\t\tx = x/2\r\n\t\tp = p + 1\r\n\t\tif (p == x): \r\n\t\t\treturn True\r\n\treturn False",
+    "title_ko": "논리연습 20",
+    "description_ko": "주어진 숫자가 우드볼인지 아닌지 확인하는 함수를 작성하세요.",
+    "difficulty_ko": "입문"
+  }
+]
