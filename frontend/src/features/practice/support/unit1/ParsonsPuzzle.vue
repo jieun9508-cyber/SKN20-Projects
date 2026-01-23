@@ -13,7 +13,7 @@
     </div>
 
     <!-- 퍼즐 컨테이너 -->
-    <div class="puzzle-container flex-1 space-y-4 custom-scrollbar overflow-y-auto pr-2 pb-20">
+    <div class="puzzle-container flex-1 space-y-4 custom-scrollbar overflow-y-auto pr-2 pb-32">
       <div
         v-for="(block, index) in blocks"
         :key="block.id"
@@ -21,14 +21,14 @@
         @dragstart="onDragStart($event, index)"
         @dragover.prevent
         @drop="onDrop($event, index)"
-        class="nes-container is-rounded p-4 cursor-move hover:bg-yellow-200 transition-all active:scale-[0.95]"
+        class="puzzle-block nes-container is-rounded p-4 cursor-move hover:bg-yellow-200 transition-all active:scale-[0.95]"
         style="background: #fff; border-width: 4px;"
         :class="{ 'is-success': block.originalIndex === index && resultMessage }"
       >
         <div class="flex items-center gap-4">
           <i class="nes-icon is-small coin"></i>
           <span class="text-sm text-black font-bold">
-            {{ block.text }}
+            {{ block.text_ko }}
           </span>
         </div>
       </div>
@@ -40,10 +40,10 @@
     </div>
 
     <!-- 푸팅 액션 -->
-    <div class="absolute bottom-0 right-0 left-0 p-6 flex justify-end">
+    <div class="absolute bottom-0 right-0 left-0 p-6 flex justify-end pointer-events-none">
       <button 
         @click="checkAnswer"
-        class="nes-btn is-success font-retro"
+        class="nes-btn is-success font-retro pointer-events-auto"
         style="padding: 1rem 2rem;"
       >
         [ CHECK_PUZZLE ]
@@ -69,13 +69,13 @@
 import { ref, onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 // 2026-01-23: support/unit1 폴더 구조에 맞춘 상대 경로 수정
-import { useProblemStore } from '../../../../stores/useProblemStore';
+import { useQuestStore } from '../../../../stores/quest';
 import { CheckCircle2, TriangleAlert } from 'lucide-vue-next';
 
-const store = useProblemStore();
-const { currentProblem } = storeToRefs(store);
+const store = useQuestStore();
+const { currentQuest } = storeToRefs(store);
 
-const emit = defineEmits(['impact']); // 타격감 이벤트
+const emit = defineEmits(['impact', 'change']); // 타격감 및 상태 변경 이벤트
 
 const blocks = ref([]);
 const resultMessage = ref('');
@@ -99,8 +99,9 @@ const onDrop = (event, targetIndex) => {
   blocks.value = items;
   resultMessage.value = '';
   
-  // 2026-01-23: 드롭 시 타격감 이벤트 발생
+  // 2026-01-23: 드롭 시 타격감 이벤트 및 데이터 변경 이벤트 발생
   emit('impact');
+  emit('change', blocks.value);
 };
 
 const checkAnswer = () => {
@@ -114,13 +115,14 @@ const checkAnswer = () => {
 
 // 데이터 로드 보장 로직
 const initPuzzle = () => {
-  if (currentProblem.value) {
-    blocks.value = store.shufflePseudocode();
+  if (currentQuest.value) {
+    blocks.value = store.shuffleBlocks();
+    emit('change', blocks.value); // 초기 상태 전송
   }
 };
 
 onMounted(initPuzzle);
-watch(currentProblem, initPuzzle, { deep: true, immediate: true });
+watch(currentQuest, initPuzzle, { deep: true, immediate: true });
 </script>
 
 <style scoped>
