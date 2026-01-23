@@ -183,7 +183,7 @@
     </section>
 
     <footer class="playground-footer">
-      <p>&copy; 2026 ARCH-GYM. Crafted with ❤️ by Antigravity AI.</p>
+      <p>&copy; 2026 ARCH-GYM. Crafted with ❤️ by Final 5 Team</p>
     </footer>
   </div>
 </template>
