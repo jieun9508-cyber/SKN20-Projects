@@ -1,0 +1,92 @@
+<!-- 
+수정일: 2026-01-21
+수정내용: Vue SPA 진입점 설정 (Vite 표준 설정)
+-->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture Gym - Code Practice with Logic Mirror</title>
+  <!-- [수정일: 2026-01-23] [수정내용: 가독성 개선을 위한 Pretendard 폰트 추가 및 폰트 시스템 이원화] -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
+  <style>
+    /* Square Enix / Mario Style Global Overrides */
+    :root {
+      --jrpg-blue: #000080;
+      --jrpg-blue-light: #0000ff;
+      --mario-red: #e52521;
+      --mario-blue: #049cd8;
+      --mario-yellow: #fbd000;
+      --mario-green: #43b047;
+
+      /* 폰트 정의: 기본은 Pretendard (가독성), 레트로 포인트는 Press Start 2P */
+      --font-main: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+      --font-retro: 'Press Start 2P', cursive;
+    }
+
+    body {
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .font-retro {
+      font-family: var(--font-retro) !important;
+      line-height: 1.5;
+    }
+
+    /* NES.css 기본 폰트 오버라이드 (가독성 확보를 위해 기본은 Pretendard 사용) */
+    .nes-btn,
+    .nes-badge,
+    .nes-container,
+    .nes-balloon,
+    .title {
+      font-family: var(--font-main);
+    }
+
+    /* 레시피: 제목이나 강조된 부분에만 픽셀 폰트 적용 */
+    .retro-title,
+    .nes-text.is-retro {
+      font-family: var(--font-retro);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font-family: inherit;
+    }
+
+    /* Classic Final Fantasy Blue Dialogue Box */
+    .box-jrpg {
+      background: linear-gradient(to bottom, var(--jrpg-blue) 0%, #000033 100%) !important;
+      border: 4px solid #fff !important;
+      box-shadow: 0 0 0 4px #000, 0 8px 16px rgba(0, 0, 0, 0.5) !important;
+      color: #fff !important;
+      border-radius: 4px !important;
+    }
+
+    .nes-container.is-mario {
+      border-image-source: url('https://unpkg.com/nes.css@2.3.0/assets/bricky.png');
+      /* Mocking brick-like border if supported, else custom */
+      background-color: var(--mario-blue) !important;
+    }
+
+    .mario-bg {
+      background-color: #5c94fc !important;
+      /* Classic Mario Sky Blue */
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
