@@ -357,7 +357,7 @@
 
     <!-- [Logic Mirror 실습 모달] - Global placement -->
     <transition name="fade">
-       <CodePracticeLogicMirror 
+       <LogicMirror 
            v-if="isLogicMirrorOpen" 
            @close="isLogicMirrorOpen = false" 
        />
@@ -373,7 +373,7 @@ import NoticeModal from './components/NoticeModal.vue';
 import LoginModal from './components/LoginModal.vue';
 import SignUpModal from './components/SignUpModal.vue';
 import ConstructionModal from './components/ConstructionModal.vue';
-import CodePracticeLogicMirror from './features/practice/CodePracticeLogicMirror.vue';
+import LogicMirror from './features/practice/support/unit1/logic-mirror/LogicMirror.vue';
 import LandingView from './features/home/LandingView.vue';
 
 export default {
@@ -382,7 +382,7 @@ export default {
         LoginModal,
         SignUpModal,
         ConstructionModal,
-        CodePracticeLogicMirror,
+        LogicMirror,
         LandingView
     },
     data() {
@@ -484,11 +484,10 @@ export default {
             this.activeProblem = problem;
             this.activeChapter = chapter;
 
-            // [수정일: 2026-01-21] Practice 페이지들은 메인 레이아웃 없이 단독 표시
+            // [수정일: 2026-01-23] Practice 페이지들은 라우터로 이동
             console.log('selectProblem:', chapter?.name);
             if (chapter?.name === 'Code Practice') {
-                this.isLogicMirrorOpen = true;
-                console.log('Opening Logic Mirror Modal');
+                this.$router.push('/practice/logic-mirror');
             } else if (chapter?.name === 'System Practice') {
                 this.$router.push('/practice/system-architecture');
             } else if (chapter?.name === 'Debug Practice') {
@@ -604,8 +603,11 @@ export default {
     },
     computed: {
         isPracticePage() {
-            const practiceRoutes = ['CodePracticeLogicMirror', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
-            return practiceRoutes.includes(this.$route.name);
+            const practiceRoutes = ['LogicMirror', 'LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
+            console.log('[DEBUG] Current route:', this.$route);
+            console.log('[DEBUG] Route name:', this.$route?.name);
+            console.log('[DEBUG] Is practice page?', practiceRoutes.includes(this.$route?.name));
+            return practiceRoutes.includes(this.$route?.name);
         },
         displayProblems() {
             if (this.activeUnit?.name === 'Debug Practice') {

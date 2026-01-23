@@ -1,31 +1,34 @@
-// 수정일: 2026-01-21
-// 수정내용: Vue 앱 엔트리 포인트 설정 (Pinia, Router 초기화, Logic Mirror 추가)
+// 수정일: 2026-01-23
+// 수정내용: 퀘스트 기반 Logic Mirror로 교체
 
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia } from 'pinia'
-import axios from 'axios' // [수정일: 2026-01-22] axios 임포트 추가 (Antigravity)
-import './index.css' // [2026-01-22] Tailwind CSS 임포트 추가
+import axios from 'axios'
+import './index.css'
 import App from './App.vue'
 
-// [수정일: 2026-01-22] 새로고침 시 로그인 유지를 위해 세션 쿠키 전달 허용 (Antigravity)
 axios.defaults.withCredentials = true
-import CodePracticeLogicMirror from './features/practice/CodePracticeLogicMirror.vue'
+
+// 새로운 퀘스트 기반 Logic Mirror 임포트
+import LogicMirror from './features/practice/support/unit1/logic-mirror/LogicMirror.vue'
+import LogicMirrorTest from './features/practice/support/unit1/logic-mirror/LogicMirrorTest.vue'
 import SystemArchitecturePractice from './features/practice/SystemArchitecturePractice.vue'
 import BugHunt from './features/practice/BugHunt.vue'
 import VibeCodeCleanUp from './features/practice/VibeCodeCleanUp.vue'
 import OpsPractice from './features/practice/OpsPractice.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: App
-  },
+  // Home route removed - App.vue handles root path directly
   {
     path: '/practice/logic-mirror',
-    name: 'CodePracticeLogicMirror',
-    component: CodePracticeLogicMirror
+    name: 'LogicMirror',
+    component: LogicMirror  // 퀘스트 기반 버전으로 변경
+  },
+  {
+    path: '/practice/logic-mirror-test',
+    name: 'LogicMirrorTest',
+    component: LogicMirrorTest  // 테스트 버전
   },
   {
     path: '/practice/system-architecture',
@@ -51,7 +54,6 @@ const routes = [
     path: '/main.html',
     redirect: '/'
   }
-
 ]
 
 const router = createRouter({
