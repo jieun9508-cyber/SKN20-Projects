@@ -553,26 +553,63 @@ export default {
 
 .card-image-wrap-v2 {
   position: relative;
-  width: 220px; /* 기존 180px에서 확대 */
-  height: 220px;
+  width: 240px; 
+  height: 240px;
   margin: 0 auto 2.5rem auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateZ(60px); /* 3D 효과 강화 */
+  transform: translateZ(60px);
+  border-radius: 50%;
+  background: #111;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.1);
+  animation: spin-lp 20s linear infinite;
+}
+
+/* LP Spindle Hole */
+.card-image-wrap-v2::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border: 2px solid #b6ff40;
+  border-radius: 50%;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(182, 255, 64, 0.5);
+}
+
+/* [Aura Effect] */
+.card-aura-premium {
+  position: absolute;
+  inset: -30px;
+  background: radial-gradient(circle, rgba(182, 255, 64, 0.2) 0%, transparent 70%);
+  z-index: 0;
+  filter: blur(15px);
 }
 
 .premium-icon {
-  width: 100%; /* 이미지를 꽉 차게 변경 */
-  height: 100%;
-  object-fit: contain;
+  width: 92%;
+  height: 92%;
+  object-fit: cover;
+  border-radius: 50%;
   z-index: 5;
-  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.6));
-  transition: transform 0.4s ease;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 6px solid #1a1a1a;
+}
+
+.gym-card-premium:hover .card-image-wrap-v2 {
+  animation-duration: 4s;
 }
 
 .gym-card-premium:hover .premium-icon {
-  transform: scale(1.15) translateY(-5px);
+  transform: scale(1.05);
+}
+
+@keyframes spin-lp {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Energy Rings Animation */
@@ -600,13 +637,7 @@ export default {
   50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
 }
 
-.card-aura-premium {
-  position: absolute;
-  inset: -20px;
-  background: radial-gradient(circle, rgba(182, 255, 64, 0.15) 0%, transparent 70%);
-  z-index: 0;
-  filter: blur(10px);
-}
+
 
 .unit-badge-row {
   display: flex;

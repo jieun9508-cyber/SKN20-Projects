@@ -4,16 +4,16 @@
       [수정일: 2026-01-23]
       [수정내용: 디자인 고도화 및 데이터 바인딩 버그 수정 (가독성 개선)]
     -->
-    <div class="mb-8">
-      <h3 class="text-sm font-black text-cyan-400 tracking-[0.4em] uppercase mb-3 flex items-center gap-3 orbitron">
-        <span class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_#22d3ee]"></span>
-        Logic_Grid_Reconstruction
+    <div class="mb-6">
+      <h3 class="text-xs nes-text is-primary flex items-center gap-3 font-retro">
+        <i class="nes-icon star is-small"></i>
+        LOGIC_WORLD_PUZZLE
       </h3>
-      <p class="text-xs text-slate-500 font-bold uppercase tracking-widest rajdhani">블록을 재배열하여 논리적 무결성을 확보하십시오.</p>
+      <p class="text-sm text-slate-600 mt-2 font-bold">아이템 조각을 맞춰 길을 만드세요!</p>
     </div>
 
     <!-- 퍼즐 컨테이너 -->
-    <div class="puzzle-container flex-1 space-y-3 custom-scrollbar overflow-y-auto pr-2 pb-20">
+    <div class="puzzle-container flex-1 space-y-4 custom-scrollbar overflow-y-auto pr-2 pb-20">
       <div
         v-for="(block, index) in blocks"
         :key="block.id"
@@ -21,55 +21,45 @@
         @dragstart="onDragStart($event, index)"
         @dragover.prevent
         @drop="onDrop($event, index)"
-        class="puzzle-block group relative p-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl cursor-move hover:border-cyan-500/50 hover:bg-slate-800/80 transition-all active:scale-[0.98] drop-shadow-sm"
-        :class="{ 'match-hint': block.originalIndex === index && resultMessage }"
+        class="nes-container is-rounded p-4 cursor-move hover:bg-yellow-200 transition-all active:scale-[0.95]"
+        style="background: #fff; border-width: 4px;"
+        :class="{ 'is-success': block.originalIndex === index && resultMessage }"
       >
-        <!-- 인덱스 표시 -->
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-700 group-hover:text-cyan-500 transition-colors">
-          {{ (index + 1).toString().padStart(2, '0') }}
-        </span>
-        
-        <!-- 텍스트 내용 -->
-        <div class="ml-12 font-mono text-base leading-relaxed text-slate-200 group-hover:text-white transition-colors">
-          {{ block.text }}
-        </div>
-
-        <!-- 데코레이션 -->
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div class="flex gap-1">
-            <div class="w-1 h-1 rounded-full bg-cyan-500"></div>
-            <div class="w-1 h-1 rounded-full bg-cyan-500/50"></div>
-          </div>
+        <div class="flex items-center gap-4">
+          <i class="nes-icon is-small coin"></i>
+          <span class="text-sm text-black font-bold">
+            {{ block.text }}
+          </span>
         </div>
       </div>
 
       <!-- 데이터 없을 때 표시 -->
-      <div v-if="blocks.length === 0" class="h-full flex items-center justify-center text-slate-700 font-mono text-[10px] uppercase tracking-widest">
+      <div v-if="blocks.length === 0" class="h-full flex items-center justify-center text-slate-700 font-mono text-[10px] uppercase tracking-widest font-retro">
         Waiting_For_Neural_Data...
       </div>
     </div>
 
     <!-- 푸팅 액션 -->
-    <div class="absolute bottom-0 right-0 left-0 p-6 bg-gradient-to-t from-[#080c14] via-[#080c14]/90 to-transparent flex justify-end">
+    <div class="absolute bottom-0 right-0 left-0 p-6 flex justify-end">
       <button 
         @click="checkAnswer"
-        class="group relative px-10 py-3 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-[11px] tracking-widest uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
+        class="nes-btn is-success font-retro"
+        style="padding: 1rem 2rem;"
       >
-        Verify_Sequence
-        <div class="absolute inset-0 border border-white/20 rounded-xl pointer-events-none"></div>
+        [ CHECK_PUZZLE ]
       </button>
     </div>
 
     <!-- 결과 알림 (Floating 모드로 변경) -->
     <Transition name="slide-up">
-      <div v-if="resultMessage" :class="['absolute top-4 right-4 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl z-50 flex items-center gap-4', isCorrect ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-rose-500/10 border-rose-500/40 text-rose-400']">
-        <div class="w-8 h-8 rounded-full flex items-center justify-center bg-current/10">
-          <component :is="isCorrect ? 'CheckCircle2' : 'TriangleAlert'" class="w-4 h-4" />
-        </div>
-        <div class="flex flex-col">
-          <span class="text-[10px] font-black uppercase tracking-widest">{{ isCorrect ? 'Sync_Complete' : 'Sync_Error' }}</span>
-          <span class="text-xs font-bold">{{ resultMessage }}</span>
-        </div>
+      <div v-if="resultMessage" class="absolute top-4 right-4 z-50">
+        <section :class="['nes-balloon from-right is-primary text-sm box-jrpg']" style="border-width: 4px;">
+          <div class="flex items-center gap-2 font-retro text-[10px]">
+            <i :class="['nes-icon is-small', isCorrect ? 'star' : 'close']"></i>
+            <span>{{ isCorrect ? 'FANFARE!' : 'GAME_OVER' }}</span>
+          </div>
+          <p class="mt-4 font-bold">{{ resultMessage }}</p>
+        </section>
       </div>
     </Transition>
   </div>

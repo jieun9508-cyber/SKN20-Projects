@@ -4,143 +4,133 @@
     [수정내용: LogicTrainer를 고성능 모달 레이아웃으로 변환]
   -->
   <div 
-    class="fixed inset-0 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500 overflow-y-auto"
-    style="z-index: 9999;"
+    class="fixed inset-0 flex items-center justify-center p-4 mario-bg z-[9999] overflow-y-auto"
   >
-    <!-- 메인 컨테이너 (사이버펑크 스타일) -->
+    <!-- JRPG / Mario Style Main Container -->
     <div 
-      class="bg-[#020617] border border-slate-800/50 w-full max-w-[1400px] min-h-[650px] h-[95vh] my-auto rounded-[3rem] shadow-[0_0_120px_rgba(30,58,138,0.2)] flex flex-col overflow-hidden relative interactive-border"
+      class="nes-container is-rounded w-full max-w-[1400px] min-h-[650px] h-[95vh] flex flex-col overflow-hidden relative"
+      style="background: #e7e7e7; border-width: 6px;"
       :class="{ 'shake-active': isShaking }"
     >
-      <!-- 배경 글로우 효과 -->
-      <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[150px] -z-10 animate-pulse"></div>
-      <div class="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-[150px] -z-10"></div>
-
-      <!-- 헤더 (CodePracticeLogicMirror 스타일 계승) -->
-      <header class="h-24 border-b border-slate-800/50 px-10 flex items-center justify-between bg-slate-900/5 backdrop-blur-md z-20">
-        <div class="flex items-center gap-10">
+      <!-- Header: Super Code Adventure (Mario Vibe) -->
+      <header class="p-8 border-b-8 border-black flex items-center justify-between" style="background: #fff;">
+        <div class="flex items-center gap-8">
           <div class="flex flex-col">
-            <h1 class="text-5xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-500 uppercase leading-none mb-1">
-              Logic_Trainer <span class="text-white/20 text-2xl">v4.0</span>
+            <h1 class="text-3xl nes-text is-error mb-2 tracking-tighter font-retro" style="text-shadow: 4px 4px #000;">
+              CODE_ADV_LOOM <span class="nes-text is-warning text-xs font-retro">WORLD 1-1</span>
             </h1>
-            <div class="flex items-center gap-4 mt-1">
-              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
-              <p class="text-xs text-slate-400 font-black tracking-[0.6em] uppercase orbitron">Neural_Learning_Unit_Active</p>
+            <div class="flex items-center gap-4">
+              <i class="nes-icon heart is-medium"></i>
+              <p class="text-[10px] text-primary font-retro">PLAYER_READY_GO!</p>
             </div>
           </div>
 
-          <!-- 네비게이션 HUD -->
-          <div class="flex items-center gap-4 bg-slate-950/80 p-2 rounded-3xl border border-slate-800/50 shadow-inner">
-            <button 
-              @click="store.prevProblem" 
-              class="p-3 bg-slate-900/50 hover:bg-slate-800 rounded-2xl transition-all active:scale-90"
-            >
-              <ChevronLeft class="w-5 h-5 text-slate-400" />
-            </button>
-            <div class="px-8 border-x border-slate-800 text-center min-w-[200px]">
-              <div class="text-[10px] text-slate-600 font-black tracking-widest mb-1 uppercase orbitron">Mission_Module</div>
-              <div class="text-lg font-black text-white truncate max-w-[180px] rajdhani italic">{{ currentProblem?.title_ko }}</div>
+          <!-- Level Board (Square Enix Vibe) -->
+          <div class="nes-container is-dark p-2 border-4 border-black" style="background: var(--jrpg-blue);">
+            <div class="flex items-center gap-4">
+              <button @click="store.prevProblem" class="nes-btn is-primary p-1 font-retro">&lt;</button>
+              <div class="px-4 text-center min-w-[200px]">
+                <div class="text-[8px] text-yellow-500 mb-1 font-retro">CURRENT_QUEST</div>
+                <div class="text-sm text-white truncate max-w-[180px] font-bold">{{ currentProblem?.title_ko }}</div>
+              </div>
+              <button @click="store.nextProblem" class="nes-btn is-primary p-1 font-retro">&gt;</button>
             </div>
-            <button 
-              @click="store.nextProblem"
-              class="p-3 bg-slate-900/50 hover:bg-slate-800 rounded-2xl transition-all active:scale-90"
-            >
-              <ChevronRight class="w-5 h-5 text-slate-400" />
-            </button>
           </div>
         </div>
 
         <div class="flex items-center gap-8">
-          <button 
-            @click="$emit('close')" 
-            class="group p-4 bg-slate-900/50 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-2xl border border-slate-800/50 hover:border-red-500/30 transition-all active:scale-95"
-          >
-            <X class="w-6 h-6 transition-transform group-hover:rotate-90" />
+          <button @click="$emit('close')" class="nes-btn is-error font-retro">
+            EXIT_MAP
           </button>
         </div>
       </header>
 
-      <!-- 실제 작업 영역 -->
-      <div class="flex-1 overflow-hidden p-10 flex gap-10">
-        <!-- 왼쪽 사이드바 (문제 정보) -->
+      <!-- Adventure Area -->
+      <div class="flex-1 overflow-hidden p-8 flex gap-8">
+        <!-- Status & Menu Sidebar (Square Enix Menu Style) -->
         <aside class="w-80 flex flex-col gap-6 shrink-0 overflow-y-auto custom-scrollbar pr-2">
-          <!-- Mission Intelligence -->
-          <div class="bg-slate-900/40 border-l-4 border-cyan-500 p-8 rounded-3xl shadow-2xl backdrop-blur-xl">
-             <h2 class="text-[10px] font-black flex items-center gap-2 text-cyan-400 tracking-widest uppercase mb-4">
-               <ShieldAlert class="w-4 h-4" /> Operational_Brief
-             </h2>
-             <div class="text-lg font-bold text-slate-200 leading-relaxed mb-6 tracking-tight">
-               {{ currentProblem?.description_ko }}
-             </div>
-             
-             <!-- IO Reference -->
-             <div class="space-y-3">
-                <div v-for="(ex, i) in parsedExamples" :key="i" class="bg-slate-950/80 p-5 rounded-3xl border border-slate-800/80 group hover:border-cyan-500/50 transition-all hover:-translate-y-1">
-                  <div class="text-[10px] text-slate-600 font-black uppercase mb-3 orbitron group-hover:text-cyan-400">Target_Stream_{{ i+1 }}</div>
-                  <div class="text-sm font-mono flex items-center gap-2 mb-1"><span class="text-cyan-500/50 text-[10px] orbitron uppercase">IN:</span> {{ ex.parsed.input }}</div>
-                  <div class="text-sm font-mono flex items-center gap-2"><span class="text-emerald-500/50 text-[10px] orbitron uppercase">OUT:</span> {{ ex.parsed.output }}</div>
-                </div>
-             </div>
+          <!-- NPC Interaction (Toad/Mog style) -->
+          <div class="relative pt-12">
+            <div class="absolute -top-4 left-4 flex items-center gap-4">
+               <div class="nes-container is-rounded p-1 bg-white">
+                 <img src="/image/unit_duck.png" class="w-14 h-14 pixelated" alt="NPC">
+               </div>
+               <span class="nes-badge is-warning font-retro"><span class="text-[8px]">GUIDE</span></span>
+            </div>
+            <section class="nes-balloon from-left is-primary box-jrpg">
+               <div class="text-sm leading-relaxed text-white">
+                 "안녕하세요! 오늘의 퀘스트: {{ currentProblem?.description_ko }}"
+               </div>
+            </section>
           </div>
-
-          <!-- Neural Link Gauge (NEW: 게임 느낌 강화) -->
-          <div class="bg-slate-900/20 border border-slate-800/30 p-10 rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group">
-            <div class="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <h3 class="text-xs text-slate-500 font-black tracking-[0.5em] uppercase mb-8 flex items-center justify-between orbitron">
-              Sync_Telemetry
-              <Zap class="w-5 h-5 text-cyan-500 animate-pulse" />
-            </h3>
-            <div class="relative z-10">
-              <div class="flex justify-between items-end mb-4">
-                <span class="text-xs text-slate-400 font-black uppercase tracking-widest orbitron">Core_Stability</span>
-                <span :class="['text-2xl font-black italic rajdhani', syncStatusClass]">{{ syncRate }}%</span>
-              </div>
-              <div class="h-3 bg-slate-950 rounded-full p-0.5 border border-slate-800/50 overflow-hidden shadow-inner">
-                <div 
-                  class="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-indigo-500 rounded-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                  :style="{ width: `${syncRate}%` }"
-                ></div>
-              </div>
+          
+          <!-- Library / Spellbook -->
+          <div class="nes-container with-title p-4 box-jrpg">
+            <p class="title text-[10px] bg-white text-black px-2 font-retro">SPELL_BOOK</p>
+            <div class="space-y-4">
+               <div v-for="(ex, i) in parsedExamples" :key="i" class="border-b-2 border-white/20 pb-4 last:border-0">
+                 <div class="text-[8px] text-yellow-400 mb-2 font-retro">SCROLL_DATA_{{ i+1 }}</div>
+                 <div class="text-xs"><span class="text-primary font-bold">● IN:</span> {{ ex.parsed.input }}</div>
+                 <div class="text-xs"><span class="text-success font-bold">● OUT:</span> {{ ex.parsed.output }}</div>
+               </div>
             </div>
           </div>
 
-          <!-- Mermaid Logic Visualizer (NEW: 실시간 순서도) -->
-          <div class="mt-auto">
+          <!-- Hero Status Board -->
+          <div class="nes-container with-title p-4 box-jrpg">
+            <p class="title text-[10px] bg-white text-black px-2 font-retro">HERO_HUD</p>
+            <div class="mb-4 flex items-center gap-4">
+              <i class="nes-icon heart is-small"></i>
+              <div class="flex-1">
+                <div class="text-[8px] mb-2 flex justify-between uppercase font-retro">
+                  <span>Logic_Power</span>
+                  <span>{{ syncRate }}%</span>
+                </div>
+                <progress class="nes-progress is-warning w-full h-4" :value="syncRate" max="100"></progress>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+               <i class="nes-icon coin is-small"></i>
+               <span class="text-[8px] font-retro">XP: 9,999</span>
+            </div>
+          </div>
+
+          <!-- Mirror of Logic (Visualizer) -->
+          <div class="mt-auto nes-container p-2 bg-white">
+             <div class="text-[8px] text-black mb-1 text-center font-bold font-retro">MAGIC_REFLECTIONS</div>
              <MermaidRenderer :definition="mermaidDefinition" />
           </div>
         </aside>
 
-        <!-- 메인 워크스테이션 -->
-        <main class="flex-1 flex flex-col gap-8 h-full bg-[#080c14] border-2 border-slate-800/80 rounded-[3.5rem] overflow-hidden">
-          <!-- 탭 시스템 -->
-          <div class="h-20 border-b border-slate-800/50 flex bg-slate-900/10">
+        <!-- Main Quest Console -->
+        <main class="flex-1 flex flex-col h-full nes-container p-0 overflow-hidden bg-[#fff] border-8 border-black">
+          <!-- Game Menu Tabs -->
+          <div class="flex border-b-8 border-black sticky top-0 z-30 bg-white">
             <button 
               @click="activeTab = 'guide'; showDiff = false"
-              :class="['flex-1 text-xs font-black tracking-[0.3em] uppercase transition-all orbitron border-r border-slate-800/50', activeTab === 'guide' ? 'text-indigo-400 bg-indigo-500/10' : 'text-indigo-400/40 hover:bg-slate-800/50']"
+              :class="['flex-1 p-4 text-[11px] font-bold border-r-4 border-black font-retro', activeTab === 'guide' ? 'bg-black text-white' : 'hover:bg-yellow-400 text-black']"
             >
-              [ 00_Mission_Guide ]
+              [ TUTORIAL ]
             </button>
             <button 
               @click="activeTab = 'parsons'; showDiff = false"
-              :class="['flex-1 text-xs font-black tracking-[0.3em] uppercase transition-all orbitron border-r border-slate-800/50', activeTab === 'parsons' ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-600 hover:bg-slate-800/50']"
+              :class="['flex-1 p-4 text-[11px] font-bold border-r-4 border-black font-retro', activeTab === 'parsons' ? 'bg-black text-white' : 'hover:bg-yellow-400 text-black']"
             >
-              [ 01_Neural_Puzzle ]
+              [ LOGIC_BLOCKS ]
             </button>
             <button 
               @click="activeTab = 'editor'; showDiff = false"
-              :class="['flex-1 text-xs font-black tracking-[0.3em] uppercase transition-all orbitron', activeTab === 'editor' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-600 hover:bg-slate-800/50']"
+              :class="['flex-1 p-4 text-[11px] font-bold font-retro', activeTab === 'editor' ? 'bg-black text-white' : 'hover:bg-yellow-400 text-black']"
             >
-              [ 02_Logic_Expert ]
+              [ CODEWIZARD ]
             </button>
           </div>
 
-          <!-- 콘텐츠 영역 -->
-          <div class="flex-1 p-8 overflow-y-auto custom-scrollbar relative">
+          <!-- Quest Content Window -->
+          <div class="flex-1 p-6 overflow-y-auto custom-scrollbar relative bg-[#dbdbdb]">
             <template v-if="currentProblem">
-              <!-- Guidebook (NEW: 게임 매뉴얼) -->
               <Guidebook v-if="activeTab === 'guide'" />
 
-              <!-- impact 수신하여 화면 진동 트리거 -->
               <ParsonsPuzzle 
                 v-if="activeTab === 'parsons'" 
                 @impact="triggerImpact" 
@@ -148,17 +138,20 @@
               
               <div v-if="activeTab === 'editor'" class="space-y-6 h-full flex flex-col">
                 <template v-if="!showDiff">
-                  <CodeEditor 
-                    @submit="handleEvaluation" 
-                    @impact="triggerImpact"
-                    @syncUpdate="val => syncRate = val"
-                    @change="handleCodeChange"
-                  />
-                  <CodeEvaluationResult 
-                    :result="evaluationResult" 
-                    v-if="evaluationResult" 
-                    @show-diff="showDiff = true"
-                  />
+                  <div class="nes-container is-dark is-rounded p-1 bg-black flex-1 flex flex-col">
+                    <CodeEditor 
+                      @submit="handleEvaluation" 
+                      @impact="triggerImpact"
+                      @syncUpdate="val => syncRate = val"
+                      @change="handleCodeChange"
+                    />
+                  </div>
+                  <div v-if="evaluationResult" class="mt-4">
+                     <CodeEvaluationResult 
+                      :result="evaluationResult" 
+                      @show-diff="showDiff = true"
+                    />
+                  </div>
                 </template>
                 
                 <CodeDiffViewer 
@@ -170,29 +163,28 @@
               </div>
             </template>
             
-            <!-- 로딩 상태 표시 -->
-            <div v-else class="h-full flex items-center justify-center text-slate-500 font-mono text-xs animate-pulse tracking-[1em]">
-              LINKING_TO_CORE...
+            <!-- Adventure Loading -->
+            <div v-else class="h-full flex flex-col items-center justify-center gap-6">
+              <i class="nes-mario scale-[3]"></i>
+              <p class="text-[10px] animate-bounce">LOADING_LEVEL...</p>
             </div>
-
-            <!-- 배경 테크 패턴 -->
-            <div class="absolute inset-0 opacity-[0.02] pointer-events-none tech-pattern"></div>
           </div>
         </main>
       </div>
 
-      <!-- 푸터 텔레메트리 -->
-      <footer class="h-14 border-t border-slate-800/50 px-12 flex items-center justify-between bg-slate-950/20 backdrop-blur-xl shrink-0">
-        <div class="flex gap-12">
-           <div class="flex items-center gap-3">
-             <div class="flex gap-1">
-               <div class="w-1 h-3 bg-blue-500/50 rounded-full"></div>
-               <div class="w-1 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-             </div>
-             <span class="text-[10px] text-slate-500 font-black tracking-[0.2em] uppercase italic">SKN20-FINAL-5TEAM</span>
+      <!-- Footer Stats -->
+      <footer class="p-6 border-t-8 border-black flex items-center justify-between bg-white shrink-0">
+        <div class="flex items-center gap-12">
+           <div class="flex items-center gap-4">
+             <i class="nes-icon is-small heart"></i>
+             <span class="text-[10px]">LIFE x 3</span>
+           </div>
+           <div class="flex items-center gap-4">
+             <i class="nes-icon is-small coin"></i>
+             <span class="text-[10px]">COINS 000</span>
            </div>
         </div>
-        <div class="text-[10px] text-slate-700 font-black tracking-[0.4em] uppercase">SYSTEM_READY // 2026-01-23</div>
+        <div class="text-[10px] font-bold">QUEST_TIME: 2026-01-23</div>
       </footer>
     </div>
   </div>
@@ -315,12 +307,15 @@ onMounted(() => {
   opacity: 0.1;
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-.tech-pattern {
-  background-image: radial-gradient(rgba(51, 65, 85, 0.3) 1px, transparent 1px);
-  background-size: 30px 30px;
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
+
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border: 2px solid #fff; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #eee; }
 
 /* 타격감 효과 (Shake) */
 .shake-active {
@@ -328,11 +323,18 @@ onMounted(() => {
 }
 
 @keyframes shake-anim {
-  10%, 90% { transform: translate3d(-2px, 0, 2px); }
-  20%, 80% { transform: translate3d(4px, 0, -2px); }
-  30%, 50%, 70% { transform: translate3d(-6px, 0, 3px); }
-  40%, 60% { transform: translate3d(6px, 0, -3px); }
+  10%, 90% { transform: translate3d(-4px, 0, 0); }
+  20%, 80% { transform: translate3d(6px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+  40%, 60% { transform: translate3d(8px, 0, 0); }
 }
 
-:deep(.rajdhani) { font-family: 'Rajdhani', sans-serif; }
+header h1 {
+  animation: title-flash 2s infinite;
+}
+
+@keyframes title-flash {
+  0%, 100% { filter: brightness(100%); }
+  50% { filter: brightness(120%) drop-shadow(0 0 10px var(--mario-yellow)); }
+}
 </style>

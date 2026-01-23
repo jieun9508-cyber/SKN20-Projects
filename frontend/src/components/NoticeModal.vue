@@ -6,20 +6,20 @@
 <template>
   <transition name="fade">
     <div v-if="isOpen" class="modal-overlay notice-overlay" @click.self="closeNotice">
-      <div class="notice-container">
-        <div class="notice-badge" style="background: var(--accent);">SECURITY</div>
-        <h2 class="notice-title">Architecture Gym 보안 고도화 안내</h2>
+      <div class="notice-container" style="font-family: var(--font-main);">
+        <div class="notice-badge" style="background: var(--accent); font-family: var(--font-retro); font-size: 8px;">SECURITY</div>
+        <h2 class="notice-title" style="font-weight: 800; letter-spacing: -0.02em;">Architecture Gym 보안 고도화 안내</h2>
         <div class="notice-body">
-          <p>안녕하세요, 엔지니어 여러분! 여러분의 훈련 데이터를 보호하기 위해 <strong>시스템 보안 체계</strong>가 강화되었습니다.</p>
+          <p style="line-height: 1.6;">안녕하세요, 엔지니어 여러분! 여러분의 훈련 데이터를 보호하기 위해 <strong>시스템 보안 체계</strong>가 강화되었습니다.</p>
           <ul class="notice-list">
             <li><i data-lucide="shield-check" class="notice-icon"></i> 미인증 사용자 콘텐츠 접근 제한 시스템 도입</li>
             <li><i data-lucide="lock" class="notice-icon"></i> 로그인 및 세션 관리 보안 프로토콜 강화</li>
             <li><i data-lucide="bell" class="notice-icon"></i> 부적절한 접근 시도시 실시간 보안 알림 가동</li>
           </ul>
-          <p class="notice-footer-text">더욱 안전하고 쾌적한 환경에서 <strong>최고의 아키텍처</strong>를 설계해 보세요!</p>
+          <p class="notice-footer-text" style="font-weight: 600;">더욱 안전하고 쾌적한 환경에서 <strong>최고의 아키텍처</strong>를 설계해 보세요!</p>
         </div>
         <div class="notice-actions">
-          <button class="btn btn-primary" @click="closeNotice" style="width: 100%;">보안 지침 확인 및 훈련하기</button>
+          <button class="btn btn-primary" @click="closeNotice" style="width: 100%; font-weight: 700;">보안 지침 확인 및 훈련하기</button>
         </div>
       </div>
     </div>
