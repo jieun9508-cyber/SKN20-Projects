@@ -51,7 +51,8 @@
                 </h2>
               </div>
               <div style="display: flex; align-items: center;">
-                <button class="guidebook-btn-v3" @click="ui.isGuidebookOpen = true">
+                <!-- [2026-01-24] 버튼은 모든 유닛에서 노출, 클릭 로직에서 유닛별 분기 처리 -->
+                <button class="guidebook-btn-v3" @click="handleGuidebookClick">
                   <span class="btn-icon-wrapper"><i data-lucide="book-open"></i></span>
                   GUIDEBOOK
                 </button>
@@ -120,13 +121,18 @@ import GlobalModals from './components/GlobalModals.vue';
  *  팀 협업 시 App.vue 충돌을 최소화하도록 설계.]
  */
 
+// Pinia 인증 스토어: 사용자 로그인 상태 및 로그아웃 기능 관리
 const auth = useAuthStore();
+// Pinia 게임 데이터 스토어: 챕터 정보 및 유닛별 진행도 기록 관리
 const game = useGameStore();
+// Pinia UI 상태 스토어: 로그인, 유닛 상세 등 모든 전역 모달의 열림 상태 관리
 const ui = useUiStore();
+// 현재 활성화된 라우트 정보를 참조하기 위한 객체
 const route = useRoute();
+// 다른 페이지로의 내비게이션 이동을 제어하기 위한 객체
 const router = useRouter();
 
-// Mock Leaderboard (추후 Store 이전 가능)
+// 실시간 사용자 랭킹을 표시하기 위한 목업(더미) 데이터
 const leaderboard = [
     { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
     { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
@@ -136,15 +142,19 @@ const leaderboard = [
 ];
 
 // Computed
+// 현재 보고 있는 화면이 실습(Practice) 도구 페이지인지 판단 (배경 레이아웃 제어용)
 const isPracticePage = computed(() => {
     // [2026-01-24] LogicMirror는 모달로 띄우기 위해 practiceRoutes에서 제외 (배경 유지 목적)
     const practiceRoutes = ['LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
     return practiceRoutes.includes(route.name);
 });
 
+// 현재 활성화된 유닛의 실습 진행 상태 데이터
 const currentUnitProgress = computed(() => game.currentUnitProgress);
+// 유닛 내에서 현재까지 도달한 가장 높은 스테이지 인덱스 (캐릭터 위치 표시용)
 const currentMaxIdx = computed(() => Math.max(...currentUnitProgress.value));
 
+// 유닛 상세 팝업에서 실제로 렌더링할 문제 목록 데이터
 const displayProblems = computed(() => {
     if (game.activeUnit?.name === 'Debug Practice') {
         const title = game.currentDebugMode === 'bug-hunt' ? 'Bug Hunt' : 'Vibe Code Clean Up';
@@ -153,9 +163,11 @@ const displayProblems = computed(() => {
     return game.activeUnit?.problems || [];
 });
 
+// UI 배치를 맞추기 위해 추가로 필요한 잠긴 노드(더미)의 개수 계산
 const displayLabelsCount = computed(() => Math.max(0, 6 - (displayProblems.value?.length || 0)));
 
 // Methods
+// 특정 챕터(유닛)의 상세 정보 및 스테이지 선택 팝업을 여는 기능
 const openUnitPopup = (unit) => {
     if (!auth.isLoggedIn) {
         ui.isAuthRequiredModalOpen = true;
@@ -166,6 +178,7 @@ const openUnitPopup = (unit) => {
     ui.openUnit();
 };
 
+// 특정 문제를 선택했을 때 해당 실습 화면으로 진입하거나 해당 모달을 활성화하는 기능
 const selectProblem = (problem, chapter) => {
     if (!auth.isLoggedIn) { ui.isAuthRequiredModalOpen = true; return; }
     game.activeProblem = problem;
@@ -188,6 +201,7 @@ const selectProblem = (problem, chapter) => {
     }
 };
 
+// 디버그 GYM 등에서 서로 다른 게임 모드(Bug Hunt vs Cleanup)를 전환하는 기능
 const selectGameMode = (mode) => {
     game.currentDebugMode = mode;
     if (game.activeUnit?.name === 'Debug Practice') {
@@ -198,8 +212,20 @@ const selectGameMode = (mode) => {
     }
 };
 
+// 유닛 상세 화면 내의 GUIDEBOOK 버튼 클릭 시 유닛별 가이드 또는 안내 모달을 처리하는 기능
+const handleGuidebookClick = () => {
+    // [2026-01-24] Unit 1(Pseudo Practice)일 때만 가이드북 오픈, 나머지는 준비중 모달 노출
+    if (game.activeUnit?.name === 'Pseudo Practice') {
+        ui.isGuidebookOpen = true;
+    } else {
+        ui.isConstructionModalOpen = true;
+    }
+};
+
+// 스테이지 인덱스를 받아 해당 스테이지가 사용 가능한 상태인지 확인하는 기능
 const isUnlocked = (pIdx) => currentUnitProgress.value.includes(pIdx);
 
+// 랜딩 페이지 하단의 챕터 영역(플레이그라운드)으로 부드럽게 스크롤 이동하는 기능
 const handleGoToPlayground = () => {
     if (auth.isLoggedIn) {
         document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth' });
@@ -216,18 +242,22 @@ onMounted(() => {
 });
 
 // [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
+// 이 영역은 향후 Unit 2, Unit 3 등을 '라우트 기반 모달'로 전환할 때 확장 포인트가 됩니다.
 import { watch } from 'vue';
 watch(() => route.name, (newName) => {
+    // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
     if (newName === 'LogicMirror') {
-        ui.isLogicMirrorOpen = true;
+        ui.isLogicMirrorOpen = true; // /practice/logic-mirror 접속 시 모달 활성화
     } else if (!isPracticePage.value) {
-        // 다른 일반 페이지로 이동 시 실습 모달 닫기
+        // 2. 다른 일반 페이지(Landing 등)로 이동 시 모든 실습 모달을 명시적으로 닫습니다.
+        // 향후 다른 유닛 모달이 추가되면 이곳에서 ui.isOtherUnitOpen = false 형태로 초기화 로직을 보강하십시오.
         ui.isLogicMirrorOpen = false;
     }
 }, { immediate: true });
 
 onUpdated(() => refreshLucide());
 
+// Vue 인스턴스의 DOM 업데이트 이후 Lucide 아이콘 라이브러리를 다시 초기화하는 기능
 const refreshLucide = () => {
     nextTick(() => {
         if (window.lucide) window.lucide.createIcons();
