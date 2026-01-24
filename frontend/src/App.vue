@@ -51,8 +51,11 @@
               </h2>
             </div>
             <div style="display: flex; align-items: center;">
-              <button class="guidebook-btn-v3">
-                <i data-lucide="book-open"></i>
+              <!-- [2026-01-24] GUIDEBOOK 버튼 스타일 및 아이콘 컨테이너 개선 -->
+              <button class="guidebook-btn-v3" @click="isGuidebookOpen = true">
+                <span class="btn-icon-wrapper">
+                  <i data-lucide="book-open"></i>
+                </span>
                 GUIDEBOOK
               </button>
               <button class="close-btn-v3" @click="isUnitModalOpen = false">&times;</button>
@@ -358,7 +361,7 @@
 
     </template>
 
-    <!-- [Logic Mirror 실습 모달] - Global placement -->
+    <!-- [Logic Mirror 실습 모달] - [2026-01-24] 삭제되었던 모달 복구 -->
     <transition name="fade">
        <LogicMirror 
            v-if="isLogicMirrorOpen" 
@@ -367,6 +370,12 @@
            @quest-complete="handleQuestComplete"
        />
     </transition>
+
+    <!-- [Logic Mirror 가이드북 모달] - [2026-01-24] 추가 -->
+    <LogicMirrorGuidebook 
+        :isOpen="isGuidebookOpen" 
+        @close="isGuidebookOpen = false"
+    />
   </div>
 </template>
 
@@ -379,6 +388,7 @@ import LoginModal from './components/LoginModal.vue';
 import SignUpModal from './components/SignUpModal.vue';
 import ConstructionModal from './components/ConstructionModal.vue';
 import LogicMirror from './features/practice/support/unit1/logic-mirror/LogicMirror.vue';
+import LogicMirrorGuidebook from './features/practice/support/unit1/logic-mirror/LogicMirrorGuidebook.vue';
 import LandingView from './features/home/LandingView.vue';
 import { gameData } from './features/practice/support/unit1/logic-mirror/data/stages.js';
 
@@ -389,6 +399,7 @@ export default {
         SignUpModal,
         ConstructionModal,
         LogicMirror,
+        LogicMirrorGuidebook,
         LandingView
     },
     data() {
@@ -427,7 +438,8 @@ export default {
             showScrollHint: false,
             isAuthRequiredModalOpen: false,
             isConstructionModalOpen: false, // [수정일: 2026-01-21] 공사중 모달 상태 추가
-                        isLogicMirrorOpen: false, // [수정일: 2026-01-22] Pseudo Practice 모달 상태 추가
+            isLogicMirrorOpen: false, // [수정일: 2026-01-22] Pseudo Practice 모달 상태 추가
+            isGuidebookOpen: false, // [2026-01-24] 가이드북 모달 상태 추가
             selectedQuestIndex: 0, // [2026-01-24] 선택된 퀘스트 인덱스 추적
             currentDebugMode: 'bug-hunt', // [수정일: 2026-01-22] Debug Practice 현재 모드 (bug-hunt | vibe-cleanup)
             unitProgress: {
