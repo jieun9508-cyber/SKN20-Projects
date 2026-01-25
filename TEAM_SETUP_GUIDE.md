@@ -15,11 +15,10 @@ SECRET_KEY=django-insecure-your-secret-key-here
 DEBUG=True
 
 # Database (Supabase IPv4 Pooler)
-# !@final5team#$ 部分은 조장님께 받은 실제 비밀번호로 교체하세요.
 DB_ENGINE=django.db.backends.postgresql
 DB_NAME=postgres
 DB_USER=postgres.bemlfemuypcejonmiyji
-DB_PASSWORD=!@final5team#$
+DB_PASSWORD=디스코드로 전달
 DB_HOST=aws-1-ap-northeast-1.pooler.supabase.com
 DB_PORT=5432
 

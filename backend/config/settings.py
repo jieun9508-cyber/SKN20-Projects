@@ -77,20 +77,32 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # [수정일: 2026-01-22] Supabase 및 로컬 환경 동시 지원을 위한 DB 설정 (Antigravity)
 import dj_database_url
 
-if os.environ.get('DATABASE_URL'):
+# [수정일: 2026-01-25] 특수문자 포함 비밀번호 처리를 위해 개별 변수 우선 로직 적용
+if env('DB_PASSWORD', default=None):
+    DATABASES = {
+        'default': {
+            'ENGINE': env('DB_ENGINE', default='django.db.backends.postgresql'),
+            'NAME': env('DB_NAME', default='postgres'),
+            'USER': env('DB_USER', default='postgres'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env('DB_PORT', default='5432'),
+        }
+    }
+elif os.environ.get('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
     }
 else:
-    # 2. 없으면 개별 변수 조합 (로컬 개발용)
+    # 기본 로컬 개발용 (Docker 내부 db 서비스용)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': env('DB_NAME', default='mygym'),
-            'USER': env('DB_USER', default='myuser'),
-            'PASSWORD': env('DB_PASSWORD', default='mypassword'),
-            'HOST': env('DB_HOST', default='db'),
-            'PORT': env('DB_PORT', default='5432'),
+            'NAME': 'mygym',
+            'USER': 'myuser',
+            'PASSWORD': 'mypassword',
+            'HOST': 'db',
+            'PORT': '5432',
         }
     }
 

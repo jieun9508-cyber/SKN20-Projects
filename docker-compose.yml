@@ -20,14 +20,13 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DB_NAME=mygym
-      - DB_USER=myuser
-      - DB_PASSWORD=mypassword
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mygym
+    env_file:
+      - ./backend/.env
     depends_on:
       - db
 
