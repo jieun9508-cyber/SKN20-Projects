@@ -129,6 +129,7 @@ import { useUiStore } from '@/stores/ui';
 import './style.css';
 import LandingView from './features/home/LandingView.vue';
 import GlobalModals from './components/GlobalModals.vue';
+import progressiveData from './features/practice/progressive-problems.json';
 
 // Stores
 const auth = useAuthStore();
@@ -156,7 +157,10 @@ const isPracticePage = computed(() => {
 
 const displayProblems = computed(() => {
   if (game.activeUnit?.name === 'Debug Practice') {
-    const title = game.currentDebugMode === 'bug-hunt' ? 'Bug Hunt' : 'Vibe Code Clean Up';
+    if (game.currentDebugMode === 'bug-hunt') {
+        return game.activeUnit?.problems || [];
+    }
+    const title = 'Vibe Code Clean Up';
     return [{ id: game.currentDebugMode, title }];
   }
   return game.activeUnit?.problems || [];
@@ -164,7 +168,7 @@ const displayProblems = computed(() => {
 
 const displayLabelsCount = computed(() => {
   const currentCount = displayProblems.value?.length || 0;
-  return Math.max(0, 6 - currentCount);
+  return Math.max(0, 10 - currentCount);
 });
 
 const currentMaxIdx = computed(() => {
@@ -172,6 +176,30 @@ const currentMaxIdx = computed(() => {
 });
 
 // Methods
+function syncDebugProgress() {
+    try {
+        const data = localStorage.getItem('bugHuntGameData');
+        if (data) {
+            const parsed = JSON.parse(data);
+            const completed = parsed.completedProblems || [];
+            // progressive-problems.json을 가져와서 미션 완료 여부 확인
+            const progress = [0]; // 캠페인 1은 기본 해금
+            
+            progressiveData.progressiveProblems.forEach((m, idx) => {
+                // 미션의 마지막 단계(step 3)가 완료되었는지 확인
+                const missionCompleted = completed.includes(`progressive_${m.id}_step3`);
+                if (missionCompleted) {
+                    progress.push(idx + 1);
+                }
+            });
+            
+            game.unitProgress['Debug Practice'] = Array.from(new Set(progress)).sort((a, b) => a - b);
+        }
+    } catch (e) {
+        console.warn('Failed to sync debug progress:', e);
+    }
+}
+
 function isUnlocked(pIdx) {
   return game.currentUnitProgress.includes(pIdx);
 }
@@ -183,6 +211,7 @@ function openUnitPopup(unit) {
   }
   game.setActiveUnit(unit);
   if (unit?.name === 'Debug Practice') {
+    syncDebugProgress(); // 팝업 열 때 진행도 동기화
     game.currentDebugMode = 'bug-hunt';
   }
   ui.isUnitModalOpen = true;
@@ -210,7 +239,10 @@ function selectProblem(problem) {
     router.push('/practice/system-architecture');
   } else if (chapterName === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
-      router.push('/practice/bug-hunt');
+      router.push({
+        path: '/practice/bug-hunt',
+        query: { missionId: problem.missionId, mapMode: 'true' }
+      });
     } else {
       router.push('/practice/vibe-cleanup');
     }

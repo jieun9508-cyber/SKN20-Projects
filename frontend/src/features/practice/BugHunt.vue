@@ -385,7 +385,7 @@
                 ↺ RESET
               </button>
               <button class="editor-btn submit-btn" @click="submitProgressiveStep" :disabled="currentProgressiveStep > 3 || isRunning">
-                🚀 SUBMIT
+                🚀 CHECK SOLUTION
               </button>
             </div>
           </div>
@@ -1199,6 +1199,11 @@ const hitEffectPosition = ref({ x: 0, y: 0 });
 const missEffectPosition = ref({ x: 0, y: 0 });
 const hitEffectText = ref('SQUASH!');
 
+// 게임 데이터 자동 저장
+watch(gameData, (newData) => {
+  saveGameData(newData);
+}, { deep: true });
+
 const bulletStyle = computed(() => ({
   left: `${bulletPosition.value.x}px`,
   top: `${bulletPosition.value.y}px`
@@ -1362,9 +1367,8 @@ onMounted(() => {
     
     if (missionIndex !== -1) {
       const mission = progressiveProblems[missionIndex];
-      // 해당 미션의 현재 단계(아직 완료되지 않은 첫 단계)를 찾아서 시작
-      const currentStepNum = getCurrentStep(missionId);
-      startProgressiveMission(mission, missionIndex, currentStepNum);
+      // [수정] 맵에서 미션을 클릭하면 항상 1-1부터 시작하도록 변경하여 순차적 진행 보장
+      startProgressiveMission(mission, missionIndex, 1);
     }
   }
 });
