@@ -21,7 +21,11 @@ import VibeCodeCleanUp from './features/practice/VibeCodeCleanUp.vue'
 import OpsPractice from './features/practice/OpsPractice.vue'
 
 const routes = [
-  // Home route removed - App.vue handles root path directly
+  {
+    path: '/',
+    name: 'Home',
+    component: { render: () => null }
+  },
   // [2026-01-24] 라우트 기반 모달을 위한 Logic Mirror 경로 등록 (App.vue에서 감시하여 모달 처리)
   {
     path: '/practice/logic-mirror',

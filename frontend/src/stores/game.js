@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
+import { aiQuests } from '../features/practice/support/unit1/logic-mirror/data/stages.js';
 
 /**
  * [수정일: 2026-01-25]
@@ -72,6 +73,12 @@ export const useGameStore = defineStore('game', {
                     problems: this.mapDetailsToProblems(item, idx + 1)
                 }));
 
+                // [2026-01-26] 로컬 스토리지에서 저장된 진행도 로드
+                const savedProgress = localStorage.getItem('logic_mirror_progress');
+                if (savedProgress) {
+                    this.unitProgress = JSON.parse(savedProgress);
+                }
+
             } catch (error) {
                 console.error("Failed to fetch practice units from DB:", error);
             }
@@ -83,6 +90,18 @@ export const useGameStore = defineStore('game', {
          * - 그 외의 유닛들은 백엔드 DB의 PracticeDetail 정보를 기반으로 동적으로 구성됩니다.
          */
         mapDetailsToProblems(unit, unitNum) {
+            // [2026-01-26] Pseudo Practice는 stages.js의 10개 퀘스트를 우선 사용
+            if (unit.title === 'Pseudo Practice') {
+                return aiQuests.map((q, idx) => ({
+                    id: q.id,
+                    title: q.title,
+                    questIndex: idx,
+                    displayNum: `${unitNum}-${idx + 1}`,
+                    difficulty: q.level > 3 ? 'hard' : (q.level > 1 ? 'medium' : 'easy'),
+                    config: q
+                }));
+            }
+
             // DB 상세 데이터가 없으면 빈 배열 반환
             if (!unit.details || unit.details.length === 0) {
                 return [];
@@ -111,6 +130,9 @@ export const useGameStore = defineStore('game', {
             if (progress && nextIdx < 10 && !progress.includes(nextIdx)) {
                 progress.push(nextIdx);
             }
+
+            // [2026-01-26] 진행도 로컬 스토리지 저장
+            localStorage.setItem('logic_mirror_progress', JSON.stringify(this.unitProgress));
         },
 
         setActiveUnit(unit) {

@@ -90,8 +90,8 @@
                 <button class="game-mode-btn vibe-cleanup" :class="{ 'active': game.currentDebugMode === 'vibe-cleanup' }" @click="selectGameMode('vibe-cleanup')">✨ Vibe Code Clean Up</button>
               </template>
               <template v-else>
-                <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>1개 활성화</div>
-                <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ (displayProblems.length || 1) + displayLabelsCount - 1 }}개 잠금</div>
+                <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>{{ currentUnitProgress.length }}개 활성화</div>
+                <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ displayProblems.length - currentUnitProgress.length }}개 잠금</div>
               </template>
             </footer>
           </div>

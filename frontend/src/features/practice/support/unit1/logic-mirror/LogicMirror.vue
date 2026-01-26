@@ -1,1393 +1,975 @@
 <template>
-  <div class="logic-mirror-modal-overlay" @click.self="$emit('close')">
-    <div class="logic-mirror-modal-container">
-      <button class="modal-close-btn" @click="$emit('close')">&times;</button>
+  <div :class="['logic-mirror-modal-overlay', { 'animate-shake': triggerShake }]" @click.self="$emit('close')">
+    <div class="logic-mirror-container">
+      <!-- Header with Close Button -->
+      <button class="modal-close-btn" @click="$emit('close')" title="닫기 (ESC)">
+        <X class="w-6 h-6" />
+      </button>
 
-      <!-- Loading State -->
-      <div v-if="!currentQuest" class="loading-screen">
-        <div class="loading-content">
-          <!-- [2026-01-24] 템플릿 내 이모지가 유니코드 코드로 노출되는 문제 해결을 위해 HTML 엔티티로 교체 -->
-          <div class="loading-spinner">&#x1F3AE;</div>
-          <p class="loading-text">게임을 준비하고 있습니다...</p>
-        </div>
-      </div>
-
-      <!-- Game Content -->
-      <div class="logic-mirror-pipeline" v-else>
-    <!-- Pipeline Progress Bar -->
-    <div class="pipeline-progress">
-      <div class="progress-steps">
-        <div 
-          v-for="(step, index) in pipelineSteps" 
-          :key="index"
-          class="progress-step"
-          :class="{ 
-            'active': currentStepIndex === index,
-            'completed': currentStepIndex > index
-          }"
-        >
-          <div class="step-number">{{ index + 1 }}</div>
-          <div class="step-label">{{ step }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 1: Problem & Interviewer Q&A -->
-    <div v-if="currentStepIndex === 0" class="pipeline-step problem-step">
-      <div class="step-container">
-        <div class="problem-header">
-          <div class="problem-emoji">{{ currentQuest.emoji }}</div>
-          <div class="problem-info">
-            <h1 class="problem-title">
-              <span class="quest-num-label">{{ questDisplayNumber }}</span>
-              {{ currentQuest.title }}
-            </h1>
-            <p class="problem-description">{{ currentQuest.description }}</p>
-            <div class="problem-meta">
-              <span class="logic-type">{{ currentQuest.logic_type }}</span>
-              <span class="level-badge">LV {{ currentQuest.level }}</span>
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar w-[400px] border-r border-slate-800/50 flex flex-col items-center md:items-stretch bg-[#0f172a]/80 backdrop-blur-xl shrink-0">
+        <div class="sidebar-header p-8 flex flex-col gap-6">
+          <div class="flex items-center gap-4">
+            <div class="header-logo-icon bg-indigo-600 p-2 rounded-2xl shadow-xl shadow-indigo-600/30">
+              <BrainCircuit class="text-white w-7 h-7" />
+            </div>
+            <div class="hidden md:block">
+              <h1 class="text-xl font-black text-white tracking-tighter uppercase">PseudoGym</h1>
+              <p class="text-[9px] text-indigo-400 font-bold tracking-[0.3em] uppercase opacity-80">Logic Forge</p>
             </div>
           </div>
-        </div>
 
-        <div class="examples-box">
-          <h3>&#x1F4DD; 예제 입출력</h3>
-          <pre>{{ currentQuest.examples }}</pre>
-        </div>
+          <!-- Engineer Dashboard -->
+          <div class="bg-slate-900/60 rounded-3xl p-5 border border-white/5 space-y-4 shadow-inner">
+            <div class="flex items-center gap-4">
+              <div class="relative">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center overflow-hidden">
+                  <img :src="mentorImage" alt="Mentor Duck" class="w-12 h-12 object-contain transition-all duration-700" :class="{ 'grayscale contrast-125': userStability === 1 }" />
+                </div>
+                <div class="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-900"></span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{{ currentClass }}</p>
+                <h3 class="text-sm font-black text-white">Level {{ userLevel }}</h3>
+              </div>
+            </div>
 
-        <div class="interviewer-intro">
-          <div class="interviewer-avatar">
-            <img src="/image/problem_duck.gif" alt="Duck Coach" class="duck-coach-img" />
-          </div>
-          <div class="interviewer-bubble">
-            <div class="interviewer-label">덕 코치</div>
-            <p>"이 문제를 어떻게 해결하시겠어요? 단계별로 나눠서 생각해보세요."</p>
-          </div>
-        </div>
-
-        <button @click="goToNextStep" class="next-step-btn">
-          <span>수도코드 작성하기 →</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 2: Pseudo Code Interface -->
-    <div v-if="currentStepIndex === 1" class="pipeline-step pseudocode-step">
-      <div class="step-container">
-        <h2 class="step-title">&#x1F4DD; 수도코드로 풀이 과정 표현하기</h2>
-        <p class="step-subtitle">카드를 드래그해서 올바른 순서로 배치하세요</p>
-
-        <div class="pseudocode-layout">
-          <!-- Card Deck -->
-          <div class="card-deck-section">
-            <h3 class="section-title">&#x1F3B4; 사용 가능한 블록</h3>
-            <div class="cards-list">
-              <div 
-                v-for="card in currentQuest.cards" 
-                :key="card.id"
-                class="action-card"
-                :class="`card-${card.color}`"
-                draggable="true"
-                @dragstart="handleDragStart(card)"
-                @dragend="handleDragEnd"
-              >
-                <div class="card-icon">{{ card.icon }}</div>
-                <div class="card-content">
-                  <div class="card-text">{{ card.text_ko }}</div>
-                  <div class="card-code">{{ card.text_py }}</div>
+            <div class="space-y-3 pt-2">
+              <div class="flex justify-between items-center text-[10px] font-bold">
+                <span class="text-slate-400 uppercase tracking-tighter">Stability</span>
+                <div class="flex gap-1">
+                  <span v-for="i in 3" :key="i" :class="['text-xs transition-opacity duration-300', i <= userStability ? 'opacity-100' : 'opacity-20 grayscale']">❤️</span>
+                </div>
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-[9px] font-black text-indigo-400/80 uppercase">
+                  <span>Knowledge (XP)</span>
+                  <span>{{ userXP }} / {{ nextLevelXP }}</span>
+                </div>
+                <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-500 transition-all duration-1000 shadow-lg shadow-indigo-500/30" :style="{ width: xpProgress + '%' }"></div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+        
+        <nav class="mt-8 px-4 space-y-2 shrink-0">
+          <button 
+              @click="activeTab = 'analyze'"
+              :class="['w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden', activeTab === 'analyze' ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-600/40 translate-x-1' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300']"
+          >
+            <Layers :class="['w-5 h-5 transition-transform duration-500', activeTab === 'analyze' ? 'scale-110' : 'group-hover:scale-110']" />
+            <span class="hidden md:block text-sm font-bold tracking-tight">코드 분석 (AI)</span>
+          </button>
+          
+          <button 
+              @click="activeTab = 'practice'"
+              :class="['w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden', activeTab === 'practice' ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-600/40 translate-x-1' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300']"
+          >
+            <BookOpen :class="['w-5 h-5 transition-transform duration-500', activeTab === 'practice' ? 'scale-110' : 'group-hover:scale-110']" />
+            <span class="hidden md:block text-sm font-bold tracking-tight">설계 훈련소</span>
+          </button>
+        </nav>
 
-          <!-- Drop Zone -->
-          <div class="drop-zone-section flex-column">
-            <div class="section-header">
-              <h3 class="section-title">&#x1F9E0; 내가 구성한 순서</h3>
-              <button v-if="userSequence.length > 0" @click="clearSequence" class="clear-btn">
-                &#x1F5D1;&#xFE0F; 초기화
-              </button>
-            </div>
-            
-            <div 
-              class="drop-zone"
-              @drop="handleDrop"
-              @dragover.prevent
-              @dragenter.prevent="isDragOver = true"
-              @dragleave="isDragOver = false"
-              :class="{ 'drag-over': isDragOver }"
-            >
-              <div v-if="userSequence.length === 0" class="empty-state">
-                <div class="empty-icon">&#x2728;</div>
-                <p>왼쪽에서 카드를 드래그해서 순서를 만드세요</p>
-              </div>
+        <!-- Chatbot Area -->
+        <div class="flex-1 min-h-0 px-4 mt-8 mb-4 flex flex-col overflow-hidden">
+          <div class="px-4 py-2 flex items-center gap-2 border-b border-white/5 mb-3 shrink-0">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-[14px] font-black text-indigo-300 uppercase tracking-widest">Mentor 'DUCK'</span>
+          </div>
 
-              <div v-else class="sequence-list">
-                <div 
-                  v-for="(card, index) in userSequence" 
-                  :key="`${card.id}-${index}`"
-                  class="sequence-card"
-                  :class="{
-                    [`card-${card.color}`]: true,
-                    'shake': wrongBlockIndices.includes(index)
-                  }"
-                  :style="{ marginLeft: (card.indent || 0) * 30 + 'px' }"
-                >
-                  <div class="seq-number">{{ index + 1 }}</div>
-                  <div class="card-icon">{{ card.icon }}</div>
-                  <div class="card-text">{{ card.text_ko }}</div>
-                  <button @click="removeCard(index)" class="remove-btn">✕</button>
-                </div>
+          <div id="chat-scroll" class="flex-1 overflow-y-auto space-y-4 px-2 custom-scrollbar-thin">
+            <div v-for="(msg, idx) in chatMessages" :key="idx" :class="['flex', msg.role === 'user' ? 'justify-end' : 'justify-start']">
+              <div :class="['max-w-[85%] p-4 rounded-2xl text-[15px] leading-relaxed relative group shadow-sm', 
+                            msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800/80 text-slate-200 rounded-tl-none border border-white/5']">
+                {{ msg.text }}
+                <div v-if="msg.role === 'assistant'" class="absolute -left-2 top-0 text-[15px]">🦆</div>
               </div>
             </div>
+            <div v-if="isChatLoading" class="flex justify-start">
+              <div class="bg-slate-800/50 p-3 rounded-2xl rounded-tl-none animate-pulse flex gap-1">
+                <span class="w-1 h-1 bg-slate-500 rounded-full animate-bounce"></span>
+                <span class="w-1 h-1 bg-slate-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                <span class="w-1 h-1 bg-slate-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+              </div>
+            </div>
+          </div>
 
-            <button 
-              v-if="userSequence.length > 0"
-              @click="goToNextStep" 
-              class="submit-btn"
-            >
-              제출하기 →
+          <div class="mt-4 relative shrink-0">
+            <input 
+              v-model="chatInput" 
+              @keyup.enter="sendChatMessage"
+              placeholder="멘토에게 물어보기..."
+              class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3.5 text-[13px] text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 transition-all pr-10"
+            />
+            <button @click="sendChatMessage" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors">
+              <Send class="w-4 h-4" />
             </button>
           </div>
-
-          <!-- Mermaid Visualization Area [2026-01-24] New -->
-          <div class="visualization-section">
-            <div class="section-header">
-              <h3 class="section-title">&#x1F52E; 실시간 흐름도</h3>
-            </div>
-            <div class="mermaid-container" ref="mermaidTarget">
-              <div v-if="userSequence.length === 0" class="vis-empty-state">
-                카드가 구성되면 흐름도가 나타납니다
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 3: Pre-submission Query -->
-    <div v-if="currentStepIndex === 2" class="pipeline-step query-step">
-      <div class="step-container">
-        <h2 class="step-title">&#x1F914; 제출 전 확인</h2>
-        
-        <div class="submitted-code-box">
-          <h3>제출한 수도코드</h3>
-          <div class="code-preview">
-            <div 
-              v-for="(card, index) in userSequence" 
-              :key="index"
-              class="code-line"
-              :style="{ paddingLeft: (card.indent || 0) * 20 + 'px' }"
-            >
-              <span class="line-number">{{ index + 1 }}</span>
-              <span class="line-code">{{ card.text_py }}</span>
-            </div>
-          </div>
         </div>
 
-        <div class="interviewer-questions">
-          <div class="interviewer-avatar">
-            <img src="/image/problem_duck.gif" alt="Duck Coach" class="duck-coach-img" />
-          </div>
-          <div class="question-bubble">
-            <div class="interviewer-label">덕 코치</div>
-            <p class="question-text">{{ preSubmissionQuestion }}</p>
-            
-            <div class="answer-options">
-              <button 
-                v-for="(option, index) in answerOptions" 
-                :key="index"
-                @click="selectAnswer(index)"
-                class="option-btn"
-                :class="{ 'selected': selectedAnswer === index }"
-              >
-                {{ option }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="action-buttons">
-          <button @click="goToPreviousStep" class="back-btn">← 수정하기</button>
+        <div class="sidebar-footer p-6 border-t border-slate-800/50 shrink-0">
           <button 
-            @click="submitAndCheck" 
-            class="confirm-btn"
-            :disabled="selectedAnswer === null"
+            @click="$emit('close')"
+            class="w-full flex items-center gap-4 px-6 py-5 rounded-2xl text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300 active:scale-95"
           >
-            최종 제출
+            <LogOut class="w-5 h-5" />
+            <span class="hidden md:block text-sm font-bold tracking-tight">세션 종료</span>
           </button>
         </div>
-      </div>
-    </div>
+      </aside>
 
-    <!-- Step 4: Real Implementation (Optional) -->
-    <div v-if="currentStepIndex === 3" class="pipeline-step implementation-step">
-      <div class="step-container">
-        <div class="result-header" :class="isCorrect ? 'success' : 'failure'">
-          <div class="result-icon">{{ isCorrect ? '&#x2705;' : '&#x1F914;' }}</div>
-          <div class="result-content">
-            <div class="judge-mini-badge" v-if="isCorrect">PUZZLE ACCEPTED</div>
-            <h2>{{ feedbackMessage }}</h2>
-            <p class="hint-text" v-if="hintMessage">&#x1F4A1; {{ hintMessage }}</p>
-          </div>
-        </div>
+      <!-- Main Content Area -->
+      <main class="main-content flex-1 flex flex-col bg-[#020617] overflow-hidden relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
 
-        <div v-if="isCorrect" class="implementation-section">
-          <h3>&#x1F4BB; Pseudo Implementer</h3>
-          <p class="section-desc">수도코드를 바탕으로 실제 파이썬 코드를 완성하고 검증받으세요</p>
+        <!-- Analyze Tab (Vertical Split) -->
+        <div v-if="activeTab === 'analyze'" class="flex-1 flex flex-col overflow-hidden relative z-10">
           
-          <div class="code-editor monaco-wrapper">
-            <vue-monaco-editor
-              v-model:value="userCode"
-              theme="vs-dark"
-              language="python"
-              :options="editorOptions"
-              class="professional-editor"
-              @mount="handleEditorMount"
-            />
-          </div>
+          <!-- TOP: Editor/Puzzle Workspace Area -->
+          <section class="editor-section h-[55%] flex flex-col border-b border-slate-800/50 bg-[#0f172a]/20">
+            <div class="h-14 flex items-center justify-between px-8 bg-slate-900/40 backdrop-blur-md border-b border-slate-800/50 shrink-0">
+               <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Terminal class="w-3 h-3" />
+                Puzzle Workspace
+              </p>
+              <div class="flex items-center gap-4">
+                <button 
+                  @click="initQuestBlocks"
+                  class="flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-red-400 transition-colors bg-white/5 rounded-lg border border-white/5"
+                >
+                  <History class="w-3 h-3" />
+                  <span>새로고침</span>
+                </button>
+                <button 
+                    @click="analyzeCode"
+                    :disabled="loading || userPuzzleSolution.length === 0"
+                    class="flex items-center gap-3 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all disabled:opacity-50 shadow-2xl shadow-indigo-600/30 active:scale-95"
+                >
+                  <template v-if="loading">
+                    <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>진단 중...</span>
+                  </template>
+                  <template v-else>
+                    <Sparkles class="w-4 h-4" />
+                    <span>설계 분석 가동</span>
+                  </template>
+                </button>
+              </div>
+            </div>
 
-          <!-- Duck Coach Execution Feedback -->
-          <div class="execution-feedback" v-if="executionOutput || executionError">
-            <div class="interviewer-intro">
-               <div class="interviewer-avatar">
-                 <img :src="isRunPassed ? '/image/success_duck.gif' : '/image/problem_duck.gif'" alt="Duck Coach" class="duck-coach-img" />
-               </div>
-               <div class="interviewer-bubble">
-                 <div class="interviewer-label">덕 코치</div>
-
-                  <!-- Judge Status Badge -->
-                  <div class="judge-status-container" v-if="judgeStatus">
-                    <div class="status-badge" :class="judgeStatus.toLowerCase().replace(' ', '-')">
-                      {{ judgeStatus }}
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Left: Mission & Palette -->
+                <div class="w-[380px] border-r border-slate-800/50 bg-[#0f172a]/60 flex flex-col overflow-hidden shrink-0">
+                  <!-- Mission Objective Section -->
+                  <div class="p-6 border-b border-white/5 space-y-4 shrink-0 bg-indigo-500/5">
+                    <div class="flex items-center gap-4">
+                      <span class="text-3xl">{{ currentQuest.emoji }}</span>
+                      <div>
+                        <h4 class="text-lg font-black text-white tracking-tight uppercase">{{ currentQuest.title }}</h4>
+                        <p class="text-xs text-indigo-400 font-bold tracking-widest uppercase opacity-80">{{ currentQuest.logic_type }}</p>
+                      </div>
                     </div>
-                    <div class="accuracy-info" v-if="testResults.length > 0">
-                      정확도: <span class="percent">{{ accuracy }}%</span>
-                      <div class="accuracy-bar">
-                        <div class="accuracy-fill" :style="{ width: accuracy + '%' }"></div>
+                    <div class="p-6 bg-slate-900/60 rounded-[2rem] border border-white/5 shadow-huge">
+                      <p class="text-[16px] text-slate-300 leading-relaxed font-medium">
+                        {{ currentQuest.description }}
+                      </p>
+                    </div>
+                    <div v-if="currentQuest.examples" class="p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                      <p class="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Sparkles class="w-3.5 h-3.5" /> Example Case
+                      </p>
+                      <pre class="text-[12px] text-emerald-100/70 font-mono leading-tight whitespace-pre-wrap">{{ currentQuest.examples }}</pre>
+                    </div>
+                  </div>
+
+                  <!-- Palette Header -->
+                  <div class="px-6 py-3.5 border-b border-slate-800/50 flex items-center justify-between bg-slate-900/40">
+                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Logic Palette</p>
+                    <span class="text-[10px] font-bold text-slate-600 tracking-tighter">{{ shuffledPalette.length }} Blocks Available</span>
+                  </div>
+
+                  <!-- Palette Body -->
+                  <div class="flex-1 p-6 overflow-y-auto custom-scrollbar-thin bg-slate-900/20">
+                    <div class="space-y-3">
+                      <div 
+                        v-for="(block, index) in shuffledPalette" 
+                        :key="'palette-' + index"
+                        @click="useCard(index)"
+                        :class="['puzzle-block palette group cursor-pointer hover:shadow-lg active:scale-95 transition-all duration-300', block.color]"
+                      >
+                        <div class="puzzle-block-handle opacity-50"></div>
+                        <div class="flex items-center gap-4 px-5 py-3 relative z-10">
+                          <span class="text-lg">{{ block.icon }}</span>
+                          <span class="text-xs font-black text-white drop-shadow-md leading-none">{{ block.text_ko }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                 <p class="execution-msg" :class="{ 'error': executionError }">
-                    {{ judgeMessage }}
-                 </p>
-                  <!-- Test Case Results Table -->
-                  <div v-if="testResults.length > 0" class="test-results-container">
-                    <table class="test-results-table">
-                      <thead>
-                        <tr>
-                          <th>입력값</th>
-                          <th>실행결과</th>
-                          <th>상태</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="(res, idx) in testResults" :key="idx" :class="res.passed ? 'pass' : 'fail'">
-                          <td><code>{{ res.input }}</code></td>
-                          <td><code>{{ res.output }}</code></td>
-                          <td>{{ res.passed ? '✅ Pass' : '❌ Fail' }}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                <!-- Right: Workspace -->
+                <div class="flex-1 flex flex-col bg-[#020617]/40 relative">
+                  <div class="flex-1 p-10 overflow-y-auto custom-scrollbar-thin relative">
+                    <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#6366f1 1px, transparent 1px); background-size: 24px 24px;"></div>
+                    
+                    <div v-if="userPuzzleSolution.length === 0" class="absolute inset-0 flex flex-col items-center justify-center text-slate-700 pointer-events-none">
+                      <Layers class="w-12 h-12 opacity-10 mb-4" />
+                      <p class="text-[9px] font-black uppercase tracking-[0.2em] opacity-30">Place logic blocks here</p>
+                    </div>
+
+                    <div class="puzzle-stack space-y-0.5 relative z-10">
+                      <div 
+                        v-for="(block, index) in userPuzzleSolution" 
+                        :key="'solution-' + index"
+                        @click="unuseCard(index)"
+                        :class="['puzzle-block active group cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all duration-300', block.color]"
+                        :style="{ marginLeft: (block.indent || 0) * 32 + 'px' }"
+                      >
+                        <div class="puzzle-block-handle"></div>
+                        <div class="puzzle-block-socket"></div>
+                        <div class="flex items-center gap-5 px-6 py-4 relative z-10">
+                          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 text-lg">{{ block.icon }}</div>
+                          <div class="flex-1">
+                            <p class="text-[14px] font-black text-white drop-shadow-md">{{ block.text_ko }}</p>
+                            <p class="text-[13px] font-mono font-black text-white mt-1 uppercase tracking-wider drop-shadow-md">{{ block.text_py }}</p>
+                          </div>
+                          <X class="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <pre class="stdout-box" v-if="executionOutput && !isRunPassed">{{ executionOutput }}</pre>
-               </div>
+                </div>
+            </div>
+          </section>
+
+          <!-- BOTTOM: Specification Results Area -->
+          <section class="spec-section flex-1 min-h-0 flex flex-col bg-[#020617]/60">
+            <div class="h-14 flex items-center px-8 border-b border-slate-800/50 bg-slate-900/40 backdrop-blur-md shrink-0">
+              <div class="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <Layout class="text-purple-500 w-3 h-3" />
+                <span>Extracted Architecture Map</span>
+              </div>
+            </div>
+
+            <!-- Empty State / Analysis Result -->
+            <div v-if="!generatedResults && !loading" class="flex-1 flex flex-col items-center justify-center p-12 text-center">
+               <div class="p-6 bg-slate-900/50 rounded-[2rem] border border-slate-800/50 mb-6 group hover:border-indigo-500/30 transition-all duration-700 shadow-2xl">
+                <BrainCircuit class="text-slate-700 w-10 h-10 group-hover:text-indigo-500 transition-colors duration-500" />
+              </div>
+              <h3 class="text-lg font-black text-white tracking-tight">분석 결과가 여기에 표시됩니다</h3>
+              <p class="text-slate-600 mt-2 text-[11px] font-medium font-mono uppercase tracking-widest">Complete the logic puzzle above to trigger AI analysis</p>
+            </div>
+
+            <div v-else-if="loading" class="flex-1 p-10 flex gap-8 items-start justify-center">
+              <div v-for="i in 3" :key="i" class="w-72 h-40 bg-white/5 rounded-3xl border border-white/5 animate-pulse relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer"></div>
+              </div>
+            </div>
+
+            <div v-else class="flex-1 flex flex-col overflow-hidden">
+              <!-- Result Tabs -->
+              <div class="px-8 pt-6 pb-2 flex gap-3 overflow-x-auto custom-scrollbar-none shrink-0">
+                <button
+                    v-for="level in levels"
+                    :key="level.id"
+                    @click="activeLevel = level.id"
+                    :class="['px-6 py-4 rounded-2xl border-2 transition-all duration-500 text-left min-w-[240px] relative overflow-hidden group', activeLevel === level.id ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-slate-800/50 bg-slate-900/40 hover:border-slate-700']"
+                >
+                  <p :class="['text-[8px] font-black uppercase mb-1 tracking-[0.2em]', activeLevel === level.id ? 'text-indigo-400' : 'text-slate-600']">Level 0{{ level.id }}</p>
+                  <h4 :class="['text-xs font-black tracking-tight', activeLevel === level.id ? 'text-white' : 'text-slate-400']">{{ level.subtitle }}</h4>
+                </button>
+              </div>
+
+              <!-- content -->
+              <div class="flex-1 overflow-y-scroll p-10 pt-4 custom-scrollbar-premium relative">
+                <div class="max-w-6xl mx-auto space-y-8 pr-12">
+                  <div class="bg-slate-900/40 rounded-[2.5rem] border border-white/5 p-10 relative overflow-hidden shadow-huge">
+                    <div class="flex items-start gap-8 mb-10">
+                      <div :class="['p-5 rounded-2xl border border-white/10', levels[activeLevel-1].bgColor]">
+                        <Lightbulb :class="['w-8 h-8', levels[activeLevel-1].color]" />
+                      </div>
+                      <div>
+                        <h2 class="text-2xl font-black text-white tracking-tighter">{{ levels[activeLevel-1].title }}</h2>
+                        <p class="text-sm text-slate-500 mt-2 leading-relaxed font-medium">{{ levels[activeLevel-1].desc }}</p>
+                      </div>
+                    </div>
+
+                    <div class="relative group/view">
+                       <div v-if="activeLevel === 3" class="relative bg-[#020617]/95 rounded-[2.5rem] border-2 border-indigo-500/20 h-[500px] overflow-y-scroll overflow-x-hidden custom-scrollbar-premium group/scroll">
+                        <div class="absolute top-4 right-8 z-20 pointer-events-none opacity-40 group-hover/scroll:opacity-100 transition-opacity">
+                          <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-slate-950/80 px-3 py-1 rounded-full border border-indigo-500/30">Scroll Down to Explore ↓</span>
+                        </div>
+                        <div class="p-16 flex justify-center">
+                          <div id="mermaid-renderer" class="mermaid flex justify-center text-white scale-125 origin-top mb-12"></div>
+                        </div>
+                      </div>
+                      <pre v-else class="relative p-10 bg-[#020617]/90 rounded-3xl border border-slate-800/50 font-mono text-sm leading-relaxed text-slate-100 whitespace-pre-wrap">{{ generatedResults['level' + activeLevel] }}</pre>
+                    </div>
+
+                    <div class="mt-8 p-8 bg-indigo-600/5 rounded-3xl border border-indigo-500/10 flex gap-6">
+                      <div class="bg-indigo-600 p-3 h-fit rounded-2xl shadow-xl shadow-indigo-600/30">
+                        <MessageSquare class="text-white w-5 h-5" />
+                      </div>
+                      <p class="text-sm text-indigo-100/90 leading-relaxed italic font-bold">"{{ generatedResults.mentorTip }}"</p>
+                    </div>
+
+                    <div v-if="practiceMode !== 'none'" class="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+                      <button 
+                        @click="handleNextQuest" 
+                        class="px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black transition-all shadow-3xl shadow-indigo-600/20 active:scale-95 flex items-center gap-4 group"
+                      >
+                        <span>다음 스테이지로</span>
+                        <ArrowRight class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                      <button 
+                        @click="activeTab = 'practice'; practiceSubTab = 'stages';" 
+                        class="px-10 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-black transition-all active:scale-95 flex items-center gap-4"
+                      >
+                        <Layers class="w-5 h-5" />
+                        <span>스테이지 목록으로</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Practice Tab -->
+        <div v-else class="practice-tab flex-1 p-16 overflow-y-auto relative z-10 custom-scrollbar">
+          <div class="max-w-5xl mx-auto space-y-20">
+            <div class="text-center space-y-6">
+              <div class="inline-flex items-center gap-2 px-5 py-2 bg-indigo-500/10 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-indigo-500/20">
+                <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                훈련 캠프 가동 중
+              </div>
+              <h2 class="text-6xl font-black text-white tracking-tighter">Logic Design Practice</h2>
+              <p class="text-slate-500 text-lg max-w-2xl mx-auto font-medium leading-relaxed">코드 한 줄을 적기 전, 당신의 설계를 비춰보세요. <br/>추상화 능력이 엔지니어의 몸집을 결정합니다.</p>
+            </div>
+
+            <!-- Category Selection -->
+            <div v-if="practiceSubTab === 'categories'" class="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div 
+                v-for="practice in practices" 
+                :key="practice.id" 
+                @click="selectCategory(practice.id)"
+                class="practice-card-premium bg-slate-900/40 border border-white/5 p-12 rounded-[3.5rem] hover:border-indigo-500/30 transition-all duration-700 cursor-pointer group flex flex-col justify-between h-[420px] relative overflow-hidden active:scale-[0.99] shadow-2xl"
+              >
+                <div class="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-1000">
+                  <ArrowRight class="-rotate-45 w-40 h-40" />
+                </div>
+                <div class="relative z-10">
+                  <div class="flex justify-between items-start mb-10">
+                    <span :class="['px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-current/20 shadow-sm', practice.badgeColor]">
+                      {{ practice.badge }}
+                    </span>
+                    <div class="bg-slate-800 p-4 rounded-2xl text-slate-500 group-hover:text-white group-hover:bg-indigo-600 transition-all duration-500">
+                      <ArrowRight class="group-hover:translate-x-1 transition-transform w-6 h-6" />
+                    </div>
+                  </div>
+                  <h3 class="text-3xl font-black text-white mb-3">{{ practice.title }}</h3>
+                  <p class="text-indigo-400 font-bold text-sm tracking-tighter uppercase">{{ practice.subtitle }}</p>
+                  <p class="text-slate-500 text-sm mt-8 leading-[1.7] line-clamp-3 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                    {{ practice.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stage Selection Map -->
+            <div v-else-if="practiceSubTab === 'stages'" class="space-y-12">
+              <div class="flex items-center justify-between">
+                <button @click="practiceSubTab = 'categories'" class="flex items-center gap-3 text-slate-400 hover:text-white transition-colors group">
+                  <X class="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                  <span class="text-sm font-bold uppercase tracking-widest">카테고리 목록으로</span>
+                </button>
+                <div class="px-6 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+                  <span class="text-xs font-black text-indigo-400 uppercase tracking-widest">{{ selectedCategory === 'forward' ? 'Puzzle Solve' : 'Logic Analysis' }} Stage Map</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div 
+                  v-for="(quest, index) in filteredStages" 
+                  :key="quest.id"
+                  @click="startStage(quest)"
+                  class="group relative bg-slate-900/60 border border-white/5 p-8 rounded-3xl hover:border-indigo-500/40 transition-all cursor-pointer overflow-hidden shadow-xl"
+                >
+                  <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="text-6xl font-black italic">{{ index + 1 }}</span>
+                  </div>
+                  <div class="relative z-10 space-y-4">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">{{ quest.emoji }}</span>
+                      <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Stage {{ index + 1 }}</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white group-hover:text-indigo-300 transition-colors">{{ quest.title }}</h3>
+                    <p class="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed">{{ quest.description }}</p>
+                    <div class="pt-4 flex items-center justify-between">
+                      <span class="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">{{ quest.logic_type }}</span>
+                      <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg">
+                        <ArrowRight class="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-indigo-900/40 via-slate-950 to-slate-900/60 border border-indigo-500/20 rounded-[4rem] p-16 relative overflow-hidden group shadow-huge">
+               <div class="flex flex-col lg:flex-row items-center gap-16 relative z-10">
+                <div class="flex-1 space-y-10 text-center lg:text-left">
+                  <div class="space-y-5">
+                    <div class="inline-block px-4 py-1 bg-amber-500/10 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-500/20">Special Event</div>
+                    <h3 class="text-4xl font-black text-white tracking-tighter">Daily Design Challenge</h3>
+                    <p class="text-slate-400 text-xl leading-relaxed max-w-xl font-medium">
+                      오픈소스 프로젝트의 고수준 비즈니스 고리를 <br/> <span class="text-indigo-400 font-black">Level 02 논리 명세</span>로 정제하고 보상을 획득하세요.
+                    </p>
+                  </div>
+                  <div class="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start">
+                    <button @click="startChallenge" class="px-12 py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[1.5rem] font-black transition-all shadow-3xl shadow-indigo-600/40 active:scale-95 text-sm uppercase tracking-widest">도전 시작하기</button>
+                    <button @click="activeTab = 'analyze'" class="px-12 py-5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-[1.5rem] font-black transition-all text-sm uppercase tracking-widest border border-white/5">가이드 열람</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </main>
+    </div>
 
-          <div class="implementation-actions">
-            <div class="left-actions">
-              <button @click="skipImplementation" class="skip-btn">건너뛰기</button>
-              <button @click="toggleHint" class="hint-btn">
-                <span class="btn-icon">&#x1F4E6;</span> 힌트 보기
-              </button>
+    <!-- Red Glitch Overlay (VFX) -->
+    <div v-if="triggerGlitch" class="fixed inset-0 pointer-events-none z-[30000] bg-red-600/20 mix-blend-overlay animate-glitch overflow-hidden">
+      <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+    </div>
+
+    <!-- Validation Feedback Modal -->
+    <transition name="scale">
+      <div v-if="showValidationModal" class="fixed inset-0 z-[20000] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-md">
+        <div class="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-huge animate-in fade-in zoom-in duration-300">
+          <div :class="['h-2', validationResult === 'success' ? 'bg-emerald-500' : 'bg-red-500']"></div>
+          <div class="p-10 text-center space-y-6">
+            <div class="flex justify-center">
+              <div :class="['w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-2xl', 
+                            validationResult === 'success' ? 'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/20' : 'bg-red-500/10 text-red-500 shadow-red-500/20']">
+                {{ validationResult === 'success' ? '✨' : '🐣' }}
+              </div>
             </div>
-            <button @click="handleRunPython" class="run-btn" :disabled="isPyodideLoading">
-               {{ isPyodideLoading ? '엔진 로드 중...' : '▶ 프로젝트 실행' }}
+            
+            <div class="space-y-2">
+              <h3 class="text-2xl font-black text-white tracking-tight">
+                {{ validationResult === 'success' ? '완벽한 설계입니다!' : '조금 더 고민해보꽥!' }}
+              </h3>
+              <p class="text-slate-400 text-sm font-medium leading-relaxed">
+                {{ validationMessage }}
+              </p>
+            </div>
+
+            <button 
+              @click="closeValidationModal"
+              :class="['w-full py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg', 
+                       validationResult === 'success' ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20' : 'bg-slate-800 hover:bg-slate-700 text-slate-300']"
+            >
+              {{ validationResult === 'success' ? '분석 결과 확인하기' : '다시 조립하기' }}
             </button>
           </div>
-
-          <div v-if="showHint" class="hint-overlay-box">
-             <div class="hint-header">
-               <span class="hint-status-dot"></span>
-               덕 코치의 보따리 힌트
-             </div>
-             <div class="hint-content">
-               <p class="hint-main-desc">{{ implementationHint.main }}</p>
-               <div class="hint-divider"></div>
-               <p class="hint-sub-desc">{{ implementationHint.sub }}</p>
-               <ul class="hint-code-list">
-                  <li v-for="card in currentQuest.cards" :key="card.id">
-                    <span class="card-icon">{{ card.icon }}</span>
-                    <code>{{ card.text_py }}</code>
-                    <span class="card-text-ko">{{ card.text_ko }}</span>
-                  </li>
-               </ul>
-             </div>
-          </div>
-        </div>
-
-        <div v-else class="retry-section">
-          <button @click="retry" class="retry-btn">다시 시도하기</button>
         </div>
       </div>
-    </div>
+    </transition>
 
-    <!-- Step 5: Follow-up Questioning -->
-    <div v-if="currentStepIndex === 4" class="pipeline-step followup-step">
-      <div class="step-container">
-        <div class="completion-header">
-          <div class="completion-icon">&#x1F389;</div>
-          <h1 class="completion-title">문제 완료!</h1>
-        </div>
-
-        <div class="interviewer-followup">
-          <div class="interviewer-avatar">
-            <img src="/image/problem_duck.gif" alt="Duck Coach" class="duck-coach-img" />
+    <!-- Level Up Splash UI -->
+    <transition name="splash">
+      <div v-if="showLevelUpSplash" class="fixed inset-0 z-[40000] flex items-center justify-center bg-indigo-950/80 backdrop-blur-3xl overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-t from-indigo-600/20 to-transparent"></div>
+        <div class="relative text-center space-y-12 animate-in zoom-in-50 duration-700">
+          <div class="relative inline-block">
+            <div class="absolute inset-0 bg-indigo-500 blur-[120px] opacity-50 animate-pulse"></div>
+            <img src="/image/mentor/duck.png" alt="Level Up" class="w-56 h-56 relative z-10 animate-bounce" />
           </div>
-          <div class="followup-bubble">
-            <div class="interviewer-label">덕 코치</div>
-            <p class="followup-question">{{ currentFollowupQuestion.question }}</p>
-            
-            <!-- [2026-01-24] 심화 평가용 선택지 UI 추가 -->
-            <div class="followup-options" v-if="!followupAnswered">
-              <button 
-                v-for="(option, idx) in currentFollowupQuestion.options" 
-                :key="idx"
-                @click="checkFollowupAnswer(idx)"
-                class="followup-option-btn"
-              >
-                {{ option }}
-              </button>
-            </div>
-
-            <!-- [2026-01-24] 답변 후 피드백 박스 -->
-            <div class="followup-feedback-box" v-else :class="followupIsCorrect ? 'pass' : 'fail'">
-              <div class="feedback-status">
-                {{ followupIsCorrect ? '✅ 정답입니다!' : '🤔 조금 더 생각해볼까요?' }}
-              </div>
-              <p class="explanation-text">{{ currentFollowupQuestion.explanation }}</p>
-              <button v-if="!followupIsCorrect" @click="followupAnswered = false" class="re-answer-btn">다시 선택하기</button>
-            </div>
+          <div class="space-y-4">
+             <p class="text-indigo-400 font-black text-xl tracking-[0.4em] uppercase">Class Upgrade</p>
+             <h2 class="text-8xl font-black text-white tracking-tighter drop-shadow-2xl">{{ currentClass }}</h2>
+             <div class="h-1 w-64 bg-indigo-500 mx-auto rounded-full mt-6 shadow-[0_0_30px_rgba(99,102,241,0.8)]"></div>
           </div>
-        </div>
-
-        <div class="learning-summary">
-          <h3>📚 이번 문제에서 배운 점</h3>
-          <ul class="learning-points">
-            <li v-for="(point, index) in learningPoints" :key="index">
-              {{ point }}
-            </li>
-          </ul>
-        </div>
-
-        <div class="navigation-buttons">
-          <button @click="finishSession" class="next-quest-btn">
-             학습 완료
-          </button>
+          <button @click="showLevelUpSplash = false" class="px-16 py-6 bg-white text-indigo-950 rounded-3xl font-black text-xl hover:scale-105 transition-all shadow-huge active:scale-95">NEXT STEP</button>
         </div>
       </div>
-    </div>
-      </div>
-    </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick, shallowRef } from 'vue';
-import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import mermaid from 'mermaid';
-import { gameData } from './data/stages.js';
-import { usePyodide } from '@/composables/usePyodide';
+import { 
+  BrainCircuit, Layers, BookOpen, LogOut, Terminal, Sparkles, Layout, Lightbulb, MessageSquare, ArrowRight, X, History, Send
+} from 'lucide-vue-next';
+import { aiQuests } from './data/stages.js';
 
 /* 
-  수정일: 2026-01-24
-  수정내용: 
-  - Monaco Editor(VS Code 엔진) 통합으로 입축 환경 개선 (Tab 키 지원 및 문법 강조)
-  - 덕 코치(오리 캐릭터) 이미지 및 애니메이션 적용 (성공 시 댄스 GIF 포함)
-  - 단계별 정밀 평가 로직 고도화 및 Pyodide 기반 파이썬 실행 엔진 통합
+  [수정일: 2026-01-26]
+  [수정내용: 상/하 수직 분할 레이아웃으로 변경]
+  - TOP: Puzzle Palette & Workspace (문제 풀이)
+  - BOTTOM: AI Analysis Result (분석 결과)
+  - Vertical split with borders and independent scrolling
 */
 
-const props = defineProps({
-  initialQuestIndex: {
-    type: Number,
-    default: 0
-  }
-});
-
-const emit = defineEmits(['close', 'quest-complete']);
-
-// Pipeline Steps
-const pipelineSteps = [
-  'Problem & Q&A',
-  'Pseudo Code',
-  'Pre-submission',
-  'Implementation',
-  'Follow-up'
+// --- 1. Constants ---
+const LEVELS = [
+  { id: 1, title: 'Level 1: 절차적 수도 코드', subtitle: 'Procedural Logic', desc: '구문 중심의 직역. 루프와 조건문을 명시하여 로직의 흐름을 따라갑니다.', color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+  { id: 2, title: 'Level 2: 논리적 명세', subtitle: 'Logical Specification', desc: '비즈니스 규칙 중심. 처리 목적(무엇을)에 집중합니다.', color: 'text-indigo-400', bgColor: 'bg-indigo-500/10' },
+  { id: 3, title: 'Level 3: 아키텍처 모델', subtitle: 'Architecture Diagram', desc: '시스템 관계 중심. Mermaid.js를 활용한 시각적 아키텍처 다이어그램입니다.', color: 'text-purple-400', bgColor: 'bg-purple-500/10' }
 ];
 
-// Game State
-const currentStepIndex = ref(0);
-const currentQuestIndex = ref(props.initialQuestIndex);
-const currentQuest = ref(null);
-const userSequence = ref([]);
-const selectedAnswer = ref(null);
-const userCode = ref('');
-const isCorrect = ref(false);
-const feedbackMessage = ref('');
-const hintMessage = ref('');
-const isDragOver = ref(false);
-const draggedCard = ref(null);
-const wrongBlockIndices = ref([]); // 틀린 블록 인덱스 추적
-const duckCoachHint = ref(''); // 덕 코치 실시간 힌트
-const executionOutput = ref('');
-const executionError = ref('');
-const judgeStatus = ref('READY');
-const judgeMessage = ref('');
-const isRunPassed = ref(false);
-
-/* [2026-01-24] 심화 평가(Follow-up) 인터랙티브 상태 관리를 위한 변수 추가 */
-const followupAnswered = ref(false);
-const followupIsCorrect = ref(false);
-
-/* [2026-01-24] Mermaid 실시간 시각화 컴포넌트 변수 */
-const mermaidTarget = ref(null);
-
-const { runCode: runPython, initPyodide, isLoading: isPyodideLoading } = usePyodide();
-
-// Monaco Editor Config [2026-01-24]
-const monacoEditorRef = shallowRef(null);
-const editorOptions = {
-  theme: 'vs-dark',
-  language: 'python',
-  tabSize: 4,
-  automaticLayout: true,
-  minimap: { enabled: false },
-  fontSize: 14,
-  lineNumbers: 'on',
-  scrollBeyondLastLine: false,
-  roundedSelection: true,
-  cursorSmoothCaretAnimation: "on",
-  fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-  contextmenu: false,
-  padding: { top: 15, bottom: 15 }
+const MOCK_ANALYSIS_DB = {
+  'quest_ai_01': {
+    level1: "1. 입력 x와 가중치 w를 곱하여 가중 합산 시작\n2. 결과에 편향 b를 더함\n3. 최종 y를 반환",
+    level2: "입력 데이터에 비중을 적용하고 모델의 오프셋(Bias)을 조절하여 뉴런의 활성화 값을 계산합니다.",
+    level3: "graph TD\n  X[Input x] --> MUL[Multiply w]\n  W[Weight w] --> MUL\n  MUL --> ADD[Add Bias b]\n  B[Bias b] --> ADD\n  ADD --> Y[Output y]",
+    complexity: 5,
+    mentorTip: "첫 번째 인공 뉴런 구현을 축하합니다! y = wx + b는 딥러닝의 가장 기초적인 선형 결합 구조입니다."
+  },
+  'quest_ai_02': {
+    level1: "1. 입력을 받아 0과 비교함\n2. 양수면 그대로 반환, 음수면 0으로 처리\n3. 결과값 출력",
+    level2: "활성화 함수 ReLU를 통해 음수 신호를 차단하고 신경망에 비선형적 특성을 부여합니다.",
+    level3: "graph TD\n  IN[Input x] --> IF{x > 0?}\n  IF -->|Yes| RET_X[Return x]\n  IF -->|No| RET_0[Return 0]",
+    complexity: 8,
+    mentorTip: "ReLU는 현대 딥러닝에서 가장 많이 쓰이는 활성화 함수입니다. 단순한 if문 하나가 AI의 성능을 결정하죠!"
+  },
+  'quest_ai_03': {
+    level1: "1. 예측과 정답의 차이를 구함(diff)\n2. 차이를 스스로 곱함(Square)\n3. 최종 Loss 반환",
+    level2: "평균 제곱 오차(MSE)의 핵심인 '차이의 제곱'을 통해 오차의 크기를 양수화하여 측정합니다.",
+    level3: "graph TD\n  P[Predict] --> SUB[Difference]\n  T[Target] --> SUB\n  SUB --> SQ[Square diff*diff]\n  SQ --> L[Loss Value]",
+    complexity: 6,
+    mentorTip: "제곱을 하는 이유는 음수를 없애기 위해서이기도 하지만, 큰 오차에 더 큰 벌점을 주기 위해서이기도 합니다."
+  },
+  'quest_ai_04': {
+    level1: "1. 기울기에 학습률을 곱해 이동량 계산\n2. 가중치에서 이동량을 빼서 갱신\n3. 업데이트된 값 저장",
+    level2: "경사하강법(GD) 원리에 따라 오차가 줄어드는 방향으로 파라미터를 미세하게 조정합니다.",
+    level3: "graph TD\n  G[Gradient] --> MUL[Multiply LR]\n  LR[Learning Rate] --> MUL\n  W[Weight] --> SUB[W - Step]\n  MUL --> SUB\n  SUB --> NEW[Updated W]",
+    complexity: 10,
+    mentorTip: "학습률(LR)은 AI의 보폭입니다. 너무 크면 길을 잃고, 너무 작으면 거북이처럼 느려지니 주의하세요!"
+  }
 };
 
-const handleEditorMount = (editorInstance) => {
-  monacoEditorRef.value = editorInstance;
+// --- 2. Props & Emits ---
+const props = defineProps({
+  initialQuestIndex: { type: Number, default: 0 }
+});
+const emit = defineEmits(['close', 'quest-complete']);
+
+// --- 3. Reactive State ---
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+const activeQuestIndex = ref(0);
+const currentQuest = computed(() => aiQuests[activeQuestIndex.value] || aiQuests[0]);
+const hasNextQuest = computed(() => activeQuestIndex.value < aiQuests.length - 1);
+const activeLevel = ref(1);
+const generatedResults = ref(null);
+const loading = ref(false);
+const activeTab = ref('analyze');
+const practiceSubTab = ref('categories'); // 'categories', 'stages'
+const selectedCategory = ref('forward');
+const practiceMode = ref('none');
+const levels = ref(LEVELS);
+
+// Chatbot State
+const chatMessages = ref([
+  { role: 'assistant', text: '안녕하세요! 설계 멘토 오리입니다. 현재 스테이지에 대해 궁금한 점이 있다면 무엇이든 물어보세요! 꽥!' }
+]);
+const chatInput = ref('');
+const isChatLoading = ref(false);
+
+// Validation State
+const showValidationModal = ref(false);
+const validationResult = ref(null); // 'success', 'error'
+const validationMessage = ref('');
+
+// Gamification State
+const userStability = ref(3); // HP
+const userXP = ref(0);
+const comboStreak = ref(0);
+const showLevelUpSplash = ref(false);
+const triggerShake = ref(false);
+const triggerGlitch = ref(false);
+
+const mentorImage = computed(() => {
+  return userStability.value <= 1 ? "/image/mentor/duck_sad.png" : "/image/mentor/duck.png";
+});
+
+const userLevel = computed(() => {
+  return Math.floor(userXP.value / 1000) + 1;
+});
+
+const nextLevelXP = computed(() => {
+  return userLevel.value * 1000;
+});
+
+const xpProgress = computed(() => {
+  const currentLevelBaseXP = (userLevel.value - 1) * 1000;
+  const relativeXP = userXP.value - currentLevelBaseXP;
+  return (relativeXP / 1000) * 100;
+});
+
+const currentClass = computed(() => {
+  if (userLevel.value >= 10) return "Master Architect";
+  if (userLevel.value >= 7) return "Lead Architect";
+  if (userLevel.value >= 5) return "Senior Engineer";
+  if (userLevel.value >= 3) return "Junior Engineer";
+  return "Engineering Intern";
+});
+
+// Chatbot State
+const userPuzzleSolution = ref([]);
+const shuffledPalette = ref([]);
+
+// --- 4. Helper Functions ---
+const initQuestBlocks = () => {
+  if (!currentQuest.value || !currentQuest.value.cards) {
+    shuffledPalette.value = [];
+    userPuzzleSolution.value = [];
+    return;
+  }
+  shuffledPalette.value = [...currentQuest.value.cards]
+    .sort(() => Math.random() - 0.5)
+    .map(card => ({ ...card }));
+  userPuzzleSolution.value = [];
+  generatedResults.value = null;
 };
 
-// Computed
-const isLastQuest = computed(() => currentQuestIndex.value === gameData.quests.length - 1);
-
-/* [2026-01-24] 퀘스트 번호를 1-1, 1-2 형식으로 표시하기 위한 계산된 속성 추가 */
-const questDisplayNumber = computed(() => {
-  if (!currentQuest.value) return '';
-  return `1-${currentQuestIndex.value + 1}`;
-});
-
-
-/* [2026-01-24] 하드코딩된 질문 대신 현재 퀘스트 데이터(stages.js)에 정의된 맞춤형 질문을 반환하도록 수정 */
-const preSubmissionQuestion = computed(() => {
-  return currentQuest.value?.reasoning?.question || "이 순서를 선택한 이유를 설명해주세요.";
-});
-
-/* [2026-01-24] 하드코딩된 선택지 대신 현재 퀘스트 데이터에 정의된 맞춤형 선택지 배열을 반환하도록 수정 */
-const answerOptions = computed(() => {
-  return currentQuest.value?.reasoning?.options || [
-    "순서대로 실행되어야 하기 때문입니다",
-    "조건에 맞을 때만 실행되어야 합니다",
-    "반복해서 실행되어야 합니다",
-    "확실하지 않습니다"
-  ];
-});
-
-/* [2026-01-24] 심화 평가 질문 정보를 안전하게 가져오는 계산된 속성 추가 (데이터 부재 시 Fallback 처리) */
-const currentFollowupQuestion = computed(() => {
-  const q = currentQuest.value?.interviewQuestions?.[0];
-  return {
-    question: q?.question || "수고하셨습니다! 마무리 단계로 넘어가볼까요?",
-    options: q?.options || ["네, 좋습니다!"],
-    correctIndex: q?.correctIndex ?? 0,
-    explanation: q?.explanation || "오늘 배운 내용을 잘 기억해보시길 바란다꽥!"
-  };
-});
-
-const learningPoints = computed(() => {
-  return [
-    currentQuest.value?.feedback?.hint || "문제 해결 과정을 단계별로 나눠서 생각하기",
-    "수도코드로 로직을 먼저 설계하기",
-    "각 단계의 순서와 의미 이해하기"
-    ];
-});
-
-/* [2026-01-24] 덕 코치의 보따리 힌트 문구를 동적으로 생성하는 계산된 속성 추가 (하드코딩 제거) */
-const implementationHint = computed(() => {
-  const hint = currentQuest.value?.validation?.execution?.implementation_hint;
-  const funcName = currentQuest.value?.validation?.execution?.function_name || 'my_function';
-  
-  return {
-    main: hint?.main || `이 문제의 파이썬 정답은 def ${funcName}(): 로 시작해야 하꽥!`,
-    sub: hint?.sub || "카드에 있던 명령어들을 순서대로 넣어주면 된다꽥:"
-  };
-});
-
-/* [2026-01-24] userSequence 변화에 따라 실시간으로 그려질 Mermaid 코드 생성 로직 */
-const mermaidCode = computed(() => {
-    if (userSequence.value.length === 0) return '';
-    
-    let code = 'flowchart TD\n';
-    // Style Definitions
-    code += '  classDef default fill:#1e1e2e,stroke:#45475a,color:#cdd6f4,stroke-width:2px,rx:10,ry:10;\n';
-    code += '  classDef loop fill:#1e1e2e,stroke:#f9e2af,color:#f9e2af,stroke-width:2px;\n';
-    code += '  classDef cond fill:#1e1e2e,stroke:#cba6f7,color:#cba6f7,stroke-width:2px;\n';
-    code += '  classDef startEnd fill:#1e1e2e,stroke:#a6e3a1,color:#a6e3a1,stroke-width:3px;\n';
-
-    // Start Node
-    code += '  START([시작])\n';
-    code += '  class START startEnd\n';
-    
-    let prevId = 'START';
-    
-    userSequence.value.forEach((card, idx) => {
-        const nodeId = `node_${idx}`;
-        const cleanText = card.text_ko.replace(/[\[\]"']/g, '').trim();
-        
-        if (card.isCondition || card.isLoop) {
-            // Condition/Loop nodes (Diamond or Hexagon shape)
-            code += `  ${nodeId}{{"${cleanText}"}}\n`;
-            code += card.isLoop ? `  class ${nodeId} loop\n` : `  class ${nodeId} cond\n`;
-        } else {
-            // Normal nodes
-            code += `  ${nodeId}["${cleanText}"]\n`;
-        }
-        
-        code += `  ${prevId} --> ${nodeId}\n`;
-        prevId = nodeId;
-    });
-    
-    // End Node
-    code += `  END([끝])\n`;
-    code += `  ${prevId} --> END\n`;
-    code += '  class END startEnd\n';
-    
-    return code;
-});
-
-// Watcher for Mermaid rendering
-watch(mermaidCode, async (newCode) => {
-    if (!newCode || !mermaidTarget.value) return;
-    
-    await nextTick();
-    try {
-        const { svg } = await mermaid.render(`mermaid-svg-${Date.now()}`, newCode);
-        if (mermaidTarget.value) {
-            mermaidTarget.value.innerHTML = svg;
-        }
-    } catch (e) {
-        console.error('Mermaid render error:', e);
-    }
-});
-
-// Initialize
-const initGame = () => {
-  /* [2026-01-24] Mermaid 초기화 */
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'dark',
-    securityLevel: 'loose',
-    flowchart: {
-        useMaxWidth: true,
-        htmlLabels: true,
-        curve: 'basis'
-    }
+const getInjectedCode = () => {
+  if (userPuzzleSolution.value.length === 0) return "";
+  const functionName = currentQuest.value?.validation?.execution?.function_name || "process_logic";
+  let code = `def ${functionName}():\n`;
+  userPuzzleSolution.value.forEach(block => {
+    const indentLevel = block.indent || 0;
+    const line = "    " + "    ".repeat(indentLevel) + (block.text_py || "# code block");
+    code += line + "\n";
   });
+  return code;
+};
 
-  console.log('[DEBUG] initGame called');
-  console.log('[DEBUG] gameData:', gameData);
-  console.log('[DEBUG] gameData.quests:', gameData.quests);
-  console.log('[DEBUG] gameData.quests.length:', gameData.quests?.length);
-  
-  try {
-    if (!gameData || !gameData.quests || gameData.quests.length === 0) {
-      console.error('[ERROR] gameData is invalid:', gameData);
-      alert('게임 데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.');
-      return;
+// --- 5. Logic & Methods ---
+const useCard = (index) => {
+  const card = shuffledPalette.value.splice(index, 1)[0];
+  userPuzzleSolution.value.push(card);
+};
+
+const unuseCard = (index) => {
+  const card = userPuzzleSolution.value.splice(index, 1)[0];
+  shuffledPalette.value.push(card);
+};
+
+const sourceCode = computed(() => getInjectedCode());
+
+const renderMermaid = async () => {
+  if (activeLevel.value === 3 && generatedResults.value?.level3) {
+    await nextTick();
+    const container = document.getElementById('mermaid-renderer');
+    if (container) {
+      try {
+        container.removeAttribute('data-processed');
+        container.innerHTML = generatedResults.value.level3;
+        await mermaid.run({ nodes: [container] });
+      } catch (e) {
+        container.innerHTML = `<div class="text-red-400 p-4 text-[10px]">Diagram Error</div>`;
+      }
     }
-    loadQuest(currentQuestIndex.value);
-  } catch (error) {
-    console.error('[ERROR] initGame failed:', error);
-    alert('게임 초기화 실패: ' + error.message);
   }
 };
 
-const loadQuest = (index) => {
-  console.log('[DEBUG] loadQuest called with index:', index);
-  try {
-    if (!gameData.quests[index]) {
-      console.error('[ERROR] Quest not found at index:', index);
-      return;
-    }
-    currentQuestIndex.value = index;
-    currentQuest.value = gameData.quests[index];
-    console.log('[DEBUG] currentQuest loaded:', currentQuest.value);
-    resetState();
-  } catch (error) {
-    console.error('[ERROR] loadQuest failed:', error);
-  }
-};
-
-const resetState = () => {
-  currentStepIndex.value = 0;
-  userSequence.value = [];
-  selectedAnswer.value = null;
-  userCode.value = '';
-  isCorrect.value = false;
-  wrongBlockIndices.value = [];
-  duckCoachHint.value = '';
-  executionOutput.value = '';
-  executionError.value = '';
-  isRunPassed.value = false;
-  feedbackMessage.value = '';
-  hintMessage.value = '';
-  showHint.value = false;
-  testResults.value = [];
-};
-
-const testResults = ref([]);
-const showHint = ref(false);
-const toggleHint = () => {
-    showHint.value = !showHint.value;
-};
-
-// Navigation
-const goToNextStep = () => {
-  if (currentStepIndex.value < pipelineSteps.length - 1) {
-    currentStepIndex.value++;
-  }
-};
-
-const goToPreviousStep = () => {
-  if (currentStepIndex.value > 0) {
-    currentStepIndex.value--;
-  }
-};
-
-const finishSession = () => {
-  /* [2026-01-24] 개별 스테이지 진행을 위해 학습 종료 시 모달을 닫고 부모에게 완료 알림 */
-  emit('close');
-  emit('quest-complete', currentQuestIndex.value);
-};
-
-// Drag & Drop
-const handleDragStart = (card) => {
-  draggedCard.value = card;
-};
-
-const handleDragEnd = () => {
-  draggedCard.value = null;
-  isDragOver.value = false;
-};
-
-const handleDrop = (e) => {
-  e.preventDefault();
-  isDragOver.value = false;
+const analyzeCode = async () => {
+  const codeToAnalyze = sourceCode.value;
+  if (!codeToAnalyze.trim() || !apiKey) return;
   
-  if (draggedCard.value) {
-    userSequence.value.push({ ...draggedCard.value });
-    draggedCard.value = null;
-  }
-};
+  // 1. Validation Step
+  const userOrder = userPuzzleSolution.value.map(b => b.id);
+  const correctOrder = currentQuest.value.correctSequence;
+  const isCorrect = userOrder.length === correctOrder.length && userOrder.every((id, idx) => id === correctOrder[idx]);
 
-const removeCard = (index) => {
-  userSequence.value.splice(index, 1);
-};
-
-const clearSequence = () => {
-  userSequence.value = [];
-};
-
-// Answer Selection
-const selectAnswer = (index) => {
-  selectedAnswer.value = index;
-};
-
-/* [2026-01-24] 심화 평가 답변 검증 로직 추가 */
-const checkFollowupAnswer = (index) => {
-  followupAnswered.value = true;
-  followupIsCorrect.value = index === currentFollowupQuestion.value.correctIndex;
-};
-
-// Submission
-const submitAndCheck = () => {
-  /* [2026-01-24] 단순 JSON.stringify 비교에서 ID 및 Indent 개별 정밀 비교 로직으로 고도화 */
-  const userBlocks = userSequence.value;
-  const solution = currentQuest.value.validation?.puzzle_solution;
-  
-  if (!solution) {
-    // 레거시 지원
-    const userOrder = userBlocks.map(card => card.id);
-    const correctOrder = currentQuest.value.correctSequence;
-    isCorrect.value = JSON.stringify(userOrder) === JSON.stringify(correctOrder);
-    if (!isCorrect.value) {
-      wrongBlockIndices.value = Array.from({length: userBlocks.length}, (_, i) => i);
+  if (isCorrect) {
+    validationResult.value = 'success';
+    validationMessage.value = currentQuest.value.validation?.feedback?.success || "알고리즘 설계가 정확합니다! 멘토 오리의 심층 분석을 확인해보세요.";
+    
+    // Grant Reward
+    const oldLevel = userLevel.value;
+    const reward = currentQuest.value.rewardXP || 100;
+    const bonus = Math.floor(comboStreak.value * 10);
+    userXP.value += (reward + bonus);
+    comboStreak.value++;
+    
+    // Level Up Check & Chat
+    if (userLevel.value > oldLevel) {
+      showLevelUpSplash.value = true;
+      chatMessages.value.push({ role: 'assistant', text: `축하하꽥! 레벨업이다꽥! 이제 당신은 당당한 ${currentClass.value}가 되었다꽥! 🎉` });
     }
+    
+    showValidationModal.value = true;
+    startAianalysis(codeToAnalyze);
   } else {
-    wrongBlockIndices.value = [];
-    let correctCount = 0;
+    validationResult.value = 'error';
+    userStability.value = Math.max(0, userStability.value - 1);
+    comboStreak.value = 0;
+
+    // Trigger VFX
+    triggerShake.value = true;
+    triggerGlitch.value = true;
+    setTimeout(() => { triggerShake.value = false; triggerGlitch.value = false; }, 500);
     
-    const maxLength = Math.max(userBlocks.length, solution.length);
-    
-    for (let i = 0; i < maxLength; i++) {
-        const userBlock = userBlocks[i];
-        const solutionStep = solution[i];
-        
-        if (!userBlock || !solutionStep || userBlock.id !== solutionStep.id || (userBlock.indent || 0) !== (solutionStep.indent || 0)) {
-            if (i < userBlocks.length) {
-                wrongBlockIndices.value.push(i);
-            }
-        } else {
-            correctCount++;
-        }
+    if (userStability.value === 0) {
+      validationMessage.value = "시스템 과부하 발생! 설계 안정성이 바닥났다꽥. 잠시 시스템을 재부팅(세션 종료)하고 다시 훈련에 임해보는건 어떻겠냐꽥? 🐥🚨";
+      showValidationModal.value = true;
+      return;
     }
     
-    isCorrect.value = correctCount === solution.length && userBlocks.length === solution.length;
+    loading.value = true;
+    try {
+      // Analyze WRONG order using AI for personalized hint
+      const wrongSteps = userPuzzleSolution.value.map(b => b.text_ko).join(' -> ');
+      const hintPrompt = `퀘스트: ${currentQuest.value.title}. 의도: ${currentQuest.value.description}. 학습자가 조립한 오답 순서: [${wrongSteps}]. 
+      왜 틀렸는지 분석하고, 정답을 바로 알려주지는 말고 하나만 고치도록 유도하는 짧고 친절한 힌트를 1문장으로 주세요. 말 끝에 '꽥'을 붙여주세요.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: hintPrompt }] }], generation_config: { temperature: 0.5, max_output_tokens: 200 } })
+      });
+      const data = await response.json();
+      validationMessage.value = data.candidates?.[0]?.content?.parts?.[0]?.text || currentQuest.value.validation?.feedback?.failure || "순서가 조금 틀린 것 같다꽥! 다시 한 번 생각해보꽥.";
+    } catch (e) {
+      validationMessage.value = currentQuest.value.validation?.feedback?.failure || "로직 흐름이 어색하다꽥! 순서를 다시 조정해보꽥.";
+    } finally {
+      loading.value = false;
+      showValidationModal.value = true;
+    }
+    return;
   }
-  
-  /* [2026-01-24] 블록 순서뿐만 아니라 추론 질문(selectedAnswer)의 정답 여부도 함께 검증하도록 로직 고도화 */
-  const isReasoningCorrect = selectedAnswer.value === (currentQuest.value?.reasoning?.correctIndex ?? 0);
-  
-  if (isCorrect.value) {
-    if (isReasoningCorrect) {
-      feedbackMessage.value = currentQuest.value.feedback?.success || '정답입니다!';
-      hintMessage.value = '';
+};
+
+const startAianalysis = async (codeToAnalyze) => {
+  loading.value = true;
+  const systemPrompt = `당신은 주니어 개발자를 위한 설계 멘토입니다. [Logic Type: ${currentQuest.value.logic_type}]
+  조립된 로직을 분석하여 다음 JSON 형식으로 응답하세요.
+  { "level1": "절차적 설명", "level2": "논리적 명세", "level3": "mermaid graph TD 코드", "complexity": 10, "mentorTip": "한국어 조언" }`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `분석할 코드:\n${codeToAnalyze}` }] }],
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        generation_config: { response_mime_type: "application/json", temperature: 0.2 }
+      })
+    });
+    const data = await response.json();
+    if (data.error) {
+       console.error("Gemini API Error Detail:", data.error);
+       // 할당량 초과(429)이거나 리소스 고갈 시 목 데이터로 자동 전환
+       if ((data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') && MOCK_ANALYSIS_DB[currentQuest.value?.id]) {
+         generatedResults.value = { ...MOCK_ANALYSIS_DB[currentQuest.value.id] };
+         console.warn("API quota exceeded, falling back to mock data for:", currentQuest.value.id);
+       } else { 
+         alert(`API 오류 (${data.error.code}): ${data.error.message}`); 
+       }
+       loading.value = false; return;
+    }
+    
+    let rawText = data.candidates[0].content.parts[0].text;
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      generatedResults.value = JSON.parse(jsonMatch[0].trim());
     } else {
-      /* [2026-01-24] 블록 순서는 맞았지만 추론이 틀린 경우 별도의 피드백과 함께 재배치 허용 혹은 힌트 제공 */
-      isCorrect.value = false; // 둘 다 맞아야 통과로 처리
-      feedbackMessage.value = '블록 순서는 완벽하지만, 이유는 조금 더 생각해보자꽥!';
-      hintMessage.value = '선택한 이유가 논리에 맞는지 다시 한번 확인해보세요.';
-      duckCoachHint.value = "논리적인 이유를 정확히 이해하는 것이 중요하꽥!";
+      throw new Error("Invalid JSON format from AI");
     }
-  } else {
-    feedbackMessage.value = currentQuest.value.feedback?.failure || '다시 생각해보세요';
-    hintMessage.value = currentQuest.value.feedback?.hint || '';
-    
-    // 덕 코치 힌트 강화
-    if (wrongBlockIndices.value.length > 0) {
-        const firstWrong = wrongBlockIndices.value[0];
-        const userBlock = userBlocks[firstWrong];
-        const solutionStep = solution ? solution[firstWrong] : null;
-        
-        if (!userBlock) {
-             duckCoachHint.value = "블록이 더 필요한 것 같꽥!";
-        } else if (!solutionStep || userBlock.id !== solutionStep.id) {
-             duckCoachHint.value = `${firstWrong + 1}번째 블록 종류가 틀린 것 같꽥!`;
-        } else if (userBlock.indent !== solutionStep.indent) {
-             duckCoachHint.value = `${firstWrong + 1}번째 블록의 들여쓰기를 확인해보꽥!`;
-        }
-    }
-  }
-  
-  goToNextStep();
+  } catch (error) { 
+    console.error("Analysis failed", error);
+    alert("분석 결과 처리 중 오류가 발생했습니다. (잠시 후 다시 시도해주세요)"); 
+  } finally { loading.value = false; }
 };
 
-const skipImplementation = () => {
-  goToNextStep();
+const closeValidationModal = () => {
+  showValidationModal.value = false;
 };
 
-const handleRunPython = async () => {
-    /* [2026-01-24] Pyodide 엔진을 활용한 실제 코드 실행 및 테스트 케이스 검증 로직 구현 */
-    executionError.value = '';
-    executionOutput.value = '';
-    isRunPassed.value = false;
-    duckCoachHint.value = '';
+const selectCategory = (id) => {
+  selectedCategory.value = id;
+  practiceSubTab.value = 'stages';
+};
 
-    const validation = currentQuest.value.validation?.execution;
-    
-    /* [2026-01-24] 사용자가 카드에 적힌 함수를 그대로 쓸 수 있도록 Mock 함수 주입 */
-    let injectCode = "";
-    const cards = currentQuest.value.cards || [];
-    const seenFuncs = new Set();
-    
-    cards.forEach(card => {
-        if (card.text_py && card.text_py.includes('(')) {
-            const funcName = card.text_py.split('(')[0].trim().split(' ').pop();
-            if (funcName && !seenFuncs.has(funcName)) {
-                injectCode += `def ${funcName}(*args, **kwargs): return f"${funcName}_done"\n`;
-                seenFuncs.add(funcName);
-            }
-        }
+const startStage = (quest) => {
+  const globalIndex = aiQuests.findIndex(q => q.id === quest.id);
+  activeQuestIndex.value = globalIndex !== -1 ? globalIndex : 0;
+  activeTab.value = 'analyze';
+  practiceMode.value = selectedCategory.value;
+  generatedResults.value = null;
+  initQuestBlocks();
+};
+
+const startPractice = (type) => {
+  selectedCategory.value = type;
+  practiceSubTab.value = 'stages';
+};
+
+const startChallenge = () => {
+  selectedCategory.value = 'reverse';
+  practiceSubTab.value = 'stages';
+};
+
+const sendChatMessage = async () => {
+  if (!chatInput.value.trim() || isChatLoading.value) return;
+
+  const userText = chatInput.value;
+  chatMessages.value.push({ role: 'user', text: userText });
+  chatInput.value = '';
+  isChatLoading.value = true;
+
+  try {
+    const contextStr = `현재 스테이지: ${currentQuest.value.title}. 로직 유형: ${currentQuest.value.logic_type}. 설명: ${currentQuest.value.description}. 힌트: ${currentQuest.value.validation?.execution?.implementation_hint?.main || ""}`;
+    const systemPrompt = `당신은 주니어 개발자를 위한 설계 멘토 '오리'입니다. ${contextStr}. 사용자의 설계 질문에 친절하고 짧게 답해주세요. 말 끝마다 '꽥'을 붙여주세요.`;
+
+    const contents = chatMessages.value.map(m => ({ 
+      role: m.role === 'assistant' ? 'model' : 'user', 
+      parts: [{ text: m.text }] 
+    }));
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        contents, 
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        generation_config: { temperature: 0.7, max_output_tokens: 300 } 
+      })
     });
 
-    // 실행할 최종 코드: Mock 함수들 + 사용자 코드
-    const finalCode = injectCode + "\n" + userCode.value;
-
-    const result = await runPython(
-        finalCode, 
-        validation?.test_cases || [], 
-        validation?.function_name || ""
-    );
-
-    // [2026-01-24] Parse structured test results from stdout
-    testResults.value = [];
-    let passCount = 0;
-
-    if (result.output) {
-        const lines = result.output.split('\n');
-        lines.forEach(line => {
-            if (line.startsWith('TEST_CASE|')) {
-                const parts = line.split('|');
-                const passed = parts[3] === 'True';
-                if (passed) passCount++;
-                testResults.value.push({
-                    input: parts[1],
-                    output: parts[2],
-                    passed: passed
-                });
-            }
-        });
-    }
-
-    if (testResults.value.length > 0) {
-        accuracy.value = Math.round((passCount / testResults.value.length) * 100);
-    } else {
-        accuracy.value = 0;
-    }
-
-    if (result.success) {
-        const allPassed = testResults.value.length === 0 || testResults.value.every(r => r.passed);
-        executionOutput.value = result.output.split('\n').filter(l => !l.startsWith('TEST_CASE|')).join('\n');
-        isRunPassed.value = allPassed;
-        
-        if (allPassed) {
-            judgeStatus.value = 'ACCEPTED';
-            judgeMessage.value = "와! 완벽하꽥! 모든 테스트 케이스를 통과했어!";
-        } else {
-            judgeStatus.value = 'WRONG ANSWER';
-            judgeMessage.value = "음... 일부 결과가 예상과 다르꽥. 다시 확인해보자꽥!";
-        }
-    } else {
-        executionError.value = result.error;
-        executionOutput.value = result.output;
-        judgeStatus.value = 'RUNTIME ERROR';
-        
-        // 덕 코치 에러 피드백 연결 (Module C)
-        if (result.error.includes("NameError")) {
-            judgeMessage.value = "변수 선언을 깜빡한 것 같아꽥! 정의되지 않은 이름을 쓰고 있진 않은지 확인해보꽥!";
-        } else if (result.error.includes("IndentationError")) {
-            judgeMessage.value = "파이썬은 들여쓰기가 정말 중요하꽥! 줄 맞춤을 다시 확인해보꽥!";
-            judgeStatus.value = 'SYNTAX ERROR';
-        } else if (result.error.includes("AssertionError")) {
-            judgeMessage.value = "결과값이 예상과 다르꽥! 논리나 계산 과정을 다시 검토해보꽥!";
-            judgeStatus.value = 'WRONG ANSWER';
-        } else {
-            judgeMessage.value = "코드를 실행하다 넘어져버렸어꽥! 에러 메시지를 보고 같이 고쳐보자꽥.";
-        }
-    }
+    const data = await response.json();
     
-    if (isRunPassed.value) {
-        setTimeout(() => {
-            goToNextStep();
-        }, 3000);
+    if (data.error) {
+       console.error("Chat API Error:", data.error);
+       // 할당량 초과 시 로컬 지능형 폴백
+       if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') {
+         let fallbackText = `미안하꽥! 지금 질문이 너무 많아서 잠시 쉬어야겠다꽥. 하지만 이 문제의 핵심은 [${currentQuest.value.logic_type}]이라꽥! ${currentQuest.value.validation?.execution?.implementation_hint?.main || "블록 순서를 잘 고민해보꽥!"} 화이팅하꽥!`;
+         
+         if (userText.includes('의도') || userText.includes('이유')) {
+           fallbackText = `이 문제의 의도는 [${currentQuest.value.title}]을(를) 통해 시스템의 논리 구조를 이해하는 거다꽥! ${currentQuest.value.description} 이 부분을 집중해서 조립해보꽥!`;
+         } else if (userText.includes('도움') || userText.includes('힌트') || userText.includes('모르')) {
+           fallbackText = `힌트를 주겠다꽥! ${currentQuest.value.validation?.execution?.implementation_hint?.sub || "블록의 색상과 아이콘을 힌트로 삼아서 순차적으로 배치해보꽥."} 포기하지 마라꽥!`;
+         }
+         
+         chatMessages.value.push({ role: 'assistant', text: fallbackText });
+         return;
+       }
+       throw new Error(data.error.message);
     }
+
+    const botText = data.candidates[0].content.parts[0].text;
+    chatMessages.value.push({ role: 'assistant', text: botText });
+  } catch (e) {
+    console.error("Chat Error:", e);
+    chatMessages.value.push({ role: 'assistant', text: "미안하꽥! 일시적인 통신 오류가 발생했다꽥. 다시 말해달라꽥!" });
+  } finally {
+    isChatLoading.value = false;
+    nextTick(() => {
+      const el = document.getElementById('chat-scroll');
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }
 };
 
-const retry = () => {
-  currentStepIndex.value = 1; // Go back to pseudo code step
+const handleNextQuest = () => {
+  if (hasNextQuest.value) {
+    activeQuestIndex.value++;
+    activeLevel.value = 1;
+    generatedResults.value = null;
+    initQuestBlocks();
+  } else {
+    handleCompleteQuest();
+  }
 };
 
+const handleCompleteQuest = () => {
+  emit('quest-complete', activeQuestIndex.value);
+  emit('close');
+};
+
+// --- 6. Lifecycle & Watches ---
 onMounted(() => {
-  initGame();
-  initPyodide();
+  initQuestBlocks();
+  mermaid.initialize({
+    startOnLoad: false, theme: 'dark', securityLevel: 'loose', fontFamily: 'JetBrains Mono',
+    themeVariables: { primaryColor: '#6366f1', primaryTextColor: '#fff', primaryBorderColor: '#6366f1', lineColor: '#818cf8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+  });
 });
+watch([activeLevel, generatedResults], () => { renderMermaid(); }, { immediate: false });
+watch(() => currentQuest.value, initQuestBlocks);
+
+const practices = ref([
+  { id: "forward", title: "Puzzle Solve", subtitle: "로직 퍼즐 훈련", description: "블록 조립을 통해 알고리즘 설계 능력을 키웁니다.", badge: "Puzzle", badgeColor: "bg-emerald-500/10 text-emerald-400" },
+  { id: "reverse", title: "Logic Analysis", subtitle: "시스템 분석", description: "설계도를 추출하여 고수준 의도를 파악합니다.", badge: "Analysis", badgeColor: "bg-blue-500/10 text-blue-400" }
+]);
 </script>
 
 <style scoped>
-.logic-mirror-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
+.logic-mirror-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(32px); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 2rem; animation: fadeIn 0.4s ease-out; }
+.logic-mirror-container { position: relative; width: 98%; max-width: 1800px; height: 94vh; background: #0f172a; border-radius: 3rem; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; overflow: hidden; box-shadow: 0 100px 200px -50px rgba(0, 0, 0, 0.9); font-family: 'Inter', system-ui, sans-serif; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-close-btn { position: absolute; top: 2rem; right: 2rem; width: 44px; height: 44px; background: rgba(255, 255, 255, 0.05); border-radius: 1rem; color: #64748b; display: flex; align-items: center; justify-content: center; z-index: 1000; transition: all 0.3s; }
+.modal-close-btn:hover { background: #ef4444; color: white; transform: rotate(90deg); }
+
+/* Puzzle Blocks */
+.puzzle-block { position: relative; border-radius: 12px; box-shadow: 0 4px 0 rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.2); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); user-select: none; }
+.puzzle-block.palette { max-height: 44px; margin-bottom: 8px; }
+.puzzle-block.palette:hover { scale: 1.05; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+.puzzle-block.active { width: 100%; max-width: 600px; border-bottom: 4px solid rgba(0,0,0,0.3); }
+
+.puzzle-block-handle { position: absolute; left: 24px; top: -8px; width: 32px; height: 16px; background: inherit; border-radius: 8px 8px 0 0; z-index: 2; border-top: 1px solid rgba(255,255,255,0.2); }
+.puzzle-block-socket { position: absolute; left: 24px; bottom: -8px; width: 32px; height: 16px; background: #020617; border-radius: 0 0 8px 8px; z-index: 1; box-shadow: inset 0 4px 8px rgba(0,0,0,0.5); }
+
+.puzzle-block.blue { background: linear-gradient(to bottom, #3b82f6, #1d4ed8); }
+.puzzle-block.green { background: linear-gradient(to bottom, #059669, #047857); }
+.puzzle-block.purple { background: linear-gradient(to bottom, #8b5cf6, #6d28d9); }
+.puzzle-block.orange { background: linear-gradient(to bottom, #d97706, #b45309); }
+.puzzle-block.red { background: linear-gradient(to bottom, #dc2626, #991b1b); }
+
+.custom-scrollbar-premium {
+  scrollbar-width: auto;
+  scrollbar-color: #f472b6 #020617;
+}
+.custom-scrollbar-premium::-webkit-scrollbar { 
+  width: 14px !important; 
+  height: 14px !important; 
+}
+.custom-scrollbar-premium::-webkit-scrollbar-track { 
+  background: #020617 !important; 
+  border-radius: 10px;
+}
+.custom-scrollbar-premium::-webkit-scrollbar-thumb { 
+  background: linear-gradient(180deg, #f472b6 0%, #db2777 100%) !important; 
+  border-radius: 10px; 
+  border: 3px solid #020617 !important;
+}
+.custom-scrollbar-premium::-webkit-scrollbar-thumb:hover { 
+  background: #ec4899 !important; 
 }
 
-.logic-mirror-modal-container {
-  position: relative;
-  width: 100%;
-  max-width: 1600px;
-  height: 95vh;
-  background: #0d1117;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
+/* Animations */
+.heart-beat { animation: heart-beat 0.3s ease-in-out; }
+@keyframes heart-beat {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
-.modal-close-btn {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  font-size: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10010;
-  transition: all 0.3s;
-}
-
-.modal-close-btn:hover {
-  background: #ff4b4b;
-  transform: rotate(90deg);
-}
-
-.loading-screen {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logic-mirror-pipeline {
-  flex: 1;
-  padding: 1.5rem 2rem;
-  overflow-y: auto;
-}
-
-.pipeline-progress {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 1rem;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.progress-steps {
-  display: flex;
-  justify-content: space-between;
-  position: relative;
-}
-
-.progress-steps::before {
-  content: '';
-  position: absolute;
-  top: 20px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.1);
-  z-index: 0;
-}
-
-.progress-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-  z-index: 1;
-}
-
-.step-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 700;
-  transition: all 0.3s ease;
-}
-
-.progress-step.active .step-number {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: white;
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
-}
-
-.progress-step.completed .step-number {
-  background: #4ade80;
-  border-color: #4ade80;
-  color: white;
-}
-
-.step-number {
-  width: 32px;
-  height: 32px;
-  font-size: 0.8rem;
-}
-
-.step-label {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.progress-step.active .step-label {
-  color: white;
-}
-
-.pipeline-step {
-  animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.step-container {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-/* Problem Step */
-.problem-header {
-  display: flex;
-  gap: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1.5rem 2rem;
-  border-radius: 1rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.problem-emoji {
-  font-size: 3rem;
-}
-
-.problem-info {
-  flex: 1;
-}
-
-.problem-title {
-  color: white;
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin: 0 0 0.5rem 0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.quest-num-label {
-  background: #ffeb3b;
-  color: #1a1f2e;
-  padding: 0.2rem 0.6rem;
-  border-radius: 0.5rem;
-  font-size: 1.2rem;
-  font-weight: 900;
-  box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
-}
-
-.problem-description {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1rem;
-  line-height: 1.5;
-  margin: 0 0 0.75rem 0;
-}
-
-.problem-meta {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.logic-type,
-.level-badge {
-  background: rgba(102, 126, 234, 0.3);
-  color: #a5b4fc;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.level-badge {
-  background: rgba(255, 215, 0, 0.3);
-  color: #ffd700;
-}
-
-.examples-box {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.examples-box h3 {
-  color: white;
-  margin: 0 0 1rem 0;
-}
-
-.examples-box pre {
-  color: rgba(255, 255, 255, 0.8);
-  font-family: 'Courier New', monospace;
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-.interviewer-intro {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-/* [2026-01-24] 덕 코칭 아바타(노란 영역) 크기를 60px에서 100px로 확대하고 시인성 개선을 위해 border 및 shadow 추가 */
-.interviewer-avatar {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.duck-coach-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.05);
-}
-
-.interviewer-bubble {
-  flex: 1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  border-radius: 1rem;
-  padding: 1.5rem;
-}
-
-.interviewer-label {
-  background: rgba(102, 126, 234, 0.3);
-  color: #a5b4fc;
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: inline-block;
-  margin-bottom: 0.75rem;
-}
-
-.interviewer-bubble p {
-  color: white;
-  font-size: 1rem;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.next-step-btn,
-.submit-btn,
-.confirm-btn,
-.next-quest-btn,
-.complete-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  color: white;
-  padding: 1.25rem 2rem;
-  border-radius: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-  width: 100%;
-}
-
-.next-step-btn:hover,
-.submit-btn:hover,
-.confirm-btn:hover,
-.next-quest-btn:hover,
-.complete-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
-}
-
-/* Pseudo Code Step */
-.step-title {
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin: 0 0 0.25rem 0;
-}
-
-.step-subtitle {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1rem;
-  margin: 0 0 1.5rem 0;
-}
-
-.pseudocode-layout {
-  display: grid;
-  grid-template-columns: 350px 450px 1fr; /* [2026-01-24] 3단 레이아웃으로 확대 */
-  gap: 1.5rem;
-  align-items: stretch;
-}
-
-.flex-column {
-  display: flex;
-  flex-direction: column;
-}
-
-.card-deck-section,
-.drop-zone-section {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 2rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0 0 1.5rem 0;
-}
-
-.cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 450px;
-  overflow-y: auto;
-}
-
-.action-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
-  display: flex;
-  gap: 0.75rem;
-  cursor: grab;
-  transition: all 0.3s ease;
-}
-
-.action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.action-card:active {
-  cursor: grabbing;
-}
-
-.card-blue { border-left: 4px solid #60a5fa; }
-.card-purple { border-left: 4px solid #a78bfa; }
-.card-green { border-left: 4px solid #4ade80; }
-.card-orange { border-left: 4px solid #fb923c; }
-.card-red { border-left: 4px solid #f87171; }
-.card-pink { border-left: 4px solid #f472b6; }
-
-.card-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
-}
-
-.card-content {
-  flex: 1;
-}
-
-.card-text {
-  color: white;
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-}
-
-.card-code {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.75rem;
-  font-family: 'Courier New', monospace;
-}
-
-.drop-zone {
-  min-height: 400px;
-  border: 2px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.drop-zone.drag-over {
-  border-color: #60a5fa;
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 350px;
-  gap: 0.75rem;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  opacity: 0.3;
-}
-
-.empty-state p {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 1rem;
-}
-
-.sequence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.sequence-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  animation: slideIn 0.3s ease;
-}
-
-.sequence-card.shake {
-  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-  border-color: #ff4b4b !important;
-  background: rgba(255, 75, 75, 0.1) !important;
-}
-
+.animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake {
   10%, 90% { transform: translate3d(-1px, 0, 0); }
   20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -1395,794 +977,25 @@ onMounted(() => {
   40%, 60% { transform: translate3d(4px, 0, 0); }
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.seq-number {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.remove-btn,
-.clear-btn {
-  background: rgba(248, 113, 113, 0.2);
-  border: 1px solid rgba(248, 113, 113, 0.3);
-  color: #f87171;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.remove-btn:hover,
-.clear-btn:hover {
-  background: rgba(248, 113, 113, 0.3);
-}
-
-.remove-btn {
-  flex-shrink: 0;
-}
-
-/* Visualization Section [2026-01-24] */
-.visualization-section {
-  background: rgba(15, 15, 20, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.2rem;
-  padding: 1.8rem;
-  display: flex;
-  flex-direction: column;
-  min-height: 500px;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
-}
-
-.mermaid-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  padding: 1rem;
-}
-
-.vis-empty-state {
-  color: rgba(255, 255, 255, 0.2);
-  font-style: italic;
-  font-size: 0.95rem;
-  text-align: center;
-}
-
-/* Mermaid SVG Style Overrides */
-:deep(.mermaid-container svg) {
-  max-width: 100%;
-  height: auto;
-  filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.4));
-}
-
-/* Pre-submission Query */
-.submitted-code-box {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-
-.submitted-code-box h3 {
-  color: white;
-  margin: 0 0 1rem 0;
-}
-
-.code-preview {
-  background: #0d1117;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  font-family: 'Courier New', monospace;
-}
-
-.code-line {
-  display: flex;
-  gap: 1rem;
-  color: white;
-  font-size: 0.95rem;
-  line-height: 1.8;
-}
-
-.line-number {
-  color: rgba(255, 255, 255, 0.3);
-  min-width: 30px;
-  text-align: right;
-}
-
-.line-code {
-  flex: 1;
-}
-
-.interviewer-questions {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.question-bubble {
-  flex: 1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  border-radius: 1rem;
-  padding: 1.5rem;
-}
-
-.question-text {
-  color: white;
-  font-size: 1.1rem;
-  margin: 0 0 1.5rem 0;
-}
-
-.answer-options {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.option-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.option-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.option-btn.selected {
-  background: rgba(102, 126, 234, 0.3);
-  border-color: #667eea;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-}
-
-.back-btn,
-.skip-btn,
-.retry-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex: 1;
-}
-
-.back-btn:hover,
-.skip-btn:hover,
-.retry-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.confirm-btn {
-  flex: 2;
-}
-
-.confirm-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Implementation Step */
-.result-header {
-  display: flex;
-  gap: 2rem;
-  padding: 2rem;
-  border-radius: 1rem;
-  margin-bottom: 2rem;
-}
-
-.result-header.success {
-  background: rgba(74, 222, 128, 0.1);
-  border: 2px solid #4ade80;
-}
-
-.result-header.failure {
-  background: rgba(251, 146, 60, 0.1);
-  border: 2px solid #fb923c;
-}
-
-.result-icon {
-  font-size: 4rem;
-}
-
-.result-content h2 {
-  color: white;
-  font-size: 1.75rem;
-  margin: 0 0 0.5rem 0;
-}
-
-.hint-text {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1rem;
-  margin: 0;
-}
-
-.implementation-section {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 2rem;
-}
-
-.implementation-section h3 {
-  color: white;
-  margin: 0 0 0.5rem 0;
-}
-
-.section-desc {
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 1.5rem 0;
-}
-
-.code-editor.monaco-wrapper {
-  background: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 2rem;
-  height: 350px; /* Fixed height for Monaco */
-  box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.code-editor.monaco-wrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-}
-
-.professional-editor {
-  width: 100%;
-  height: 100%;
-}
-
-.editor-header {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.85rem;
-}
-
-/* Old textarea removed in favor of Monaco */
-
-.implementation-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.left-actions {
-  display: flex;
-  gap: 1rem;
-  flex: 2;
-}
-
-.hint-btn {
-  background: rgba(255, 184, 0, 0.08);
-  color: #FFB800;
-  border: 1px solid rgba(255, 184, 0, 0.2);
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.hint-btn:hover {
-  background: rgba(255, 184, 0, 0.15);
-  border-color: rgba(255, 184, 0, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(255, 184, 0, 0.1);
-}
-
-.hint-overlay-box {
-  margin-top: 2rem;
-  background: rgba(15, 15, 20, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 184, 0, 0.3);
-  border-left: 5px solid #FFB800;
-  border-radius: 12px;
-  overflow: hidden;
-  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 184, 0, 0.1);
-}
-
-.hint-header {
-  background: rgba(255, 184, 0, 0.1);
-  padding: 1rem 1.5rem;
-  color: #FFB800;
-  font-weight: 800;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  border-bottom: 1px solid rgba(255, 184, 0, 0.1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.hint-status-dot {
-  width: 10px;
-  height: 10px;
-  background: #FFB800;
-  border-radius: 50%;
-  box-shadow: 0 0 12px #FFB800;
-}
-
-.hint-content {
-  padding: 1.8rem;
-}
-
-.hint-main-desc {
-  color: white;
-  margin-bottom: 1.2rem;
-  font-size: 1.05rem;
-  line-height: 1.6;
-}
-
-.hint-main-desc code {
-  color: #FFB800;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-weight: 700;
-}
-
-.hint-divider {
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 184, 0, 0.2), transparent);
-  margin: 1.5rem 0;
-}
-
-.hint-sub-desc {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.95rem;
-  margin-bottom: 1.2rem;
-}
-
-.hint-code-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.hint-code-list li {
-  background: rgba(255, 255, 255, 0.04);
-  padding: 0.9rem 1.2rem;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform 0.2s;
-}
-
-.hint-code-list li:hover {
-  transform: translateX(5px);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.card-icon {
-  font-size: 1.4rem;
-}
-
-.hint-code-list code {
-  color: #b6ff40;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4);
-}
-
-.card-text-ko {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.9rem;
-  margin-left: auto;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-15px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Test Results Table [2026-01-24] */
-.test-results-container {
-  margin-top: 1rem;
-  overflow-x: auto;
-}
-
-.test-results-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.test-results-table th, 
-.test-results-table td {
-  padding: 0.6rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.test-results-table th {
-  background: rgba(0, 0, 0, 0.2);
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-}
-
-.test-results-table tr.pass {
-  background: rgba(88, 204, 2, 0.05);
-}
-
-.test-results-table tr.fail {
-  background: rgba(255, 75, 75, 0.05);
-}
-
-.test-results-table tr.pass td:last-child {
-  color: #58cc02;
-}
-
-.test-results-table tr.fail td:last-child {
-  color: #ff4b4b;
-}
-
-.test-results-table code {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-family: monospace;
-}
-
-.execution-feedback {
-  margin-top: 1.5rem;
-  animation: fadeIn 0.4s ease;
-  background: rgba(10, 10, 15, 0.6);
-  backdrop-filter: blur(10px);
-  padding: 1.8rem;
-  border-radius: 1.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-/* Judge Status UI [2026-01-24] */
-.judge-status-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.05); /* Default */
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.status-badge.ready {
-  background: rgba(33, 150, 243, 0.2);
-  color: #2196f3;
-  border: 1px solid rgba(33, 150, 243, 0.3);
-}
-
-.judge-mini-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 900;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #58cc02;
-  color: white;
-  margin-bottom: 0.4rem;
-  letter-spacing: 0.5px;
-}
-
-.status-badge.accepted {
-  background: rgba(88, 204, 2, 0.2);
-  color: #58cc02;
-  border: 1px solid rgba(88, 204, 2, 0.3);
-}
-
-.status-badge.wrong-answer {
-  background: rgba(255, 75, 75, 0.2);
-  color: #ff4b4b;
-  border: 1px solid rgba(255, 75, 75, 0.3);
-}
-
-.status-badge.runtime-error,
-.status-badge.syntax-error {
-  background: rgba(255, 152, 0, 0.2);
-  color: #ff9800;
-  border: 1px solid rgba(255, 152, 0, 0.3);
-}
-
-.accuracy-info {
-  text-align: right;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.accuracy-info .percent {
-  color: white;
-  font-weight: bold;
-}
-
-.accuracy-bar {
-  width: 120px;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  margin-top: 4px;
-}
-
-.accuracy-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #FFB800, #b6ff40);
-  border-radius: 3px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.execution-msg {
-  color: white;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.execution-msg.error {
-  color: #ff9e9e;
-}
-
-.stdout-box {
-  background: rgba(0, 0, 0, 0.5);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-top: 1rem;
-  color: #a7f3d0;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  max-height: 150px;
-  overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.run-btn {
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  border: none;
-  color: white;
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.run-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(74, 222, 128, 0.3);
-}
-
-/* Follow-up Step */
-.completion-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.completion-icon {
-  font-size: 6rem;
-  margin-bottom: 1rem;
-}
-
-.completion-title {
-  color: white;
-  font-size: 3rem;
-  font-weight: 800;
-  margin: 0;
-}
-
-.interviewer-followup {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-}
-
-.followup-bubble {
-  flex: 1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  border-radius: 1rem;
-  padding: 1.5rem;
-}
-
-.followup-question {
-  color: white;
-  font-size: 1.2rem;
-  line-height: 1.6;
-  margin: 0;
-}
-
-/* [2026-01-24] 심화 평가 인터랙티브 요소 스타일 추가 */
-.followup-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.followup-option-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 1.25rem 1.5rem;
-  border-radius: 1rem;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: left;
-  line-height: 1.4;
-}
-
-.followup-option-btn:hover {
-  background: rgba(102, 126, 234, 0.15);
-  border-color: #667eea;
-  transform: translateZ(10px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
-
-.followup-feedback-box {
-  margin-top: 2rem;
-  padding: 2rem;
-  border-radius: 1.2rem;
-  animation: fadeIn 0.4s ease;
-  backdrop-filter: blur(10px);
-}
-
-.followup-feedback-box.pass {
-  background: rgba(74, 222, 128, 0.1);
-  border: 1px solid rgba(74, 222, 128, 0.2);
-}
-
-.followup-feedback-box.fail {
-  background: rgba(255, 75, 75, 0.1);
-  border: 1px solid rgba(255, 75, 75, 0.2);
-}
-
-.feedback-status {
-  font-weight: 900;
-  font-size: 1.2rem;
-  margin-bottom: 0.75rem;
-}
-
-.pass .feedback-status { color: #4ade80; }
-.fail .feedback-status { color: #ff6b6b; }
-
-.explanation-text {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.1rem;
-  line-height: 1.7;
-}
-
-.re-answer-btn {
-  margin-top: 1.25rem;
-  background: #ff4b4b;
-  border: none;
-  color: white;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-}
-
-.re-answer-btn:hover {
-  background: #ff6b6b;
-}
-
-.learning-summary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-
-.learning-summary h3 {
-  color: white;
-  margin: 0 0 1rem 0;
-}
-
-.learning-points {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.learning-points li {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1rem;
-  padding: 0.75rem 0;
-  padding-left: 2rem;
-  position: relative;
-}
-
-.learning-points li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: #4ade80;
-  font-weight: 700;
-}
-
-.navigation-buttons {
-  display: flex;
-  gap: 1rem;
-}
-
-@media (max-width: 1024px) {
-  .pseudocode-layout {
-    grid-template-columns: 1fr;
-  }
-}
+.animate-glitch { animation: glitch 0.2s linear infinite; }
+@keyframes glitch {
+  0% { opacity: 0.5; transform: scale(1) translate(0); }
+  20% { opacity: 0.8; transform: scale(1.02) translate(-5px, 5px); }
+  40% { opacity: 0.5; transform: scale(0.98) translate(5px, -5px); }
+  60% { opacity: 0.8; transform: scale(1.01) translate(-5px, -5px); }
+  80% { opacity: 0.5; transform: scale(0.99) translate(5px, 5px); }
+  100% { opacity: 0.5; transform: scale(1) translate(0); }
+}
+
+.splash-enter-active, .splash-leave-active { transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.splash-enter-from, .splash-leave-to { opacity: 0; backdrop-filter: blur(0px); }
+.splash-enter-from .animate-in { transform: scale(0.8); opacity: 0; }
+
+.custom-scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.custom-scrollbar-none::-webkit-scrollbar { display: none; }
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.animate-shimmer { animation: shimmer 2s infinite; }
 </style>
+```

@@ -93,6 +93,8 @@
                      'hidden': !isIndexVisible(idx)
                    }
                  ]"
+                 @mouseenter="handleCardHover(idx)"
+                 @mouseleave="clearHoverTimer"
                  @click="handleCardClick(chapter, idx)">
               <div class="card-inner-v2">
                 <div class="card-image-wrap-v2">
@@ -247,7 +249,8 @@ export default {
     return {
       currentIdx: 0,
       isScrolled: false,
-      scrollTicking: false
+      scrollTicking: false,
+      hoverTimer: null
     };
   },
   computed: {
@@ -329,6 +332,26 @@ export default {
       return diff <= 1 || diff === this.chapters.length - 1;
     },
     /**
+     * [카드 호버 핸들러]
+     * - 마우스가 근처 카드에 상주할 때만 전환되도록 지연(250ms)을 둡니다.
+     * - 빠른 마우스 이동으로 인한 오작동을 방지합니다.
+     */
+    handleCardHover(idx) {
+      if (this.currentIdx === idx) return;
+      
+      clearTimeout(this.hoverTimer);
+      this.hoverTimer = setTimeout(() => {
+        this.currentIdx = idx;
+      }, 250); // 0.25초 이상 머물렀을 때만 전환
+    },
+    /**
+     * [호버 타이머 초기화]
+     * - 마우스가 카드를 벗어나면 전환 예약을 취소합니다.
+     */
+    clearHoverTimer() {
+      clearTimeout(this.hoverTimer);
+    },
+    /**
      * [카드 클릭 핸들러]
      * - 이미 선택된 카드 클릭 시 상세 팝업을 열고, 아니면 해당 카드를 중앙으로 이동시킵니다.
      */
@@ -348,6 +371,7 @@ export default {
   },
   unmounted() {
     window.removeEventListener('scroll', this.handleScroll);
+    clearTimeout(this.hoverTimer);
   },
   updated() {
     this.$nextTick(() => {
@@ -998,9 +1022,9 @@ export default {
 
 /* Nav Buttons */
 .slider-nav {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -1008,15 +1032,22 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
   z-index: 20;
+  backdrop-filter: blur(5px);
 }
 
 .slider-nav:hover {
   background: #b6ff40;
   color: #000;
-  transform: scale(1.1);
+  transform: scale(1.1) rotate(5deg);
   box-shadow: 0 0 30px rgba(182, 255, 64, 0.4);
+  border-color: #b6ff40;
+}
+
+.playground-slider-container:hover .slider-nav {
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Pagination */
