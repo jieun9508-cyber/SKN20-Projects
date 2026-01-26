@@ -31,103 +31,6 @@
       </div>
     </transition>
 
-    <!-- 모드 선택 화면 -->
-    <div v-if="currentView === 'menu'" class="menu-container">
-      <header class="header">
-        <h1>DEBUG GYM</h1>
-        <div class="subtitle">// PYTHON BUG HUNTING TRAINING SYSTEM v3.0</div>
-
-        <!-- 플레이어 스탯 바 -->
-        <div class="player-stats-bar">
-          <div class="stat-item level-stat">
-            <span class="stat-icon">🎖️</span>
-            <span class="stat-label">Lv.{{ gameData.level }}</span>
-            <span class="stat-title">{{ currentLevelInfo.title }}</span>
-          </div>
-          <div class="stat-item xp-stat">
-            <div class="xp-bar-container">
-              <div class="xp-bar-fill" :style="{ width: currentLevelInfo.progress + '%' }"></div>
-              <span class="xp-text">{{ gameData.xp }} XP</span>
-            </div>
-          </div>
-          <div class="stat-item score-stat">
-            <span class="stat-icon">🏆</span>
-            <span class="stat-value">{{ gameData.totalScore }}</span>
-          </div>
-          <button class="stats-btn" @click="showStatsPanel = true">📊 STATS</button>
-        </div>
-      </header>
-
-      <!-- 미션 선택 그리드 (순차 해금) -->
-      <div class="mission-selection">
-        <h2 class="section-title">🎯 PROGRESSIVE MISSIONS</h2>
-        <div class="mission-grid">
-          <div
-            v-for="(mission, index) in progressiveProblems"
-            :key="mission.id"
-            class="mission-card"
-            :class="{
-              completed: isMissionCompleted(mission.id),
-              locked: !isMissionUnlocked(index),
-              current: isMissionUnlocked(index) && !isMissionCompleted(mission.id)
-            }"
-            @click="startProgressiveMission(mission, index)"
-          >
-            <div class="mission-lock" v-if="!isMissionUnlocked(index)">
-              <span class="lock-icon">🔒</span>
-              <span class="lock-text">Mission {{ index }} 완료 필요</span>
-            </div>
-            <div class="mission-content" :class="{ blurred: !isMissionUnlocked(index) }">
-              <div class="mission-header">
-                <span class="mission-id">{{ mission.id }}</span>
-                <span class="difficulty">
-                  <span v-for="n in 3" :key="n" :class="{ active: n <= mission.difficulty }">★</span>
-                </span>
-              </div>
-              <h3>{{ mission.project_title }}</h3>
-              <p class="mission-scenario">{{ mission.scenario.substring(0, 80) }}...</p>
-              <div class="step-progress">
-                <div
-                  v-for="step in mission.steps"
-                  :key="step.step"
-                  class="step-dot"
-                  :class="{
-                    completed: isStepCompleted(mission.id, step.step),
-                    current: getCurrentStep(mission.id) === step.step
-                  }"
-                >
-                  <span class="step-type">{{ step.bug_type }}</span>
-                </div>
-              </div>
-              <div v-if="isMissionCompleted(mission.id)" class="completed-badge">✓ ALL CLEAR</div>
-              <button
-                v-if="isMissionCompleted(mission.id)"
-                class="replay-btn"
-                @click.stop="replayMission(mission)"
-              >
-                🔄 다시 풀기
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 도전과제 섹션 -->
-      <div class="achievements-section">
-        <h2>🏅 ACHIEVEMENTS ({{ unlockedAchievements.length }}/{{ allAchievements.length }})</h2>
-        <div class="achievements-grid">
-          <div
-            v-for="achievement in allAchievements"
-            :key="achievement.id"
-            class="achievement-card"
-            :class="{ unlocked: gameData.achievements.includes(achievement.id) }"
-          >
-            <span class="achievement-icon">{{ achievement.icon }}</span>
-            <span class="achievement-name">{{ achievement.name }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- 스탯 패널 -->
     <transition name="fade">
@@ -1154,12 +1057,7 @@ function completeMission() {
 function finishProgressiveMission() {
   showMissionComplete.value = false;
   stopBugAnimations();
-  
-  if (route.query.mapMode === 'true') {
-    router.push('/'); // 맵으로 복귀
-  } else {
-    currentView.value = 'menu';
-  }
+  router.push('/'); // 메인 페이지로 복귀
 }
 
 // 에디터 프레임 참조
@@ -1348,7 +1246,7 @@ function confirmExit() {
 function exitPractice() {
   showExitConfirm.value = false;
   stopBugAnimations();
-  currentView.value = 'menu';
+  router.push('/');
 }
 
 function resetGameData() {

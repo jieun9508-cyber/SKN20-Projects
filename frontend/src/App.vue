@@ -158,15 +158,27 @@ const isPracticePage = computed(() => {
 const displayProblems = computed(() => {
   if (game.activeUnit?.name === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
-        return game.activeUnit?.problems || [];
+      // Bug Hunt의 경우 progressive-problems.json에서 동적으로 로드
+      return progressiveData.progressiveProblems.map(mission => ({
+        id: mission.id,
+        title: mission.project_title,
+        displayNum: mission.id
+      }));
+    } else {
+      // Vibe Code Clean Up
+      const title = 'Vibe Code Clean Up';
+      return [{ id: game.currentDebugMode, title }];
     }
-    const title = 'Vibe Code Clean Up';
-    return [{ id: game.currentDebugMode, title }];
   }
   return game.activeUnit?.problems || [];
 });
 
 const displayLabelsCount = computed(() => {
+  if (game.activeUnit?.name === 'Debug Practice') {
+    // Bug Hunt는 progressive 문제 개수에 맞춰 계산
+    const currentCount = displayProblems.value?.length || 0;
+    return Math.max(0, 7 - currentCount); // 전체 10개 노드 중 현재 문제 수를 뺀 나머지
+  }
   const currentCount = displayProblems.value?.length || 0;
   return Math.max(0, 10 - currentCount);
 });
@@ -239,11 +251,13 @@ function selectProblem(problem) {
     router.push('/practice/system-architecture');
   } else if (chapterName === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
+      // p1, p2, p3 미션으로 바로 이동
       router.push({
         path: '/practice/bug-hunt',
-        query: { missionId: problem.missionId, mapMode: 'true' }
+        query: { missionId: problem.id, mapMode: 'true' }
       });
     } else {
+      // Vibe Code Clean Up
       router.push('/practice/vibe-cleanup');
     }
   } else if (chapterName === 'Ops Practice') {
@@ -260,6 +274,12 @@ function selectProblem(problem) {
 
 function selectGameMode(mode) {
   game.currentDebugMode = mode;
+
+  // Bug Hunt 모드로 전환 시 진행도 동기화
+  if (mode === 'bug-hunt') {
+    syncDebugProgress();
+  }
+
   if (game.activeUnit?.name === 'Debug Practice') {
     const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(route.name);
     if (isDebugRoute) {
