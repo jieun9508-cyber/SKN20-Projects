@@ -1,6 +1,6 @@
-<!-- 
-수정일: 2026-01-20
-수정내용: 'Coding Gym' 테마 적용 및 인덱스 페이지(index copy.html) 디자인 포팅
+<!--
+수정일: 2026-01-26
+수정내용: Composition API + Pinia stores로 리팩토링
 -->
 <template>
   <div id="app" v-cloak>
@@ -9,7 +9,7 @@
 
     <!-- [메인 페이지] -->
     <template v-else>
-      <LandingView 
+      <LandingView
         :isLoggedIn="auth.isLoggedIn"
         :userProteinShakes="auth.userProteinShakes"
         :chapters="game.chapters"
@@ -32,7 +32,7 @@
         </template>
       </LandingView>
 
-      <!-- [유닛 상세 팝업 모달] - [2026-01-24] 상태값만 스토어 연결 및 유지 -->
+      <!-- [유닛 상세 팝업 모달] -->
       <transition name="fade">
         <div v-if="ui.isUnitModalOpen" class="modal-overlay" @click.self="ui.isUnitModalOpen = false">
           <div class="unit-detail-modal">
@@ -51,7 +51,6 @@
                 </h2>
               </div>
               <div style="display: flex; align-items: center;">
-                <!-- [2026-01-24] 버튼은 모든 유닛에서 노출, 클릭 로직에서 유닛별 분기 처리 -->
                 <button class="guidebook-btn-v3" @click="handleGuidebookClick">
                   <span class="btn-icon-wrapper"><i data-lucide="book-open"></i></span>
                   GUIDEBOOK
@@ -67,22 +66,38 @@
                 </svg>
 
                 <div v-for="(problem, pIdx) in displayProblems" :key="problem.id" class="node-platform-v3"
-                  :class="['node-' + pIdx, { active: pIdx === currentMaxIdx, unlocked: currentUnitProgress.includes(pIdx) }]"
-                  @click="isUnlocked(pIdx) && (selectProblem(problem, game.activeUnit), ui.isUnitModalOpen = false)">
-                  <div class="platform-glow-v3" v-if="pIdx === currentMaxIdx"></div>
-                  <div class="platform-circle-v3">
-                    <template v-if="currentUnitProgress.includes(pIdx)">
-                      <img v-if="pIdx === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
-                      <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
-                    </template>
-                    <template v-else>
-                      <i data-lucide="lock" class="lock-icon-v3"></i>
-                    </template>
-                  </div>
-                  <div class="node-label-premium">{{ problem.displayNum || problem.title }} - {{ problem.title }}</div>
+                :class="['node-' + pIdx, {
+                  active: pIdx === currentMaxIdx,
+                  unlocked: game.currentUnitProgress.includes(pIdx)
+                }]"
+                @click="isUnlocked(pIdx) && selectProblem(problem)">
+
+                <div class="platform-glow-v3" v-if="pIdx === currentMaxIdx"></div>
+
+                <div class="platform-circle-v3">
+                  <template v-if="game.currentUnitProgress.includes(pIdx)">
+                    <img v-if="pIdx === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
+                    <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
+                  </template>
+                  <template v-else>
+                    <i data-lucide="lock" class="lock-icon-v3"></i>
+                  </template>
+                </div>
+
+                <div class="node-label-premium">
+                  {{ problem.displayNum || problem.title }} - {{ problem.title }}
+                </div>
+              </div>
+
+              <!-- Decorative Locked Nodes -->
+              <div v-for="i in displayLabelsCount" :key="'extra-' + i" class="node-platform-v3 locked"
+                :class="'node-' + (displayProblems.length + i - 1)">
+                <div class="platform-circle-v3">
+                  <i data-lucide="lock" class="lock-icon-v3"></i>
                 </div>
               </div>
             </div>
+          </div>
 
             <footer class="unit-stats-bar-v3">
               <template v-if="game.activeUnit?.name === 'Debug Practice'">
@@ -99,13 +114,13 @@
       </transition>
     </template>
 
-    <!-- [전역 모달 통합 컨테이너] - [2026-01-24] 리팩토링 적용 -->
+    <!-- [전역 모달 통합 컨테이너] -->
     <GlobalModals />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUpdated, nextTick } from 'vue';
+import { ref, computed, onMounted, onUpdated, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -115,154 +130,142 @@ import './style.css';
 import LandingView from './features/home/LandingView.vue';
 import GlobalModals from './components/GlobalModals.vue';
 
-/**
- * [수정일: 2026-01-24]
- * [수정내용: App.vue를 초경량화하고 비즈니스 로직을 Pinia Store로 이전. 
- *  팀 협업 시 App.vue 충돌을 최소화하도록 설계.]
- */
-
-// Pinia 인증 스토어: 사용자 로그인 상태 및 로그아웃 기능 관리
+// Stores
 const auth = useAuthStore();
-// Pinia 게임 데이터 스토어: 챕터 정보 및 유닛별 진행도 기록 관리
 const game = useGameStore();
-// Pinia UI 상태 스토어: 로그인, 유닛 상세 등 모든 전역 모달의 열림 상태 관리
 const ui = useUiStore();
-// 현재 활성화된 라우트 정보를 참조하기 위한 객체
+
+// Router
 const route = useRoute();
-// 다른 페이지로의 내비게이션 이동을 제어하기 위한 객체
 const router = useRouter();
 
-// 실시간 사용자 랭킹을 표시하기 위한 목업(더미) 데이터
-const leaderboard = [
-    { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
-    { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
-    { id: 3, username: 'VueNinja', solved: 38, shakes: 1850 },
-    { id: 4, username: 'AgentZero', solved: 35, shakes: 1600 },
-    { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
-];
+// Local State
+const leaderboard = ref([
+  { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
+  { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
+  { id: 3, username: 'VueNinja', solved: 38, shakes: 1850 },
+  { id: 4, username: 'AgentZero', solved: 35, shakes: 1600 },
+  { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
+]);
 
 // Computed
-// 현재 보고 있는 화면이 실습(Practice) 도구 페이지인지 판단 (배경 레이아웃 제어용)
 const isPracticePage = computed(() => {
-    // [2026-01-24] LogicMirror는 모달로 띄우기 위해 practiceRoutes에서 제외 (배경 유지 목적)
-    const practiceRoutes = ['LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
-    return practiceRoutes.includes(route.name);
+  const practiceRoutes = ['LogicMirror', 'LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
+  return practiceRoutes.includes(route?.name);
 });
 
-// 현재 활성화된 유닛의 실습 진행 상태 데이터
-const currentUnitProgress = computed(() => game.currentUnitProgress);
-// 유닛 내에서 현재까지 도달한 가장 높은 스테이지 인덱스 (캐릭터 위치 표시용)
-const currentMaxIdx = computed(() => Math.max(...currentUnitProgress.value));
-
-// 유닛 상세 팝업에서 실제로 렌더링할 문제 목록 데이터
 const displayProblems = computed(() => {
-    if (game.activeUnit?.name === 'Debug Practice') {
-        const title = game.currentDebugMode === 'bug-hunt' ? 'Bug Hunt' : 'Vibe Code Clean Up';
-        return [{ id: game.currentDebugMode, title }];
-    }
-    return game.activeUnit?.problems || [];
+  if (game.activeUnit?.name === 'Debug Practice') {
+    const title = game.currentDebugMode === 'bug-hunt' ? 'Bug Hunt' : 'Vibe Code Clean Up';
+    return [{ id: game.currentDebugMode, title }];
+  }
+  return game.activeUnit?.problems || [];
 });
 
-// UI 배치를 맞추기 위해 추가로 필요한 잠긴 노드(더미)의 개수 계산
-const displayLabelsCount = computed(() => Math.max(0, 6 - (displayProblems.value?.length || 0)));
+const displayLabelsCount = computed(() => {
+  const currentCount = displayProblems.value?.length || 0;
+  return Math.max(0, 6 - currentCount);
+});
+
+const currentMaxIdx = computed(() => {
+  return Math.max(...game.currentUnitProgress);
+});
 
 // Methods
-// 특정 챕터(유닛)의 상세 정보 및 스테이지 선택 팝업을 여는 기능
-const openUnitPopup = (unit) => {
-    if (!auth.isLoggedIn) {
-        ui.isAuthRequiredModalOpen = true;
-        return;
-    }
-    game.setActiveUnit(unit);
-    if (unit?.name === 'Debug Practice') game.currentDebugMode = 'bug-hunt';
-    ui.openUnit();
-};
+function isUnlocked(pIdx) {
+  return game.currentUnitProgress.includes(pIdx);
+}
 
-// 특정 문제를 선택했을 때 해당 실습 화면으로 진입하거나 해당 모달을 활성화하는 기능
-const selectProblem = (problem, chapter) => {
-    if (!auth.isLoggedIn) { ui.isAuthRequiredModalOpen = true; return; }
-    game.activeProblem = problem;
-    game.activeChapter = chapter;
+function openUnitPopup(unit) {
+  if (!auth.isLoggedIn) {
+    ui.isAuthRequiredModalOpen = true;
+    return;
+  }
+  game.setActiveUnit(unit);
+  if (unit?.name === 'Debug Practice') {
+    game.currentDebugMode = 'bug-hunt';
+  }
+  ui.isUnitModalOpen = true;
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
 
-    if (chapter?.name === 'Pseudo Practice') {
-        game.selectedQuestIndex = problem.questIndex || 0;
-        // [2026-01-24] 직접 불리언을 바꾸지 않고 라우터를 통해 모달 진입
-        router.push('/practice/logic-mirror');
-    } else if (chapter?.name === 'System Practice') {
-        router.push('/practice/system-architecture');
-    } else if (chapter?.name === 'Debug Practice') {
-        router.push(game.currentDebugMode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup');
-    } else if (chapter?.name === 'Ops Practice') {
-        router.push('/practice/ops-practice');
-    } else if (chapter?.name === 'Agent Practice') {
-        ui.isAgentModalOpen = true;
+function selectProblem(problem) {
+  if (!auth.isLoggedIn) {
+    ui.isAuthRequiredModalOpen = true;
+    return;
+  }
+
+  game.activeProblem = problem;
+  game.activeChapter = game.activeUnit;
+  ui.isUnitModalOpen = false;
+
+  const chapterName = game.activeUnit?.name;
+
+  if (chapterName === 'Pseudo Practice') {
+    game.selectedQuestIndex = problem.questIndex || 0;
+    ui.isLogicMirrorOpen = true;
+  } else if (chapterName === 'System Practice') {
+    router.push('/practice/system-architecture');
+  } else if (chapterName === 'Debug Practice') {
+    if (game.currentDebugMode === 'bug-hunt') {
+      router.push('/practice/bug-hunt');
     } else {
-        ui.isConstructionModalOpen = true;
+      router.push('/practice/vibe-cleanup');
     }
-};
+  } else if (chapterName === 'Ops Practice') {
+    router.push('/practice/ops-practice');
+  } else if (chapterName === 'Agent Practice') {
+    ui.isAgentModalOpen = true;
+    nextTick(() => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  } else {
+    ui.isConstructionModalOpen = true;
+  }
+}
 
-// 디버그 GYM 등에서 서로 다른 게임 모드(Bug Hunt vs Cleanup)를 전환하는 기능
-const selectGameMode = (mode) => {
-    game.currentDebugMode = mode;
-    if (game.activeUnit?.name === 'Debug Practice') {
-        const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(route.name);
-        if (isDebugRoute) {
-            router.push(mode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup');
-        }
+function selectGameMode(mode) {
+  game.currentDebugMode = mode;
+  if (game.activeUnit?.name === 'Debug Practice') {
+    const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(route.name);
+    if (isDebugRoute) {
+      const nextPath = mode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup';
+      router.push(nextPath);
     }
-};
+  }
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
 
-// 유닛 상세 화면 내의 GUIDEBOOK 버튼 클릭 시 유닛별 가이드 또는 안내 모달을 처리하는 기능
-const handleGuidebookClick = () => {
-    // [2026-01-24] Unit 1(Pseudo Practice)일 때만 가이드북 오픈, 나머지는 준비중 모달 노출
-    if (game.activeUnit?.name === 'Pseudo Practice') {
-        ui.isGuidebookOpen = true;
-    } else {
-        ui.isConstructionModalOpen = true;
-    }
-};
+function handleGoToPlayground() {
+  if (auth.isLoggedIn) {
+    document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    ui.isAuthRequiredModalOpen = true;
+  }
+}
 
-// 스테이지 인덱스를 받아 해당 스테이지가 사용 가능한 상태인지 확인하는 기능
-const isUnlocked = (pIdx) => currentUnitProgress.value.includes(pIdx);
-
-// 랜딩 페이지 하단의 챕터 영역(플레이그라운드)으로 부드럽게 스크롤 이동하는 기능
-const handleGoToPlayground = () => {
-    if (auth.isLoggedIn) {
-        document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-        ui.isAuthRequiredModalOpen = true;
-    }
-};
+function handleGuidebookClick() {
+  ui.isGuidebookOpen = true;
+}
 
 // Lifecycle
 onMounted(() => {
-    auth.checkSession();
-    game.initGame();
-    refreshLucide();
+  auth.checkSession();
+  game.initGame();
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
 });
 
-// [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
-// 이 영역은 향후 Unit 2, Unit 3 등을 '라우트 기반 모달'로 전환할 때 확장 포인트가 됩니다.
-import { watch } from 'vue';
-watch(() => route.name, (newName) => {
-    // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
-    if (newName === 'LogicMirror') {
-        ui.isLogicMirrorOpen = true; // /practice/logic-mirror 접속 시 모달 활성화
-    } else if (!isPracticePage.value) {
-        // 2. 다른 일반 페이지(Landing 등)로 이동 시 모든 실습 모달을 명시적으로 닫습니다.
-        // 향후 다른 유닛 모달이 추가되면 이곳에서 ui.isOtherUnitOpen = false 형태로 초기화 로직을 보강하십시오.
-        ui.isLogicMirrorOpen = false;
-    }
-}, { immediate: true });
-
-onUpdated(() => refreshLucide());
-
-// Vue 인스턴스의 DOM 업데이트 이후 Lucide 아이콘 라이브러리를 다시 초기화하는 기능
-const refreshLucide = () => {
-    nextTick(() => {
-        if (window.lucide) window.lucide.createIcons();
-    });
-};
+onUpdated(() => {
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+});
 </script>
 
 <style scoped>

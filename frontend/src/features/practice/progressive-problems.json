@@ -1,0 +1,256 @@
+{
+  "progressiveProblems": [
+    {
+      "id": "P1",
+      "project_title": "머신러닝 학습 데이터 파이프라인",
+      "scenario": "신용카드 사기 탐지 모델을 만들고 있습니다. 하지만 학습 데이터 전처리 과정에서 심각한 오류들이 발견되었습니다.",
+      "difficulty": 3,
+      "totalSteps": 3,
+      "steps": [
+        {
+          "step": 1,
+          "title": "시계열 데이터 오염 (Data Leakage)",
+          "instruction": "미래 데이터가 학습에 포함되지 않도록 데이터 분할 로직을 수정하세요.",
+          "bug_type": "A",
+          "bug_type_name": "Off-by-one",
+          "questions": {
+            "text": "과거의 거래 내역으로 미래의 사기를 예측해야 하는 모델이, 테스트 세트에서 100% 성능이 나옵니다. 가장 의심되는 원인은 무엇일까요?",
+            "options": [
+              "데이터 양이 너무 적어서",
+              "랜덤 셔플링을 해서 미래 데이터가 학습셋에 포함됨",
+              "데이터프레임의 인덱스가 섞여서",
+              "모델의 성능이 너무 뛰어나서"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "from sklearn.model_selection import train_test_split\n\ndef split_data(df):\n    # AS-IS\n    train, test = train_test_split(df, test_size=0.2, shuffle=True)\n    return train, test",
+          "correct_code": "from sklearn.model_selection import train_test_split\n\ndef split_data(df):\n    # TO-BE (수정된 부분)\n    train, test = train_test_split(df, test_size=0.2, shuffle=False)\n    return train, test",
+          "hint": "시계열 데이터는 순서가 중요합니다. shuffle 인자를 확인하세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "shuffle=False"
+          },
+          "coaching": "미래의 데이터를 보고 과거를 맞추는 방식은 실전에서 아무런 쓸모가 없습니다."
+        },
+        {
+          "step": 2,
+          "title": "연산 중 Zero Division 방어",
+          "instruction": "총 거래액이 0인 경우 발생하는 에러를 처리하세요.",
+          "bug_type": "B",
+          "bug_type_name": "Null Guard",
+          "questions": {
+            "text": "사용자별 평균 결제액을 계산하던 중 'ZeroDivisionError'가 발생했습니다. 어떤 상황에서 이런 일이 생길까요?",
+            "options": [
+              "결제 금액이 0원인 행이 있을 때",
+              "특정 사용자의 결제 건수가 0일 때",
+              "데이터프레임에 NaN 값이 있을 때",
+              "계산 결과가 너무 큰 숫자일 때"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def calc_avg_order(total_sum, count):\n    # AS-IS\n    return total_sum / count",
+          "correct_code": "def calc_avg_order(total_sum, count):\n    # TO-BE (수정된 부분)\n    if count == 0: return 0\n    return total_sum / count",
+          "hint": "분모가 0이 될 수 있는지 확인하고 if문을 사용하세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "if count == 0"
+          },
+          "coaching": "데이터 집계 시 빈 그룹(0)에 대한 예외 처리는 필수입니다."
+        },
+        {
+          "step": 3,
+          "title": "데이터프레임 원본 보존",
+          "instruction": "함수 내부에서 원본 데이터를 직접 수정하지 않도록 복사본을 사용하세요.",
+          "bug_type": "C",
+          "bug_type_name": "State Leak",
+          "questions": {
+            "text": "전처리 함수를 실행하고 났더니, 함수 외부에 있던 원본 데이터프레임의 값도 같이 바뀌어 버렸습니다. 왜 이런 현상이 발생할까요?",
+            "options": [
+              "컴퓨터 메모리가 부족해서",
+              "파이썬의 데이터프레임은 참조(Reference) 방식으로 전달되기 때문",
+              "함수가 전역 변수를 자동으로 생성해서",
+              "Pandas의 버그라서"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def preprocess(df):\n    # AS-IS\n    df['processed'] = True\n    return df",
+          "correct_code": "def preprocess(df):\n    # TO-BE (수정된 부분)\n    new_df = df.copy()\n    new_df['processed'] = True\n    return new_df",
+          "hint": "df.copy() 메서드를 사용해 보세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "copy()"
+          },
+          "coaching": "원본 데이터를 보존하는 것은 디버깅과 데이터 정합성 유지에 매우 중요합니다."
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "project_title": "마케팅 캠페인 성과 분석",
+      "scenario": "지난달 진행된 광고 캠페인의 클릭률(CTR)과 전환율을 분석하는 시스템입니다.",
+      "difficulty": 2,
+      "totalSteps": 3,
+      "steps": [
+        {
+          "step": 1,
+          "title": "범위 데이터 누락",
+          "instruction": "날짜 필터링 시 마지막 날이 포함되도록 수정하세요.",
+          "bug_type": "A",
+          "bug_type_name": "Off-by-one",
+          "questions": {
+            "text": "1월 1일부터 1월 31일까지의 데이터를 보고 싶은데, 31일 데이터만 쏙 빠져 있습니다. 보통 어떤 이유 때문일까요?",
+            "options": [
+              "31일에는 광고를 안 해서",
+              "비교 연산자에서 '작다(<)'를 써서 마지막 날이 제외됨",
+              "데이터베이스 서버의 시간대 오류",
+              "파이썬은 원래 마지막 날을 읽지 못해서"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def filter_date(df, end_date):\n    # AS-IS\n    return df[df['date'] < end_date]",
+          "correct_code": "def filter_date(df, end_date):\n    # TO-BE (수정된 부분)\n    return df[df['date'] <= end_date]",
+          "hint": "부등호 연산자를 살펴보세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "<="
+          },
+          "coaching": "날짜나 인덱스 범위에서 끝점(End-point) 포함 여부는 항상 확인해야 합니다."
+        },
+        {
+          "step": 2,
+          "title": "누락된 광고 매체명 처리",
+          "instruction": "매체명이 비어있는 경우 'Unknown'으로 표시하세요.",
+          "bug_type": "B",
+          "bug_type_name": "Null Guard",
+          "questions": {
+            "text": "광고 매체별로 비용을 합산하는데, 매체명이 비어 있는(Null) 행들 때문에 합계가 꼬이고 있습니다. 어떻게 처리하는 게 좋을까요?",
+            "options": [
+              "비어 있는 행은 모두 삭제한다",
+              "비어 있는 값을 특정 문자열(Unknown 등)로 채워 그룹화한다",
+              "Null 값은 계산에서 자동으로 제외되므로 무시한다",
+              "매체명을 숫자로 바꾼다"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def group_by_source(df):\n    # AS-IS\n    return df.groupby('source')['cost'].sum()",
+          "correct_code": "def group_by_source(df):\n    # TO-BE (수정된 부분)\n    df['source'] = df['source'].fillna('Unknown')\n    return df.groupby('source')['cost'].sum()",
+          "hint": "fillna() 함수를 사용하여 빈 값을 채워주세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "fillna"
+          },
+          "coaching": "결측치는 분석 결과를 왜곡시키는 가장 큰 요인 중 하나입니다."
+        },
+        {
+          "step": 3,
+          "title": "리스트 누적 오류",
+          "instruction": "새로운 분석을 시작할 때마다 결과 리스트를 초기화하세요.",
+          "bug_type": "C",
+          "bug_type_name": "State Leak",
+          "questions": {
+            "text": "A 캠페인 리포트를 뽑고 나서 B 캠페인 리포트를 뽑았는데, B 리포트에 A 캠페인의 데이터가 섞여 나옵니다. 원인이 무엇일까요?",
+            "options": [
+              "데이터베이스가 업데이트되지 않아서",
+              "결과를 저장하는 리스트가 함수 외부나 클래스 변수로 선언되어 계속 추가됨",
+              "B 캠페인이 A 캠페인의 데이터를 복사해서",
+              "캐시 메모리가 꽉 차서"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "results = []\ndef run_analysis(data):\n    # AS-IS\n    results.append(data.mean())\n    return results",
+          "correct_code": "def run_analysis(data):\n    # TO-BE (수정된 부분)\n    results = []\n    results.append(data.mean())\n    return results",
+          "hint": "results 선언 위치를 함수 안으로 옮기세요.",
+          "solution_check": {
+            "type": "notContains",
+            "value": "global"
+          },
+          "coaching": "함수는 입력값이 같으면 항상 같은 결과가 나와야 합니다."
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "project_title": "LLM 챗봇 응답 처리 시스템",
+      "scenario": "최신 언어 모델(LLM)을 활용한 고객 응답 자동화 시스템의 연동 버그를 수정합니다.",
+      "difficulty": 3,
+      "totalSteps": 3,
+      "steps": [
+        {
+          "step": 1,
+          "title": "토큰 제한 슬라이싱",
+          "instruction": "최대 토큰 길이를 초과하지 않도록 정확한 범위를 지정하세요.",
+          "bug_type": "A",
+          "bug_type_name": "Off-by-one",
+          "questions": {
+            "text": "100글자까지만 API로 보내려고 text[:100]을 썼을 때, 정확한 동작 방식은 무엇일까요?",
+            "options": [
+              "0부터 100까지 포함 (총 101개)",
+              "0부터 99까지 포함 (총 100개)",
+              "1부터 100까지 포함 (총 100개)",
+              "0부터 101까지 포함"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def truncate_text(text, max_len):\n    # AS-IS\n    return text[:max_len + 1]",
+          "correct_code": "def truncate_text(text, max_len):\n    # TO-BE (수정된 부분)\n    return text[:max_len]",
+          "hint": "Python 슬라이싱에서 [:n]의 동작 방식을 떠올려보세요.",
+          "solution_check": {
+            "type": "notContains",
+            "value": "+ 1"
+          },
+          "coaching": "슬라이싱의 끝 번호는 포함되지 않는다는 점(exclusive)을 명심하세요."
+        },
+        {
+          "step": 2,
+          "title": "API 응답 부재 대응",
+          "instruction": "LLM API 응답이 빈 값(None)일 때를 대비한 방어 코드를 작성하세요.",
+          "bug_type": "B",
+          "bug_type_name": "Null Guard",
+          "questions": {
+            "text": "네트워크 문제로 API가 None을 반환했습니다. 이 상태에서 바로 문자열 함수를 호출하면 어떻게 될까요?",
+            "options": [
+              "빈 문자열이 반환된다",
+              "AttributeError가 발생하며 프로그램이 중단된다",
+              "프로그램이 대기 상태에 빠진다",
+              "자동으로 이전 값을 사용한다"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def process_reply(reply):\n    # AS-IS\n    return reply.strip()",
+          "correct_code": "def process_reply(reply):\n    # TO-BE (수정된 부분)\n    if reply:\n        return reply.strip()\n    return \"\"",
+          "hint": "reply가 존재하는지 먼저 확인하는 조건문을 추가하세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "if reply"
+          },
+          "coaching": "외부 시스템의 응답값은 항상 예외 상황을 고려해야 합니다."
+        },
+        {
+          "step": 3,
+          "title": "유저 대화 이력 섞임 방지",
+          "instruction": "기본 인자로 가변 객체를 사용하지 마세요.",
+          "bug_type": "C",
+          "bug_type_name": "State Leak",
+          "questions": {
+            "text": "여러 명의 유저가 사용하는 환경에서 이전 유저의 대화 내용이 섞여서 출력됩니다. 어떤 원인이 가장 유력할까요?",
+            "options": [
+              "서버의 메모리가 섞여서",
+              "함수의 기본 인자로 리스트(history=[])를 사용해서",
+              "데이터베이스에 중복 저장되어서",
+              "브라우저 쿠키 문제"
+            ],
+            "answer": 1
+          },
+          "buggy_code": "def get_chat_response(msg, history=[]):\n    # AS-IS\n    history.append(msg)\n    return f\"Count: {len(history)}\"",
+          "correct_code": "def get_chat_response(msg, history=None):\n    # TO-BE (수정된 부분)\n    if history is None:\n        history = []\n    history.append(msg)\n    return f\"Count: {len(history)}\"",
+          "hint": "기본값으로 None을 사용하고 함수 내부에서 초기화하세요.",
+          "solution_check": {
+            "type": "contains",
+            "value": "history=None"
+          },
+          "coaching": "가변 객체(Mutable)를 기본 인자로 쓰면 모든 호출이 해당 객체를 공유합니다."
+        }
+      ]
+    }
+  ]
+}

@@ -173,6 +173,10 @@
               <span class="dead-bug">{{ getBugEmoji(getStepData(justCompletedStep)?.bug_type) }}</span>
               <span class="kill-text">☠️ SQUASHED!</span>
             </div>
+            <div class="coaching-box">
+              <div class="coaching-title">💡 시니어 개발자 조언</div>
+              <p class="coaching-text">{{ getStepData(justCompletedStep)?.coaching }}</p>
+            </div>
           </div>
         </div>
       </transition>
@@ -202,40 +206,7 @@
                 <span class="reward-value">+{{ progressiveMissionScore }} Points</span>
               </div>
             </div>
-            <button class="continue-btn" @click="showEvaluation">VIEW EVALUATION REPORT</button>
-          </div>
-        </div>
-      </transition>
-
-      <!-- 1단계: 객관식 팝업 -->
-      <transition name="fade">
-        <div v-if="showQuizPopup" class="quiz-overlay">
-          <div class="quiz-modal neon-border">
-            <div class="quiz-header">
-              <span class="phase-badge">PHASE 1: ANALYSIS</span>
-              <h3>STEP {{ currentProgressiveStep }} 분석 퀴즈</h3>
-            </div>
-            <div class="quiz-question">
-              <p>{{ getCurrentStepData()?.questions?.text }}</p>
-            </div>
-            <div class="quiz-options">
-              <button
-                v-for="(option, idx) in getCurrentStepData()?.questions?.options"
-                :key="idx"
-                class="quiz-option-btn"
-                :class="{ selected: selectedQuizOption === idx }"
-                @click="selectedQuizOption = idx"
-              >
-                <span class="option-num">{{ idx + 1 }}</span>
-                {{ option }}
-              </button>
-            </div>
-            <div class="quiz-footer">
-              <button class="quiz-submit-btn" @click="submitQuiz" :disabled="selectedQuizOption === null">
-                분석 완료 (디버깅 시작)
-              </button>
-              <p v-if="quizFeedback" class="quiz-feedback" :class="quizFeedbackType">{{ quizFeedback }}</p>
-            </div>
+            <button class="continue-btn" @click="finishProgressiveMission">CONTINUE</button>
           </div>
         </div>
       </transition>
@@ -287,36 +258,18 @@
           </div>
 
           <div class="side-controls">
-            <template v-if="currentProgressivePhase === 'debug'">
-              <button class="action-btn hint-btn" @click="showProgressiveHint" :disabled="progressiveHintUsed[currentProgressiveStep]">
-                <span class="btn-icon">💡</span>
-                {{ progressiveHintUsed[currentProgressiveStep] ? 'HINT USED' : 'HINT' }}
-              </button>
-              <button class="action-btn submit-btn" @click="submitProgressiveStep" :disabled="currentProgressiveStep > 3 || isRunning">
-                <span class="btn-icon">🚀</span>
-                {{ currentProgressiveStep > 3 ? 'DONE!' : 'SUBMIT FIX' }}
-              </button>
-              <button class="action-btn reset-btn" @click="resetCurrentStep">
-                <span class="btn-icon">↺</span>
-                RESET
-              </button>
-            </template>
-            
-            <div v-if="currentProgressivePhase === 'explain'" class="explain-action-box">
-              <div class="explain-title">PHASE 3: EXPLAIN</div>
-              <textarea 
-                v-model="stepExplanations[currentProgressiveStep]" 
-                placeholder="왜 이렇게 해결했나요? 해결 전략을 설명해주세요."
-                class="explain-textarea"
-              ></textarea>
-              <button 
-                class="action-btn next-step-btn" 
-                @click="moveToNextStep"
-                :disabled="!stepExplanations[currentProgressiveStep]?.trim()"
-              >
-                {{ currentProgressiveStep === 3 ? 'FINAL SUBMIT' : 'NEXT MISSION' }}
-              </button>
-            </div>
+            <button class="action-btn hint-btn" @click="showProgressiveHint" :disabled="progressiveHintUsed[currentProgressiveStep]">
+              <span class="btn-icon">💡</span>
+              {{ progressiveHintUsed[currentProgressiveStep] ? 'HINT USED' : 'HINT' }}
+            </button>
+            <button class="action-btn submit-btn" @click="submitProgressiveStep" :disabled="currentProgressiveStep > 3">
+              <span class="btn-icon">🚀</span>
+              {{ currentProgressiveStep > 3 ? 'DONE!' : 'SUBMIT' }}
+            </button>
+            <button class="action-btn reset-btn" @click="resetCurrentStep">
+              <span class="btn-icon">↺</span>
+              RESET
+            </button>
           </div>
         </aside>
 
@@ -331,11 +284,9 @@
               :class="{
                 dead: progressiveCompletedSteps.includes(step),
                 eating: !progressiveCompletedSteps.includes(step),
-                targeted: step === currentProgressiveStep && isRunning,
-                clickable: step === currentProgressiveStep && currentProgressivePhase === 'debug'
+                targeted: step === currentProgressiveStep && isRunning
               }"
               :style="bugPositions[step]"
-              @click="onBugClick(step)"
             >
               <span class="bug-emoji">{{ progressiveCompletedSteps.includes(step) ? '💀' : getBugEmoji(getStepData(step)?.bug_type) }}</span>
               <div class="eating-effect" v-if="!progressiveCompletedSteps.includes(step)">
@@ -374,18 +325,17 @@
             </div>
           </div>
 
-          <div class="editor-body" ref="editorBodyRef">
+          <div class="editor-body">
             <!-- 전체 코드를 3개 섹션으로 표시 -->
             <div class="code-sections">
               <div
                 v-for="step in 3"
                 :key="'section-' + step"
-                ref="sectionRefs"
                 class="code-section"
                 :class="{
-                  locked: Number(step) > Number(currentProgressiveStep) && !progressiveCompletedSteps.includes(Number(step)),
-                  active: Number(step) === Number(currentProgressiveStep),
-                  completed: progressiveCompletedSteps.includes(Number(step))
+                  locked: step > currentProgressiveStep && !progressiveCompletedSteps.includes(step),
+                  active: step === currentProgressiveStep,
+                  completed: progressiveCompletedSteps.includes(step)
                 }"
               >
                 <div class="section-header">
@@ -401,33 +351,48 @@
                 </div>
 
                 <!-- 잠긴 섹션 -->
-                <div v-if="Number(step) > Number(currentProgressiveStep) && !progressiveCompletedSteps.includes(Number(step))" class="locked-overlay">
+                <div v-if="step > currentProgressiveStep && !progressiveCompletedSteps.includes(step)" class="locked-overlay">
                   <div class="lock-content">
                     <span class="lock-icon">🔒</span>
-                    <span class="lock-text">Step {{ Number(step) - 1 }} 완료 필요</span>
+                    <span class="lock-text">Step {{ step - 1 }} 완료 필요</span>
                   </div>
-                  <pre class="blurred-code">{{ getStepData(step)?.buggy_code || 'Loading code...' }}</pre>
+                  <pre class="blurred-code">{{ getStepData(step)?.buggy_code }}</pre>
                 </div>
 
                 <!-- 편집 가능한 섹션 (현재 스텝) -->
-                <div v-else-if="Number(step) === Number(currentProgressiveStep)" class="code-editor-wrapper active-wrapper monaco-active-wrapper">
-                  <vue-monaco-editor
-                    v-model:value="progressiveStepCodes[Number(step)]"
-                    theme="vs-dark"
-                    language="python"
-                    :options="editorOptions"
-                    @mount="handleEditorMount"
-                    class="bughunt-monaco-editor"
-                  />
+                <div v-else-if="step === currentProgressiveStep" class="code-editor-wrapper">
+                  <div class="line-numbers">
+                    <div v-for="n in getLineCount(progressiveStepCodes[step])" :key="n" class="line-num">{{ n }}</div>
+                  </div>
+                  <textarea
+                    class="section-code editable game-code"
+                    v-model="progressiveStepCodes[step]"
+                    @input="onProgressiveCodeChange"
+                    spellcheck="false"
+                    wrap="off"
+                  ></textarea>
                 </div>
 
                 <!-- 완료된 섹션 -->
                 <div v-else class="code-editor-wrapper completed-wrapper">
                   <div class="line-numbers">
-                    <div v-for="n in getLineCount(progressiveStepCodes[Number(step)])" :key="n" class="line-num">{{ n }}</div>
+                    <div v-for="n in getLineCount(progressiveStepCodes[step])" :key="n" class="line-num">{{ n }}</div>
                   </div>
-                  <pre class="section-code readonly game-code">{{ progressiveStepCodes[Number(step)] || 'Code not found' }}</pre>
+                  <pre class="section-code readonly game-code">{{ progressiveStepCodes[step] }}</pre>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="terminal-section">
+            <div class="terminal-header">
+              <span>DIAGNOSTIC TERMINAL</span>
+              <span class="terminal-status" :class="terminalStatus">{{ terminalStatus.toUpperCase() }}</span>
+            </div>
+            <div class="terminal-body">
+              <div v-for="(line, idx) in terminalOutput" :key="idx" class="terminal-line" :class="line.type">
+                <span class="prompt">{{ line.prompt }}</span>
+                <span class="text">{{ line.text }}</span>
               </div>
             </div>
           </div>
@@ -451,117 +416,6 @@
       </transition>
     </div>
 
-    <!-- 최종 평가 화면 -->
-    <div v-if="currentView === 'evaluation'" class="evaluation-container">
-      <header class="header">
-        <h1>DEBUGGING REPORT</h1>
-        <div class="subtitle">// MISSION CLEAR ANALYSIS</div>
-      </header>
-
-      <div class="evaluation-content">
-        <div class="report-card neon-border">
-          <div class="report-header">
-            <div class="project-info">
-              <span class="id-badge">CLEAR!</span>
-              <h2>{{ currentProgressiveMission?.project_title }}</h2>
-            </div>
-            <div class="score-summary">
-              <div class="score-item">
-                <span class="label">FINAL SCORE</span>
-                <span class="value">{{ progressiveMissionScore }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-box">
-              <div class="stat-icon">🎓</div>
-              <div class="stat-details">
-                <span class="label">QUIZ ACCURACY</span>
-                <span class="value text-cyan">{{ quizCorrectCount }}/3</span>
-              </div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-icon">⏱️</div>
-              <div class="stat-details">
-                <span class="label">TIME TAKEN</span>
-                <span class="value text-magenta">{{ formatTime(totalDebugTime) }}</span>
-              </div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-icon">💎</div>
-              <div class="stat-details">
-                <span class="label">PERFECT CLEARS</span>
-                <span class="value text-green">{{ evaluationStats.perfectClears }}/3</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI 총평 섹션 -->
-          <div class="ai-report-section neon-border">
-            <div class="report-section-title">
-              <span class="ai-icon">🤖</span>
-              AI 전문 기술 평가
-            </div>
-            
-            <div v-if="isEvaluatingAI" class="ai-loading">
-              <div class="pulse-loader"></div>
-              <p>시니어 개발자 AI가 당신의 해결 전략을 분석 중입니다...</p>
-            </div>
-            
-            <div v-else-if="aiEvaluationResult" class="ai-result">
-              <div class="ai-score-row">
-                <div class="ai-overall-score">
-                  <span class="score-label">기술 이해도 점수</span>
-                  <span class="score-value">{{ aiEvaluationResult.overallScore }}</span>
-                </div>
-                <div class="ai-summary">
-                  <p>{{ aiEvaluationResult.summary }}</p>
-                </div>
-              </div>
-              
-              <div class="pros-cons-grid">
-                <div class="pros-box">
-                  <div class="box-label">✨ STRENGTHS</div>
-                  <ul>
-                    <li v-for="(pro, idx) in aiEvaluationResult.strengths" :key="idx">{{ pro }}</li>
-                  </ul>
-                </div>
-                <div class="cons-box">
-                  <div class="box-label">🚩 AREAS TO IMPROVE</div>
-                  <ul>
-                    <li v-for="(con, idx) in aiEvaluationResult.weaknesses" :key="idx">{{ con }}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="explanations-list">
-            <div class="list-title">📋 DEBBUGING LOG & STRATEGY</div>
-            <div 
-              v-for="step in 3" 
-              :key="'eval-step-' + step" 
-              class="eval-step-box"
-            >
-              <div class="step-header">
-                <span class="step-num">STEP {{ step }}</span>
-                <span class="step-title">{{ getStepData(step)?.title }}</span>
-              </div>
-              <div class="step-explanation">
-                <span class="label">Strategy:</span>
-                <p>{{ stepExplanations[step] || '설명이 작성되지 않았습니다.' }}</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="evaluation-actions">
-            <button class="back-to-menu-btn" @click="finishProgressiveMission">BACK TO HQ</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 종료 확인 모달 -->
     <transition name="fade">
       <div v-if="showExitConfirm" class="confirm-overlay">
@@ -579,14 +433,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import progressiveData from './progressive-problems.json';
-import { evaluateBugHunt } from './services/bugHuntApi';
-
-const route = useRoute();
-const router = useRouter();
 
 // ============================================
 // 게임 상태 저장/로드 (LocalStorage)
@@ -629,28 +477,6 @@ const defaultGameData = {
 // 게임 데이터 로드 또는 초기화
 const savedData = loadGameData();
 const gameData = reactive(savedData || { ...defaultGameData });
-
-// Monaco Editor 설정
-const monacoEditorRef = shallowRef(null);
-const editorOptions = {
-  theme: 'vs-dark',
-  language: 'python',
-  tabSize: 4,
-  automaticLayout: true,
-  fontSize: 14,
-  lineNumbers: 'on',
-  minimap: { enabled: false },
-  scrollBeyondLastLine: false,
-  wordWrap: 'off',
-  folding: false,
-  renderLineHighlight: 'all',
-  contextmenu: false,
-  padding: { top: 10, bottom: 10 }
-};
-
-const handleEditorMount = (editorInstance) => {
-  monacoEditorRef.value = editorInstance;
-};
 
 // 게임 데이터 변경 시 자동 저장
 watch(gameData, (newData) => {
@@ -751,31 +577,11 @@ function showAchievementUnlock(achievement) {
 const progressiveProblems = progressiveData.progressiveProblems;
 const currentProgressiveMission = ref(null);
 const currentProgressiveStep = ref(1);
-const currentProgressivePhase = ref('quiz'); // 'quiz', 'debug', 'explain'
 const progressiveCompletedSteps = ref([]);
 const progressiveStepCodes = ref({ 1: '', 2: '', 3: '' });
 const progressiveHintUsed = ref({ 1: false, 2: false, 3: false });
 const showProgressiveHintPanel = ref(false);
 const justCompletedStep = ref(0);
-
-// 분석 퀴즈 상태
-const showQuizPopup = ref(false);
-const selectedQuizOption = ref(null);
-const quizFeedback = ref('');
-const quizFeedbackType = ref('');
-const quizCorrectCount = ref(0);
-
-// 설명 및 평가 데이터
-const stepExplanations = reactive({ 1: '', 2: '', 3: '' });
-const stepStartTime = ref(null);
-const totalDebugTime = ref(0);
-const evaluationStats = reactive({
-  perfectClears: 0,
-});
-
-// AI 평가 상태
-const isEvaluatingAI = ref(false);
-const aiEvaluationResult = ref(null);
 
 // Progressive UI 이펙트
 const showStepComplete = ref(false);
@@ -801,27 +607,21 @@ function isStepCompleted(missionId, step) {
 
 // 현재 진행 중인 스텝 가져오기
 function getCurrentStep(missionId) {
-  const s1 = isStepCompleted(missionId, 1);
-  const s2 = isStepCompleted(missionId, 2);
-  const s3 = isStepCompleted(missionId, 3);
-  
-  if (!s1) return 1;
-  if (!s2) return 2;
-  if (!s3) return 3;
-  
-  // 모든 단계를 이미 완료했다면 (Replay 모드) 1단계부터 다시 시작
-  return 1;
+  for (let i = 1; i <= 3; i++) {
+    if (!isStepCompleted(missionId, i)) return i;
+  }
+  return 3;
 }
 
 // 완료된 Progressive 미션 수
 function getProgressiveMissionsCompleted() {
-  return progressiveProblems.filter(m => isStepCompleted(m.id, 3)).length;
+  return progressiveProblems.filter(m => isMissionCompleted(m.id)).length;
 }
 
-// 스텝 데이터 가져오기 (타입 안정성 강화)
+// 스텝 데이터 가져오기
 function getStepData(stepNum) {
-  if (!currentProgressiveMission.value?.steps) return null;
-  return currentProgressiveMission.value.steps.find(s => Number(s.step) === Number(stepNum));
+  if (!currentProgressiveMission.value) return null;
+  return currentProgressiveMission.value.steps.find(s => s.step === stepNum);
 }
 
 // 현재 스텝 데이터 가져오기
@@ -841,37 +641,22 @@ function getLineCount(code) {
 }
 
 // Progressive Mission 시작
-function startProgressiveMission(mission, index, startAtStep = 1) {
-  if (!isMissionUnlocked(index) && !route.query.mapMode) return;
+function startProgressiveMission(mission, index) {
+  if (!isMissionUnlocked(index)) return;
 
   currentProgressiveMission.value = mission;
-  currentProgressiveStep.value = startAtStep;
+  currentProgressiveStep.value = 1;
   progressiveCompletedSteps.value = [];
-  
-  // 이미 진행된 스텝들은 완료 처리 (현재 스텝 미만)
-  for (let i = 1; i < startAtStep; i++) {
-    progressiveCompletedSteps.value.push(i);
-  }
-
   progressiveHintUsed.value = { 1: false, 2: false, 3: false };
 
-  // 모든 스텝의 버그 코드 로드 (키 불일치 방지를 위해 번호로 강제 변환)
-  progressiveStepCodes.value = {};
-  mission.steps.forEach(s => {
-    progressiveStepCodes.value[Number(s.step)] = s.buggy_code;
-  });
-
-  stepExplanations[1] = '';
-  stepExplanations[2] = '';
-  stepExplanations[3] = '';
-  quizCorrectCount.value = 0;
-  totalDebugTime.value = 0;
-  evaluationStats.perfectClears = 0;
+  // 모든 스텝의 버그 코드 로드
+  progressiveStepCodes.value = {
+    1: mission.steps[0].buggy_code,
+    2: mission.steps[1].buggy_code,
+    3: mission.steps[2].buggy_code
+  };
 
   currentView.value = 'progressivePractice';
-  
-  // 시작할 스텝의 퀴즈부터 표시
-  showQuizPhase();
 
   // 버그 애니메이션 시작
   setTimeout(() => {
@@ -880,87 +665,11 @@ function startProgressiveMission(mission, index, startAtStep = 1) {
 
   // 터미널 초기화
   terminalOutput.value = [
-    { prompt: '>', text: `Project: ${mission.project_title} Initialized.`, type: 'info' },
-    { prompt: '>', text: `Total Errors: 3 | Current: Step ${startAtStep}`, type: 'warning' }
+    { prompt: '>', text: `Mission loaded: ${mission.project_title}`, type: 'info' },
+    { prompt: '>', text: `3 bugs detected! Hunt them down!`, type: 'warning' },
+    { prompt: '>', text: 'Fix Step 1 to unlock Step 2!', type: 'success' }
   ];
   terminalStatus.value = 'ready';
-}
-
-// 퀴즈 페이즈 시작
-function showQuizPhase() {
-  currentProgressivePhase.value = 'quiz';
-  selectedQuizOption.value = null;
-  quizFeedback.value = '';
-  showQuizPopup.value = true;
-}
-
-// 퀴즈 제출
-function submitQuiz() {
-  const stepData = getCurrentStepData();
-  if (selectedQuizOption.value === stepData.questions.answer) {
-    quizCorrectCount.value++;
-    quizFeedback.value = '정답입니다! 디버깅을 시작하세요.';
-    quizFeedbackType.value = 'success';
-    
-    setTimeout(() => {
-      showQuizPopup.value = false;
-      startDebugPhase();
-    }, 1000);
-  } else {
-    quizFeedback.value = '틀렸습니다. 다시 생각해보세요!';
-    quizFeedbackType.value = 'error';
-    setTimeout(() => { quizFeedback.value = ''; }, 2000);
-  }
-}
-
-// 디버깅 페이즈 시작
-function startDebugPhase() {
-  currentProgressivePhase.value = 'debug';
-  stepStartTime.value = Date.now();
-  terminalOutput.value.push({
-    prompt: '>',
-    text: `Step ${currentProgressiveStep.value} debugging started.`,
-    type: 'info'
-  });
-}
-
-// 다음 문제로 이동 (설명 완료 후)
-function moveToNextStep() {
-  if (currentProgressiveStep.value < 3) {
-    currentProgressiveStep.value++;
-    showQuizPhase();
-  } else {
-    completeMission();
-  }
-}
-
-// 평가 화면 보기
-async function showEvaluation() {
-  showMissionComplete.value = false;
-  currentView.value = 'evaluation';
-  
-  // AI 평가 시작
-  if (currentProgressiveMission.value) {
-    isEvaluatingAI.value = true;
-    try {
-      aiEvaluationResult.value = await evaluateBugHunt(
-        currentProgressiveMission.value.project_title,
-        currentProgressiveMission.value.steps,
-        stepExplanations
-      );
-    } catch (error) {
-      console.error('AI Evaluation failed:', error);
-    } finally {
-      isEvaluatingAI.value = false;
-    }
-  }
-}
-
-// 시간 포맷팅
-function formatTime(seconds) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}m ${secs}s`;
 }
 
 // 다시 풀기
@@ -1043,10 +752,6 @@ function submitProgressiveStep() {
     setTimeout(() => {
       if (passed) {
         // 성공!
-        const endTime = Date.now();
-        const duration = Math.floor((endTime - stepStartTime.value) / 1000);
-        totalDebugTime.value += duration;
-
         justCompletedStep.value = currentProgressiveStep.value;
         progressiveCompletedSteps.value.push(currentProgressiveStep.value);
 
@@ -1058,23 +763,34 @@ function submitProgressiveStep() {
         gameData.stats.totalBugsFixed++;
         if (!progressiveHintUsed.value[currentProgressiveStep.value]) {
           gameData.stats.perfectClears++;
-          evaluationStats.perfectClears++;
         }
 
         terminalStatus.value = 'success';
         terminalOutput.value.push({
           prompt: '✓',
-          text: `Bug ${currentProgressiveStep.value} eliminated! (${duration}s)`,
+          text: `Bug ${currentProgressiveStep.value} eliminated!`,
           type: 'success'
         });
 
-        // 3단계: 설명 페이즈로 전환
-        currentProgressivePhase.value = 'explain';
-        
-        // 스텝 완료 이펙트 (폭발 효과)
+        // 스텝 완료 이펙트
         showStepComplete.value = true;
-        setTimeout(() => { showStepComplete.value = false; }, 2000);
 
+        setTimeout(() => {
+          showStepComplete.value = false;
+
+          if (currentProgressiveStep.value < 3) {
+            // 다음 스텝으로
+            currentProgressiveStep.value++;
+            terminalOutput.value.push({
+              prompt: '🔓',
+              text: `Step ${currentProgressiveStep.value} unlocked!`,
+              type: 'success'
+            });
+          } else {
+            // 미션 완료!
+            completeMission();
+          }
+        }, 2500);
       } else {
         // 실패
         terminalStatus.value = 'error';
@@ -1087,13 +803,6 @@ function submitProgressiveStep() {
       isRunning.value = false;
     }, 500);
   }, 800);
-}
-
-// 버그 클릭 이벤트
-function onBugClick(step) {
-  if (step === currentProgressiveStep.value && currentProgressivePhase.value === 'debug' && !isRunning.value) {
-    submitProgressiveStep();
-  }
 }
 
 // 미션 완료 처리
@@ -1118,28 +827,11 @@ function completeMission() {
 function finishProgressiveMission() {
   showMissionComplete.value = false;
   stopBugAnimations();
-  
-  if (route.query.mapMode === 'true') {
-    router.push('/'); // 맵으로 복귀
-  } else {
-    currentView.value = 'menu';
-  }
+  currentView.value = 'menu';
 }
 
 // 에디터 프레임 참조
 const editorFrameRef = ref(null);
-const editorBodyRef = ref(null);
-const sectionRefs = ref([]);
-
-// 스텝 변경 시 자동 스크롤
-watch(currentProgressiveStep, (newStep) => {
-  setTimeout(() => {
-    const el = sectionRefs.value[newStep - 1];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-});
 
 // 버그 위치 상태
 const bugPositions = reactive({
@@ -1178,25 +870,24 @@ const missEffectStyle = computed(() => ({
   top: `${missEffectPosition.value.y}px`
 }));
 
-// 버그 움직임 애니메이션 (전체 화면 이동으로 수정)
+// 버그 움직임 애니메이션
 function animateBug(step) {
   if (progressiveCompletedSteps.value.includes(step)) return;
 
-  const time = Date.now() / 1000;
-  
-  // 전체 화면을 부드럽게 돌아다니도록 노이즈 섞인 움직임 구현
-  // baseX, baseY를 시간에 따라 크게 변하게 함
-  const movementRadiusX = 35; // 35% radius
-  const movementRadiusY = 35; 
-  const centerX = 50;
-  const centerY = 50;
+  const basePositions = {
+    1: { baseX: 60, baseY: 15 },
+    2: { baseX: 70, baseY: 45 },
+    3: { baseX: 65, baseY: 75 }
+  };
 
-  const x = centerX + Math.sin(time * 0.5 + step * 10) * movementRadiusX + Math.cos(time * 0.3) * 5;
-  const y = centerY + Math.cos(time * 0.4 + step * 7) * movementRadiusY + Math.sin(time * 0.6) * 5;
+  const { baseX, baseY } = basePositions[step];
+  const time = Date.now() / 1000;
+  const offsetX = Math.sin(time * 2 + step) * 5;
+  const offsetY = Math.cos(time * 1.5 + step * 2) * 3;
 
   bugPositions[step] = {
-    left: `${x}%`,
-    top: `${y}%`
+    left: `${baseX + offsetX}%`,
+    top: `${baseY + offsetY}%`
   };
 
   bugAnimationIds[step] = requestAnimationFrame(() => animateBug(step));
@@ -1231,13 +922,11 @@ function shootBug(targetStep, isHit) {
   const startX = 50;
   const startY = rect.height - 50;
 
-  // 버그 위치 계산 (이펙트가 버그 위치에서 발현되도록)
+  // 버그 위치 계산
   const bugLeft = parseFloat(bugPositions[targetStep].left);
   const bugTop = parseFloat(bugPositions[targetStep].top);
-  
-  // 에디터 프레임 기준 좌표로 변환
-  const targetX = (bugLeft / 100) * rect.width;
-  const targetY = (bugTop / 100) * rect.height;
+  const targetX = (bugLeft / 100) * window.innerWidth;
+  const targetY = (bugTop / 100) * window.innerHeight;
 
   bulletPosition.value = { x: startX, y: startY };
   showBullet.value = true;
@@ -1307,21 +996,6 @@ function resetGameData() {
 }
 
 // 라이프사이클
-onMounted(() => {
-  // 맵 모드 체크
-  if (route.query.missionId) {
-    const missionId = route.query.missionId;
-    const missionIndex = progressiveProblems.findIndex(m => m.id === missionId);
-    
-    if (missionIndex !== -1) {
-      const mission = progressiveProblems[missionIndex];
-      // 해당 미션의 현재 단계(아직 완료되지 않은 첫 단계)를 찾아서 시작
-      const currentStepNum = getCurrentStep(missionId);
-      startProgressiveMission(mission, missionIndex, currentStepNum);
-    }
-  }
-});
-
 onUnmounted(() => {
   stopBugAnimations();
 });
@@ -2105,8 +1779,7 @@ onUnmounted(() => {
 .code-sections {
   display: flex;
   flex-direction: column;
-  gap: 60px;
-  padding: 40px 0;
+  gap: 20px;
 }
 
 .code-section {
@@ -2206,11 +1879,11 @@ onUnmounted(() => {
 }
 
 .blurred-code {
-  filter: blur(6px);
-  opacity: 0.4;
+  filter: blur(4px);
+  opacity: 0.5;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.6;
   color: #718096;
   margin: 0;
   white-space: pre-wrap;
@@ -2219,21 +1892,7 @@ onUnmounted(() => {
 /* 코드 에디터 래퍼 */
 .code-editor-wrapper {
   display: flex;
-  min-height: 350px;
-}
-
-/* Monaco Editor 스타일 */
-.monaco-active-wrapper {
-  display: block;
-  height: 350px;
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.bughunt-monaco-editor {
-  width: 100%;
-  height: 100%;
+  min-height: 200px;
 }
 
 .completed-wrapper {
@@ -2250,8 +1909,8 @@ onUnmounted(() => {
 
 .line-num {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.6;
   color: #4b5563;
   padding-right: 10px;
 }
@@ -2259,9 +1918,9 @@ onUnmounted(() => {
 /* 게임 스타일 코드 */
 .game-code {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 18px;
-  line-height: 1.8;
-  letter-spacing: 0.8px;
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
 }
 
 .section-code.editable {
@@ -2464,7 +2123,57 @@ onUnmounted(() => {
   to { transform: scale(0.5) translateY(-20px); opacity: 0; }
 }
 
-/* Terminal styles removed */
+/* 터미널 */
+.terminal-section {
+  height: 150px;
+  background: #000;
+  border-top: 2px solid var(--border-color);
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background: #1a202c;
+  font-size: 0.8rem;
+  color: #718096;
+  letter-spacing: 1px;
+}
+
+.terminal-status {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+
+.terminal-status.ready { background: #2d3748; color: #a0aec0; }
+.terminal-status.running { background: var(--neon-cyan); color: #000; }
+.terminal-status.success { background: var(--neon-green); color: #000; }
+.terminal-status.error { background: var(--neon-red); color: #fff; }
+
+.terminal-body {
+  padding: 15px 20px;
+  height: calc(100% - 35px);
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.terminal-line {
+  margin-bottom: 5px;
+}
+
+.terminal-line .prompt {
+  color: var(--neon-cyan);
+  margin-right: 10px;
+}
+
+.terminal-line.info .text { color: #a0aec0; }
+.terminal-line.success .text { color: var(--neon-green); }
+.terminal-line.error .text { color: var(--neon-red); }
+.terminal-line.warning .text { color: var(--neon-yellow); }
+.terminal-line.command .text { color: #fff; }
 
 /* 힌트 패널 */
 .hint-overlay {
@@ -2477,60 +2186,31 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: 100;
 }
 
 .hint-panel {
   background: var(--panel-bg);
-  border: 4px solid var(--neon-yellow);
-  border-radius: 20px;
-  max-width: 600px;
-  width: 95%;
-  height: 40vh;
-  min-height: 300px;
-  max-height: 50vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 0 50px rgba(255, 255, 0, 0.3), inset 0 0 20px rgba(255, 255, 0, 0.1);
-  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes modalPop {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  border: 2px solid var(--neon-yellow);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
 }
 
 .hint-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 20px 30px;
-  border-bottom: 2px solid var(--border-color);
+  gap: 10px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
   font-family: 'Orbitron', monospace;
   color: var(--neon-yellow);
 }
 
-.hint-header span:not(.close-btn) {
-  font-size: 1.2rem;
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px var(--neon-yellow);
-}
-
 .hint-content {
-  padding: 35px 40px;
-  line-height: 1.8;
-  color: #f0f0f0;
-  overflow-y: auto;
-  font-size: 1.15rem;
-}
-
-.hint-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.hint-content::-webkit-scrollbar-thumb {
-  background: var(--neon-yellow);
-  border-radius: 3px;
+  padding: 25px;
+  line-height: 1.7;
+  color: #e0e0e0;
 }
 
 /* 스텝 완료 이펙트 */
@@ -2988,493 +2668,5 @@ onUnmounted(() => {
   .panel-box {
     min-width: 250px;
   }
-}
-/* 퀴즈 오버레이 */
-.quiz-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 150;
-  backdrop-filter: blur(8px);
-}
-
-.quiz-modal {
-  background: var(--panel-bg);
-  width: 90%;
-  max-width: 600px;
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 0 40px rgba(0, 243, 255, 0.2);
-}
-
-.neon-border {
-  border: 2px solid var(--neon-cyan);
-  box-shadow: 0 0 15px var(--neon-cyan), inset 0 0 10px rgba(0, 243, 255, 0.3);
-}
-
-.phase-badge {
-  display: inline-block;
-  background: var(--neon-cyan);
-  color: #000;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-family: 'Orbitron', monospace;
-  font-size: 0.75rem;
-  font-weight: bold;
-  margin-bottom: 15px;
-}
-
-.quiz-header h3 {
-  font-family: 'Orbitron', monospace;
-  font-size: 1.8rem;
-  color: #fff;
-  margin-bottom: 25px;
-}
-
-.quiz-question p {
-  font-size: 1.15rem;
-  line-height: 1.6;
-  color: #e0e0e0;
-  margin-bottom: 30px;
-}
-
-.quiz-options {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.quiz-option-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 18px 25px;
-  border-radius: 12px;
-  color: #fff;
-  text-align: left;
-  font-size: 1.05rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.quiz-option-btn:hover {
-  background: rgba(0, 243, 255, 0.1);
-  border-color: var(--neon-cyan);
-}
-
-.quiz-option-btn.selected {
-  background: rgba(0, 243, 255, 0.2);
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
-}
-
-.option-num {
-  font-family: 'Orbitron', monospace;
-  width: 30px;
-  height: 30px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  color: var(--neon-cyan);
-}
-
-.quiz-footer {
-  margin-top: 40px;
-  text-align: center;
-}
-
-.quiz-submit-btn {
-  width: 100%;
-  padding: 18px;
-  background: var(--neon-cyan);
-  color: #000;
-  border: none;
-  border-radius: 12px;
-  font-family: 'Orbitron', monospace;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.quiz-submit-btn:disabled {
-  background: #2d3748;
-  color: #718096;
-  cursor: not-allowed;
-}
-
-.quiz-feedback {
-  margin-top: 20px;
-  font-weight: bold;
-  font-size: 1.1rem;
-}
-
-.quiz-feedback.success { color: var(--neon-green); }
-.quiz-feedback.error { color: var(--neon-red); }
-
-/* 설명 영역 */
-.explain-action-box {
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 12px;
-  border: 1px solid var(--neon-magenta);
-  animation: slideUp 0.3s ease-out;
-}
-
-.explain-title {
-  font-family: 'Orbitron', monospace;
-  color: var(--neon-magenta);
-  margin-bottom: 15px;
-  font-size: 0.9rem;
-}
-
-.explain-textarea {
-  width: 100%;
-  height: 120px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 0, 255, 0.3);
-  border-radius: 8px;
-  padding: 15px;
-  color: #fff;
-  font-family: inherit;
-  font-size: 0.95rem;
-  resize: none;
-  margin-bottom: 15px;
-  outline: none;
-}
-
-.explain-textarea:focus {
-  border-color: var(--neon-magenta);
-  box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
-}
-
-.next-step-btn {
-  width: 100%;
-  border-color: var(--neon-magenta);
-  color: var(--neon-magenta);
-}
-
-.next-step-btn:hover:not(:disabled) {
-  background: var(--neon-magenta);
-  color: #fff;
-}
-
-/* 평가 화면 */
-.evaluation-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 40px 20px;
-}
-
-.evaluation-content {
-  margin-top: 40px;
-  animation: fadeIn 0.8s ease-out;
-}
-
-.report-card {
-  background: var(--panel-bg);
-  padding: 50px;
-  border-radius: 24px;
-}
-
-.report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 50px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 30px;
-}
-
-.project-info h2 {
-  font-family: 'Orbitron', monospace;
-  font-size: 2.2rem;
-  margin-top: 15px;
-  color: #fff;
-}
-
-.id-badge {
-  background: var(--neon-green);
-  color: #000;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-family: 'Orbitron', monospace;
-  font-size: 0.9rem;
-}
-
-.score-item {
-  text-align: right;
-}
-
-.score-item .label {
-  display: block;
-  font-family: 'Orbitron', monospace;
-  font-size: 0.9rem;
-  color: #a0aec0;
-}
-
-.score-item .value {
-  font-family: 'Orbitron', monospace;
-  font-size: 3.5rem;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 30px rgba(255, 255, 0, 0.5);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 25px;
-  margin-bottom: 50px;
-}
-
-.stat-box {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 30px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stat-icon {
-  font-size: 2.5rem;
-}
-
-.stat-details .label {
-  display: block;
-  font-size: 0.85rem;
-  color: #718096;
-  margin-bottom: 5px;
-}
-
-.stat-details .value {
-  font-family: 'Orbitron', monospace;
-  font-size: 1.8rem;
-  font-weight: bold;
-}
-
-.text-cyan { color: var(--neon-cyan); }
-.text-magenta { color: var(--neon-magenta); }
-.text-green { color: var(--neon-green); }
-
-.explanations-list {
-  margin-bottom: 50px;
-}
-
-.list-title {
-  font-family: 'Orbitron', monospace;
-  font-size: 1.1rem;
-  color: #fff;
-  margin-bottom: 25px;
-  border-left: 4px solid var(--neon-cyan);
-  padding-left: 15px;
-}
-
-.eval-step-box {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.eval-step-box .step-header {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
-  font-family: 'Orbitron', monospace;
-}
-
-.eval-step-box .step-num {
-  color: var(--neon-magenta);
-}
-
-.eval-step-box .step-title {
-  color: #e0e0e0;
-}
-
-.step-explanation .label {
-  font-size: 0.85rem;
-  color: #718096;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.step-explanation p {
-  line-height: 1.7;
-  color: #a0aec0;
-  font-size: 1rem;
-}
-
-.evaluation-actions {
-  text-align: center;
-}
-
-.back-to-menu-btn {
-  padding: 20px 60px;
-  background: var(--neon-cyan);
-  color: #000;
-  border: none;
-  font-family: 'Orbitron', monospace;
-  font-size: 1.2rem;
-  font-weight: bold;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 10px 30px rgba(0, 243, 255, 0.3);
-}
-
-.back-to-menu-btn:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 243, 255, 0.5);
-}
-
-.code-bug.clickable {
-  cursor: crosshair;
-}
-
-.code-bug.clickable:hover .bug-emoji {
-  filter: drop-shadow(0 0 25px var(--neon-red));
-  transform: scale(1.3);
-}
-
-/* AI 리포트 섹션 */
-.ai-report-section {
-  background: rgba(0, 243, 255, 0.03);
-  padding: 30px;
-  border-radius: 16px;
-  margin-bottom: 40px;
-  position: relative;
-  overflow: hidden;
-}
-
-.report-section-title {
-  font-family: 'Orbitron', monospace;
-  font-size: 1.1rem;
-  color: var(--neon-cyan);
-  margin-bottom: 25px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ai-loading {
-  text-align: center;
-  padding: 40px 0;
-}
-
-.pulse-loader {
-  width: 40px;
-  height: 40px;
-  background: var(--neon-cyan);
-  border-radius: 50%;
-  margin: 0 auto 20px;
-  animation: pulse 1.5s ease-in-out infinite;
-  box-shadow: 0 0 20px var(--neon-cyan);
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.8); opacity: 0.5; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.8); opacity: 0.5; }
-}
-
-.ai-score-row {
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 30px;
-  margin-bottom: 30px;
-  align-items: center;
-}
-
-.ai-overall-score {
-  text-align: center;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding-right: 30px;
-}
-
-.ai-overall-score .score-label {
-  display: block;
-  font-size: 0.75rem;
-  color: #718096;
-  margin-bottom: 10px;
-}
-
-.ai-overall-score .score-value {
-  font-family: 'Orbitron', monospace;
-  font-size: 3rem;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 15px var(--neon-cyan);
-}
-
-.ai-summary p {
-  line-height: 1.7;
-  color: #e0e0e0;
-  font-size: 1.05rem;
-}
-
-.pros-cons-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.pros-box, .cons-box {
-  padding: 20px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.pros-box { border-left: 4px solid var(--neon-green); }
-.cons-box { border-left: 4px solid var(--neon-red); }
-
-.box-label {
-  font-family: 'Orbitron', monospace;
-  font-size: 0.8rem;
-  margin-bottom: 15px;
-}
-
-.pros-box .box-label { color: var(--neon-green); }
-.cons-box .box-label { color: var(--neon-red); }
-
-.pros-cons-grid ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.pros-cons-grid li {
-  font-size: 0.95rem;
-  color: #a0aec0;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pros-box li::before { content: '✓'; color: var(--neon-green); }
-.cons-box li::before { content: '•'; color: var(--neon-red); }
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 </style>
