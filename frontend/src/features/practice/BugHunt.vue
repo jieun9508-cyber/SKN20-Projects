@@ -3768,7 +3768,13 @@ onUnmounted(() => {
 }
 
 .eval-step-box .step-num {
+  background: none;
+  width: auto;
+  height: auto;
+  border-radius: 0;
   color: var(--neon-magenta);
+  font-size: 1rem;
+  font-weight: bold;
 }
 
 .eval-step-box .step-title {
