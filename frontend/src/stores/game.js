@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { aiQuests } from '../features/practice/support/unit1/logic-mirror/data/stages.js';
+import progressiveData from '../features/practice/progressive-problems.json';
 
 /**
- * [수정일: 2026-01-25]
- * [수정내용: 사용자의 요청에 따라 'Practice' 테이블을 중심으로 하드코딩 제거 및 상세 데이터(PracticeDetail) 동적 연동]
+ * [수정일: 2026-01-27]
+ * [수정내용: DB Practice 연동과 Pseudo Practice(aiQuests) 및 Debug Practice(progressiveProblems)의 통합 병합]
  */
 export const useGameStore = defineStore('game', {
     state: () => ({
@@ -12,7 +13,7 @@ export const useGameStore = defineStore('game', {
         unitProgress: {
             'Pseudo Practice': [0],
             'Debug Practice': [0],
-            'System Practice': [0],
+            'System Practice': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             'Ops Practice': [0],
             'Agent Practice': [0]
         },
@@ -20,7 +21,8 @@ export const useGameStore = defineStore('game', {
         activeProblem: null,
         activeChapter: null,
         currentDebugMode: 'bug-hunt',
-        selectedQuestIndex: 0
+        selectedQuestIndex: 0,
+        selectedSystemProblemIndex: 0
     }),
 
     actions: {
@@ -86,11 +88,11 @@ export const useGameStore = defineStore('game', {
 
         /**
          * [상세 데이터를 문제 객체로 변환]
-         * - [2026-01-25] 수정: 'Pseudo Practice'는 기존의 풍부한 stages.js 데이터를 그대로 유지하기 위해 정적 데이터를 우선 사용합니다.
+         * - [2026-01-27] 수정: Pseudo Practice와 Debug Practice(Bug Hunt)는 로컬/Progressive 데이터를 우선 사용합니다.
          * - 그 외의 유닛들은 백엔드 DB의 PracticeDetail 정보를 기반으로 동적으로 구성됩니다.
          */
         mapDetailsToProblems(unit, unitNum) {
-            // [2026-01-26] Pseudo Practice는 stages.js의 10개 퀘스트를 우선 사용
+            // [Unit 1] Pseudo Practice는 stages.js의 퀘스트 데이터를 유지
             if (unit.title === 'Pseudo Practice') {
                 return aiQuests.map((q, idx) => ({
                     id: q.id,
@@ -102,12 +104,41 @@ export const useGameStore = defineStore('game', {
                 }));
             }
 
-            // DB 상세 데이터가 없으면 빈 배열 반환
+            // [Unit 2] Debug Practice는 progressive-problems.json 데이터를 우선 사용 (Bug Hunt 모드 지원)
+            if (unit.title === 'Debug Practice' && progressiveData.progressiveProblems) {
+                return progressiveData.progressiveProblems.map((m, idx) => ({
+                    id: m.id,
+                    missionId: m.id,
+                    title: m.project_title,
+                    displayNum: `Campaign ${idx + 1}`,
+                    questIndex: idx // UI 노드 동기화용
+                }));
+            }
+
+            // [Unit 3] System Practice는 현재 하드코딩된 시나리오 데이터를 우선 사용
+            if (unit.title === 'System Practice') {
+                return [
+                    { id: 1, title: 'Instagram Home Feed', displayNum: '3-1', problemIndex: 0 },
+                    { id: 2, title: 'YouTube VOD 업로드/스트리밍', displayNum: '3-2', problemIndex: 1 },
+                    { id: 3, title: '실시간 메시징', displayNum: '3-3', problemIndex: 2 },
+                    { id: 4, title: '라이드헤일링 실시간 배차', displayNum: '3-4', problemIndex: 3 },
+                    { id: 5, title: '짧은 영상 추천 피드', displayNum: '3-5', problemIndex: 4 },
+                    { id: 6, title: 'Drive/Dropbox 파일 저장', displayNum: '3-6', problemIndex: 5 },
+                    { id: 7, title: 'Checkout 주문/결제', displayNum: '3-7', problemIndex: 6 },
+                    { id: 8, title: '실시간 검색 + 트렌딩', displayNum: '3-8', problemIndex: 7 },
+                    { id: 9, title: '화상회의(WebRTC)', displayNum: '3-9', problemIndex: 8 },
+                    { id: 10, title: 'RTB 광고 입찰', displayNum: '3-10', problemIndex: 9 }
+                ].map(p => ({
+                    ...p,
+                    questIndex: p.problemIndex // 기존 UI 호환성 유지
+                }));
+            }
+
+            // 그 외 유닛: DB 상세 데이터(PracticeDetail)를 기반으로 동적 구성
             if (!unit.details || unit.details.length === 0) {
                 return [];
             }
 
-            // DB에서 가져온 'PROBLEM' 타입의 상세 데이터를 필터링 및 정렬
             return unit.details
                 .filter(d => d.detail_type === 'PROBLEM' && d.is_active)
                 .sort((a, b) => a.display_order - b.display_order)
@@ -116,7 +147,7 @@ export const useGameStore = defineStore('game', {
                     title: d.detail_title,
                     questIndex: idx,
                     displayNum: `${unitNum}-${idx + 1}`,
-                    difficulty: d.content_data?.difficulty || 'medium', // 난이도 필드 매핑
+                    difficulty: d.content_data?.difficulty || 'medium',
                     config: d.content_data
                 }));
         },
