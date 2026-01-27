@@ -43,17 +43,38 @@
     </header>
 
     <!-- [Navigation Bar - Glassmorphism] -->
-    <nav class="navbar-v2" :class="{ 'bookmark-mode': isScrolled }">
+    <nav class="navbar-v2" :class="{ 'is-hidden': isScrolled }">
       <div class="logo-playground">
         <Dumbbell class="logo-icon" />
         <span class="logo-text">AI-GYM</span>
       </div>
       <div class="nav-links-v2">
-        <a href="#chapters" class="nav-item">
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
           <LayoutGrid class="nav-icon" />
           <span class="nav-label">Stages</span>
         </a>
-        <a href="#leaderboard" class="nav-item">
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
+          <Trophy class="nav-icon" />
+          <span class="nav-label">Hall of Fame</span>
+        </a>
+        <div class="protein-status">
+          <Milk class="icon-protein" />
+          <span class="protein-count">{{ userProteinShakes }}</span>
+        </div>
+        <slot name="auth-buttons"></slot>
+      </div>
+    </nav>
+
+    <nav class="navbar-v2 bookmark-mode" :class="{ 'is-visible': isScrolled }">
+      <div class="logo-playground">
+        <Dumbbell class="logo-icon" />
+      </div>
+      <div class="nav-links-v2">
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
+          <LayoutGrid class="nav-icon" />
+          <span class="nav-label">Stages</span>
+        </a>
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
           <Trophy class="nav-icon" />
           <span class="nav-label">Hall of Fame</span>
         </a>
@@ -80,10 +101,18 @@
           <ChevronLeft />
         </button>
 
-        <div class="slider-wrapper">
+        <div
+          class="slider-wrapper"
+          :class="{ dragging: isDragging }"
+          @pointerdown="onDragStart"
+          @pointermove="onDragMove"
+          @pointerup="onDragEnd"
+          @pointerleave="onDragEnd"
+        >
           <div class="slider-track" :style="trackStyle">
             <div v-for="(chapter, idx) in chapters" :key="chapter.id" 
                  class="gym-card-premium" 
+                 :style="{ '--unit-color': chapter.color }"
                  :class="[
                    'card-color-' + (idx % 5),
                    { 'active': idx === currentIdx, 
@@ -104,14 +133,26 @@
                   <div class="card-aura-premium"></div>
                 </div>
                 <div class="card-text-v2">
+                  <!-- [2026-01-25] 유닛 정보 영역: DB(PracticeUnit) 필드 연동 -->
                   <div class="unit-badge-row">
-                    <span class="unit-tag-v2">UNIT 0{{ idx + 1 }}</span>
-                    <span class="level-indicator">LV.{{ (idx + 1) * 10 }}</span>
+                    <!-- 1. 유닛 번호 표시 (최소 2자리 숫자로 포맷팅, 예: UNIT 01) -->
+                    <span class="unit-tag-v2">
+                      <component :is="chapter.icon" style="width: 14px; height: 14px; margin-right: 4px;" />
+                      UNIT {{ String(chapter.unit_number).padStart(2, '0') }}
+                    </span>
+                    <!-- 2. 권장 레벨 표시 (예: LV.10) -->
+                    <span class="level-indicator">LV.{{ chapter.level }}</span>
                   </div>
+                  <!-- 3. 유닛 제목 및 부제목(설명) 표시 -->
                   <h3>{{ chapter.name }}</h3>
                   <p>{{ chapter.description }}</p>
+                  
                   <div class="card-footer-v2">
-                    <span class="engineer-count"><Users style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" /> 80+ Training</span>
+                    <!-- 4. 참여 인원 데이터 표시 (예: 85+ Training) -->
+                    <span class="engineer-count">
+                      <Users style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" /> 
+                      {{ chapter.participant_count }}+ Training
+                    </span>
                     <button class="btn-enter-mini">START</button>
                   </div>
                 </div>
@@ -234,53 +275,45 @@ export default {
     return {
       currentIdx: 0,
       isScrolled: false,
-      scrollTicking: false
+      scrollTicking: false,
+      hoverTimer: null,
+      isDragging: false,
+      dragStartX: 0,
+      dragThreshold: 120
     };
   },
   computed: {
+    // 1. 이전 카드 인덱스 계산 (방어 로직 포함)
     getPrevIdx() {
+      if (!this.chapters || this.chapters.length === 0) return 0;
       return (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
     },
+    // 2. 다음 카드 인덱스 계산 (방어 로직 포함)
     getNextIdx() {
+      if (!this.chapters || this.chapters.length === 0) return 0;
       return (this.currentIdx + 1) % this.chapters.length;
     },
     trackStyle() {
-      // 슬라이더 트랙의 위치 조절 로직 (필요 시)
+      // 슬라이더 트랙 커스텀 스타일 (필요 시 확장)
       return {};
     }
   },
   methods: {
-    handleScroll() {
-      // 히어로 섹션 높이(100vh)를 기준으로 스크롤 여부 판단
-      this.isScrolled = window.scrollY > window.innerHeight * 0.5;
+    /**
+     * [아이콘 새로고침]
+     * - Lucide 라이브러리를 사용하여 DOM 내의 data-lucide 아이콘들을 렌더링합니다.
+     */
+    refreshIcons() {
+      this.$nextTick(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
     },
-    scrollToLeaderboard() {
-      document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' });
-    },
-    /* [2026-01-24] 최상단(히어로 영역)으로 부드럽게 복귀하는 로직 구현 */
-    scrollToTop() {
-      const container = this.$refs.landingContainer;
-      if (container) {
-        container.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }
-    },
-    nextSlide() {
-      this.currentIdx = (this.currentIdx + 1) % this.chapters.length;
-    },
-    prevSlide() {
-      this.currentIdx = (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
-    },
-    goToSlide(idx) {
-      this.currentIdx = idx;
-    },
-    isIndexVisible(idx) {
-      // 현재 인덱스 주변만 표시 (3D 효과를 위해)
-      const diff = Math.abs(idx - this.currentIdx);
-      return diff <= 1 || diff === this.chapters.length - 1;
-    },
+    /**
+     * [스크롤 이벤트 핸들러]
+     * - 일정 높이 이상 스크롤 시 상단 바의 디자인을 변경(isScrolled)합니다.
+     */
     handleScroll() {
       if (this.scrollTicking) return;
       this.scrollTicking = true;
@@ -292,23 +325,92 @@ export default {
         this.scrollTicking = false;
       });
     },
+    scrollToSection(sectionId) {
+      const container = this.$refs.landingContainer;
+      const section = document.getElementById(sectionId);
+      if (!container || !section) return;
+      container.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
+    },
     scrollToLeaderboard() {
-      document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' });
+      this.scrollToSection('leaderboard');
+    },
+    /**
+     * [최상단 복귀]
+     * - 버튼 클릭 시 히어로 영역으로 부드럽게 스크롤합니다.
+     */
+    scrollToTop() {
+      const container = this.$refs.landingContainer;
+      if (container) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     },
     nextSlide() {
-      this.currentIdx = (this.currentIdx + 1) % this.chapters.length;
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx + 1) % this.chapters.length;
+      }
     },
     prevSlide() {
-      this.currentIdx = (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
+      }
     },
     goToSlide(idx) {
       this.currentIdx = idx;
     },
+    /**
+     * [카드가 화면에 보이는지 여부]
+     * - 현재 인덱스와 인접한 카드만 보여주어 3D 넘김 효과를 구현합니다.
+     */
     isIndexVisible(idx) {
-      // 현재 인덱스 주변만 표시 (3D 효과를 위해)
+      if (!this.chapters || this.chapters.length === 0) return false;
       const diff = Math.abs(idx - this.currentIdx);
       return diff <= 1 || diff === this.chapters.length - 1;
     },
+    /**
+     * [카드 호버 핸들러]
+     * - 마우스가 근처 카드에 상주할 때만 전환되도록 지연(250ms)을 둡니다.
+     * - 빠른 마우스 이동으로 인한 오작동을 방지합니다.
+     */
+    handleCardHover(idx) {
+      if (this.currentIdx === idx) return;
+      
+      clearTimeout(this.hoverTimer);
+      this.hoverTimer = setTimeout(() => {
+        this.currentIdx = idx;
+      }, 250); // 0.25초 이상 머물렀을 때만 전환
+    },
+    /**
+     * [호버 타이머 초기화]
+     * - 마우스가 카드를 벗어나면 전환 예약을 취소합니다.
+     */
+    clearHoverTimer() {
+      clearTimeout(this.hoverTimer);
+    },
+    onDragStart(event) {
+      if (event.button !== 0) return;
+      this.isDragging = true;
+      this.dragStartX = event.clientX;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onDragMove(event) {
+      if (!this.isDragging) return;
+      const deltaX = event.clientX - this.dragStartX;
+      if (Math.abs(deltaX) < this.dragThreshold) return;
+      const direction = deltaX > 0 ? -1 : 1;
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx + direction + this.chapters.length) % this.chapters.length;
+      }
+      this.dragStartX = event.clientX;
+    },
+    onDragEnd(event) {
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    },
+    /**
+     * [카드 클릭 핸들러]
+     * - 이미 선택된 카드 클릭 시 상세 팝업을 열고, 아니면 해당 카드를 중앙으로 이동시킵니다.
+     */
     handleCardClick(chapter, idx) {
       if (idx === this.currentIdx) {
         this.$emit('open-unit', chapter);
@@ -325,6 +427,7 @@ export default {
   },
   unmounted() {
     window.removeEventListener('scroll', this.handleScroll);
+    clearTimeout(this.hoverTimer);
   },
   updated() {
     this.$nextTick(() => {
@@ -582,7 +685,8 @@ export default {
   position: fixed;
   top: 1.5rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+  opacity: 1;
   width: 90%;
   max-width: 1200px;
   background: rgba(15, 23, 42, 0.4);
@@ -594,8 +698,24 @@ export default {
   justify-content: space-between;
   align-items: center;
   z-index: 1000;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              top 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              right 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              left 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              padding 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              border-radius 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  will-change: transform, top, left, right, width, padding, border-radius;
+}
+
+.navbar-v2.is-hidden {
+  transform: translate3d(-50%, -120%, 0);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .logo-playground {
@@ -652,7 +772,9 @@ export default {
   top: 50%;
   right: 1.5rem;
   left: auto;
-  transform: translateY(-50%);
+  transform: translate3d(120%, -50%, 0);
+  opacity: 0;
+  pointer-events: none;
   width: 75px;
   height: auto;
   max-height: 85vh;
@@ -666,6 +788,12 @@ export default {
   overflow: visible !important; /* 사이드 라벨 노출을 위해 visible로 변경 */
   display: flex;
   align-items: center;
+}
+
+.navbar-v2.bookmark-mode.is-visible {
+  transform: translate3d(0, -50%, 0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .navbar-v2.bookmark-mode .logo-playground {
@@ -913,6 +1041,11 @@ export default {
   max-width: 1200px;
   overflow: visible;
   position: relative;
+  cursor: grab;
+}
+
+.slider-wrapper.dragging {
+  cursor: grabbing;
 }
 
 .slider-track {
@@ -938,6 +1071,7 @@ export default {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  user-select: none;
 }
 
 .gym-card-premium.active {
@@ -946,11 +1080,11 @@ export default {
   z-index: 10;
   pointer-events: auto;
   visibility: visible;
-  border-color: rgba(182, 255, 64, 0.5);
+  border-color: var(--unit-color, rgba(182, 255, 64, 0.5));
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 
     0 30px 60px rgba(0, 0, 0, 0.6),
-    0 0 80px rgba(182, 255, 64, 0.15);
+    0 0 80px var(--unit-color, rgba(182, 255, 64, 0.15));
 }
 
 .gym-card-premium.prev {
@@ -975,9 +1109,9 @@ export default {
 
 /* Nav Buttons */
 .slider-nav {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -985,15 +1119,22 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
   z-index: 20;
+  backdrop-filter: blur(5px);
 }
 
 .slider-nav:hover {
   background: #b6ff40;
   color: #000;
-  transform: scale(1.1);
+  transform: scale(1.1) rotate(5deg);
   box-shadow: 0 0 30px rgba(182, 255, 64, 0.4);
+  border-color: #b6ff40;
+}
+
+.playground-slider-container:hover .slider-nav {
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Pagination */
@@ -1014,9 +1155,9 @@ export default {
 }
 
 .slider-pagination .dot.active {
-  background: #b6ff40;
+  background: var(--unit-color, #b6ff40);
   transform: scale(1.5);
-  box-shadow: 0 0 10px #b6ff40;
+  box-shadow: 0 0 10px var(--unit-color, #b6ff40);
 }
 
 @media (max-width: 768px) {
@@ -1087,6 +1228,8 @@ export default {
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: 6px solid #1a1a1a;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .gym-card-premium:hover .card-image-wrap-v2 {

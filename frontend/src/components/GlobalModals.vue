@@ -75,7 +75,7 @@
 
     <!-- [Logic Mirror 실습 모달] - Unit 1 전용 (수정일: 2026-01-24) -->
     <transition name="fade">
-       <LogicMirror 
+       <PseudoPractice 
            v-if="ui.isLogicMirrorOpen" 
            :initialQuestIndex="game.selectedQuestIndex"
            @close="handleCloseLogicMirror"
@@ -124,11 +124,11 @@ import NoticeModal from './NoticeModal.vue';
 import LoginModal from './LoginModal.vue';
 import SignUpModal from './SignUpModal.vue';
 import ConstructionModal from './ConstructionModal.vue';
-import LogicMirror from '../features/practice/support/unit1/logic-mirror/LogicMirror.vue';
+import PseudoPractice from '../features/practice/Pseudo_practice.vue';
 import LogicMirrorGuidebook from '../features/practice/support/unit1/logic-mirror/LogicMirrorGuidebook.vue';
 
 /**
- * [수정일: 2026-01-24]
+ * [수정일: 2026-01-24] 
  * [수정내용: App.vue의 모든 모달 로직을 통합 관리하는 글로벌 모달 컨테이너 생성]
  */
 
@@ -149,7 +149,7 @@ const onSignUpSuccess = (nickname) => {
 };
 
 const handleCloseLogicMirror = () => {
-    // [2026-01-24] 라우트 기반 모달이므로 닫을 때 메인으로 주소 이동
+    // [2026-01-27] PseudoPractice 라우트 기반 모달이므로 닫을 때 메인으로 주소 이동
     ui.isLogicMirrorOpen = false;
     router.push('/');
     ui.isUnitModalOpen = true; // 실습 종료 후 다시 유닛 선택창 노출

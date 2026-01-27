@@ -1,1019 +1,232 @@
-// 튜토리얼 + 11개 퀘스트 데이터
-// [2026-01-24] 정밀 평가 및 파이썬 실행 검증을 위한 validation 데이터 스키마(puzzle_solution, execution) 추가
-// [2026-01-24] 각 퀘스트별 맞춤형 추론 질문(reasoning) 데이터 추가 (질문, 선택지, 정답 인덱스)
-export const gameData = {
-  tutorial: {
-    id: 'tutorial',
-    name: '🎓 튜토리얼',
-    description: '게임 방법을 배워봐요',
-    steps: [
-      {
-        id: 'step1',
-        title: '환영합니다! 👋',
-        description: 'Logic Mirror는 사고 순서를 훈련하는 게임입니다.',
-        instruction: '카드를 드래그해서 올바른 순서로 배치하세요.',
-        visual: 'welcome',
+export const aiQuests = [
+    {
+        id: 1,
+        title: "로그인 인증 시스템",
+        category: "Auth",
+        emoji: "🔐",
+        desc: "아이디와 비밀번호가 일치하는지 확인하는 로직을 조립하세요.",
+        rewardXP: 100,
         cards: [
-          {
-            id: 'card1',
-            text_ko: '아침에 일어난다',
-            icon: '🌅',
-            color: 'blue'
-          },
-          {
-            id: 'card2',
-            text_ko: '세수를 한다',
-            icon: '💧',
-            color: 'green'
-          },
-          {
-            id: 'card3',
-            text_ko: '아침을 먹는다',
-            icon: '🍳',
-            color: 'orange'
-          }
+            { id: 'b1', text: '만약 아이디 == "lion" 이면:', color: 'border-indigo-500', icon: '❓' },
+            { id: 'b2', text: '    만약 비밀번호 == "1234" 이면:', color: 'border-indigo-500', icon: '❓' },
+            { id: 'b3', text: '        반환 "성공"', color: 'border-emerald-500', icon: '✅' },
+            { id: 'b4', text: '    아니면:', color: 'border-indigo-500', icon: '🔄' },
+            { id: 'b5', text: '        반환 "실패"', color: 'border-rose-500', icon: '❌' }
         ],
-        correctOrder: ['card1', 'card2', 'card3'],
-        hint: '자연스러운 순서를 생각해보세요!'
-      }
-    ]
-  },
-
-  quests: [
-    // LV1 - 순차
-    {
-      id: 'quest_lv1_01',
-      level: 1,
-      title: '맛있는 라면 끓이기',
-      description: '라면을 끓이는 올바른 순서를 맞춰보세요. 순서가 바뀌면 생라면을 먹어야 할지도 몰라요!',
-      logic_type: '순차',
-      emoji: '🍜',
-      examples: '● IN: 물, 라면, 냄비\n● OUT: 맛있는 라면 완성',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '냄비에 물을 넣고 끓인다',
-          text_py: 'boil_water()',
-          icon: '💧',
-          color: 'blue',
-          action: 'boil_water'
-        },
-        {
-          id: 'b2',
-          text_ko: '물이 끓으면 면과 스프를 넣는다',
-          text_py: 'put_ingredients()',
-          icon: '🍜',
-          color: 'purple',
-          action: 'add_ramen'
-        },
-        {
-          id: 'b3',
-          text_ko: '3분 뒤 맛있게 먹는다',
-          text_py: 'eat_ramen()',
-          icon: '😋',
-          color: 'orange',
-          action: 'eat'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 0 }
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: 'lion', fee1: '1234', fee2: 'Success' }, // 필드명은 재활용하거나 추후 일반화
+        quizOptions: [
+            { text: "A. 비밀번호가 틀려도 성공 처리한다.", correct: false },
+            { text: "B. and 연산자를 사용하여 한 줄로 합칠 수 있다.", correct: true },
+            { text: "C. 아이디 확인은 생략한다.", correct: false }
         ],
-        execution: {
-          function_name: "cook_ramen",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public", description: "라면을 정상적으로 끓이는지 확인" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가: 하드코딩 탈피 */
-          implementation_hint: {
-            main: "라면 요리의 시작은 냄비와 함수 정의(cook_ramen)라꽥!",
-            sub: "배치한 카드 순서대로 함수 안을 채워주면 맛있는 라면이 완성될 거꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '라면 끓이기 과정에서 왜 물을 먼저 끓여야 할까요?',
-        options: [
-          '프로그램은 항상 위에서 아래로 순서대로 실행되기 때문입니다',
-          '물이 끓어야 면과 스프가 익을 수 있는 조건이 갖춰지기 때문입니다',
-          '반복해서 물을 끓여야 더 맛있는 라면이 되기 때문입니다',
-          '사실 순서는 상관없지만 관습적으로 그렇게 합니다'
-        ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '완벽합니다! 꼬들꼬들한 라면이 완성되었어요.',
-        failure: '순서가 이상해요. 물이 끓기도 전에 먹으면 안 되겠죠?',
-        hint: '프로그램은 위에서 아래로 한 줄씩 실행됩니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '완벽해요! 그런데 만약 물이 끓지 않았는데 면을 먼저 넣으면 어떻게 될까요?',
-          options: [
-            '라면 맛이 더 좋아집니다',
-            '면이 설익거나 국물 맛이 변할 수 있습니다',
-            '프로그램 실행 속도가 빨라집니다',
-            '아무런 차이가 없습니다'
-          ],
-          correctIndex: 1,
-          explanation: '프로그래밍에서도 실행 순서가 바뀌면 예상치 못한 결과(버그)가 발생할 수 있다는 점을 기억하꽥!'
-        }
-      ]
+        mapPos: { x: 200, y: 150 }
     },
     {
-      id: 'quest_lv1_02',
-      level: 1,
-      title: '화분에 꽃 심기',
-      description: '씨앗이 꽃이 되는 과정을 순서대로 나열해 보세요.',
-      logic_type: '순차',
-      emoji: '🌱',
-      examples: '● IN: 씨앗, 흙, 화분\n● OUT: 예쁜 꽃',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '화분에 흙을 채운다',
-          text_py: 'fill_soil()',
-          icon: '🪴',
-          color: 'green',
-          action: 'fill_soil'
-        },
-        {
-          id: 'b2',
-          text_ko: '흙 속에 씨앗을 심는다',
-          text_py: 'plant_seed()',
-          icon: '🌱',
-          color: 'blue',
-          action: 'plant_seed'
-        },
-        {
-          id: 'b3',
-          text_ko: '물을 충분히 준다',
-          text_py: 'water_flower()',
-          icon: '💧',
-          color: 'blue',
-          action: 'water'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 0 }
+        id: 2,
+        title: "재고 관리 알림",
+        category: "Inventory",
+        emoji: "📦",
+        desc: "재고가 부족할 때 주문 알림을 보내는 로직을 만듭니다.",
+        rewardXP: 120,
+        cards: [
+            { id: 'b1', text: '만약 현재_수량 <= 10 이면:', color: 'border-indigo-500', icon: '❓' },
+            { id: 'b2', text: '    알림_보내기("재고 부족")', color: 'border-amber-500', icon: '🔔' },
+            { id: 'b3', text: '    반환 "주문 필요"', color: 'border-emerald-500', icon: '🛒' },
+            { id: 'b4', text: '아니면:', color: 'border-indigo-500', icon: '🔄' },
+            { id: 'b5', text: '    반환 "재고 충분"', color: 'border-emerald-500', icon: '✨' }
         ],
-        execution: {
-          function_name: "plant_flower",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public", description: "꽃을 정상적으로 심는지 확인" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 */
-          implementation_hint: {
-            main: "식물을 심는 순차적인 로직은 def plant_flower(): 로 시작한다꽥!",
-            sub: "흙, 씨앗, 물의 인과관계를 코드로 옮겨보꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '꽃을 심는 과정에서 각 단계의 순서가 중요한 이유는 무엇일까요?',
-        options: [
-          '컴퓨터가 한 번에 하나의 일만 처리할 수 있기 때문입니다',
-          '이전 단계의 결과(흙이 찬 화분)가 다음 단계의 입력이 되기 때문입니다',
-          '반복적인 작업을 피하기 위해서 순서를 정합니다',
-          '코드의 길이가 짧아지기 때문입니다'
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '10', fee1: 'Alert', fee2: 'Safe' },
+        quizOptions: [
+            { text: "A. 수량이 0일 때만 주문한다.", correct: false },
+            { text: "B. 최소 기준값을 상수로 관리하면 유지보수가 쉽다.", correct: true },
+            { text: "C. 알림은 항상 보낸다.", correct: false }
         ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '생명의 신비를 체험하셨군요! 올바른 순서입니다.',
-        failure: '씨앗을 심기 전에 흙이 있어야 합니다.',
-        hint: '일의 인과 관계(원인과 결과)를 생각해 보세요.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '잘했어요! 만약 물을 먼저 주고 나중에 흙을 채우면 어떤 일이 생길까요?',
-          options: [
-            '꽃이 더 빨리 자랍니다',
-            '화분 밖으로 물이 다 새어나가고 씨앗이 씻겨나갈 수 있습니다',
-            '컴퓨터 메모리가 절약됩니다',
-            '순서는 전혀 중요하지 않습니다'
-          ],
-          correctIndex: 1,
-          explanation: '올바른 실행 순서(순차 구조)는 효율성뿐만 아니라 로직의 성패를 결정하기도 하꽥!'
-        }
-      ]
-    },
-
-    // LV2 - 선택
-    {
-      id: 'quest_lv2_01',
-      level: 2,
-      title: '비 오는 날 우산 챙기기',
-      description: '날씨가 \'비\'라면 우산을 챙기는 논리를 완성하세요.',
-      logic_type: '선택',
-      emoji: '☔',
-      examples: '● IN: weather=\'rain\'\n● OUT: take_umbrella()\n● IN: weather=\'sunny\'\n● OUT: (아무 일 없음)',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '오늘 날씨를 확인한다',
-          text_py: 'weather = check_weather()',
-          icon: '🌤️',
-          color: 'blue',
-          action: 'check_weather'
-        },
-        {
-          id: 'b2',
-          text_ko: '만약 날씨가 \'비\'와 같다면',
-          text_py: 'if weather == \'rain\':',
-          icon: '❓',
-          color: 'purple',
-          isCondition: true,
-          action: 'check_rain'
-        },
-        {
-          id: 'b3',
-          text_ko: '    우산을 챙긴다',
-          text_py: '    take_umbrella()',
-          icon: '☔',
-          color: 'green',
-          indent: 1,
-          action: 'take_umbrella'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 }
-        ],
-        execution: {
-          function_name: "check_umbrella",
-          test_cases: [
-            { input: "'rain'", expected: "'take_umbrella'", type: "public" },
-            { input: "'sunny'", expected: "'None'", type: "hidden" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (조건문) */
-          implementation_hint: {
-            main: "날씨를 확인하고 우산을 챙기는 조건문(if)은 def check_umbrella(): 안에 작성하꽥!",
-            sub: "if 문 아래에는 꼭 들여쓰기(Tab)를 해서 우산을 챙기는 동작을 넣어주꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '여기서 `if` 문을 사용한 핵심적인 이유는 무엇일까요?',
-        options: [
-          '날씨와 상관없이 항상 우산을 챙기기 위해서입니다',
-          '특정한 조건(비)이 만족될 때만 명령을 실행하기 위해서입니다',
-          '여러 번 반복해서 날씨를 확인하기 위해서입니다',
-          '코드를 더 예쁘게 만들기 위해서입니다'
-        ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '준비성이 철저하군요! 비를 맞지 않게 되었습니다.',
-        failure: '비가 올 때만 우산을 챙겨야 합니다. 들여쓰기를 확인하세요.',
-        hint: '조건이 \'참\'일 때 실행할 명령은 들여쓰기(Indent)가 필요합니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '잘했어요! 만약 "비가 오지 않을 때" 선글라스를 챙기는 논리를 추가하려면 무엇이 필요할까요?',
-          options: [
-            '더 많은 if 문',
-            'else 문',
-            '반복문(while)',
-            '함수 정의'
-          ],
-          correctIndex: 1,
-          explanation: 'else를 사용하면 조건이 "거짓(False)"일 때 실행할 동작을 따로 정의할 수 있어서 더 똑똑한 프로그램이 된다꽥!'
-        }
-      ]
+        mapPos: { x: 350, y: 250 }
     },
     {
-      id: 'quest_lv2_02',
-      level: 2,
-      title: '놀이기구 키 제한',
-      description: '키가 120cm 이상인 사람만 태워주는 안전 요원이 되어보세요.',
-      logic_type: '선택(Else)',
-      emoji: '🎢',
-      examples: '● IN: height = 130\n● OUT: ride()\n● IN: height = 110\n● OUT: sorry()',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '손님의 키를 확인한다',
-          text_py: 'height = check_height()',
-          icon: '📏',
-          color: 'blue',
-          action: 'check_height'
-        },
-        {
-          id: 'b2',
-          text_ko: '만약 키가 120보다 크거나 같다면',
-          text_py: 'if height >= 120:',
-          icon: '❓',
-          color: 'purple',
-          isCondition: true,
-          action: 'check_height_condition'
-        },
-        {
-          id: 'b3',
-          text_ko: '    탑승을 안내한다',
-          text_py: '    ride()',
-          icon: '✅',
-          color: 'green',
-          indent: 1,
-          action: 'allow_ride'
-        },
-        {
-          id: 'b4',
-          text_ko: '아니면 (키가 작다면)',
-          text_py: 'else:',
-          icon: '❌',
-          color: 'orange',
-          isCondition: true,
-          action: 'else_case'
-        },
-        {
-          id: 'b5',
-          text_ko: '    탑승 불가라고 말한다',
-          text_py: '    sorry()',
-          icon: '🙅',
-          color: 'red',
-          indent: 1,
-          action: 'deny_ride'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4', 'b5'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 },
-          { id: 'b4', indent: 0 },
-          { id: 'b5', indent: 1 }
+        id: 3,
+        title: "기온별 옷차림 추천",
+        category: "Service",
+        emoji: "🌡️",
+        desc: "날씨에 따라 적절한 의상을 추천하는 AI입니다.",
+        rewardXP: 150,
+        cards: [
+            { id: 'b1', text: '만약 기온 >= 28 이면:', color: 'border-indigo-500', icon: '☀️' },
+            { id: 'b2', text: '    추천 = "반팔"', color: 'border-emerald-500', icon: '👕' },
+            { id: 'b3', text: '아니고_만약 기온 >= 15 이면:', color: 'border-indigo-500', icon: '☁️' },
+            { id: 'b4', text: '    추천 = "맨투맨"', color: 'border-emerald-500', icon: '🧥' },
+            { id: 'b5', text: '그외: 추천 = "패딩"', color: 'border-rose-500', icon: '❄️' }
         ],
-        execution: {
-          function_name: "ride_safety",
-          test_cases: [
-            { input: "130", expected: "'ride'", type: "public" },
-            { input: "110", expected: "'sorry'", type: "hidden" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (Else) */
-          implementation_hint: {
-            main: "키가 크면 탑승, 아니면(else) 거절하는 안전 로직을 구현해보꽥!",
-            sub: "if와 else는 줄을 맞추고, 그 안의 동작들은 한 칸씩 들여써야 정확하꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '`else` 블록은 언제 실행되나요?',
-        options: [
-          '항상 `if` 블록보다 먼저 실행됩니다',
-          '`if`문의 조건(키 >= 120)이 거짓(False)일 때 실행됩니다',
-          '키가 120일 때만 실행됩니다',
-          '조건과 상관없이 무조건 한 번은 실행됩니다'
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '28', fee1: 'Shorts', fee2: 'Coat' },
+        quizOptions: [
+            { text: "A. 모든 기온에서 반팔만 추천한다.", correct: false },
+            { text: "B. elif(아니고 만약)를 사용해 여러 구간을 나눈다.", correct: true },
+            { text: "C. 조건의 순서는 상관없다.", correct: false }
         ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '안전 수칙을 잘 지켰습니다! 완벽한 안전 요원이네요.',
-        failure: '키가 작은 어린이는 보호자가 필요해요. 탑승시키면 안 됩니다!',
-        hint: 'if와 else는 짝꿍입니다. 조건이 맞을 때와 아닐 때를 모두 처리하세요.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '잘했어요! 만약 `else` 블록을 빼먹으면 어떤 일이 생길까요?',
-          options: [
-            '키가 작은 사람이 탑승하게 됩니다',
-            '키가 작을 때 아무런 안내도 나가지 않게 됩니다',
-            '코드가 더 빨리 실행됩니다',
-            '에러가 발생해서 멈춥니다'
-          ],
-          correctIndex: 1,
-          explanation: 'else 문은 예외 상황을 처리하는 "안전망" 역할을 하므로 매우 중요하다꽥!'
-        }
-      ]
-    },
-
-    // LV3 - 반복
-    {
-      id: 'quest_lv3_01',
-      level: 3,
-      title: '로켓 발사 카운트다운',
-      description: '5부터 1까지 숫자를 세고 발사하는 반복문을 완성하세요.',
-      logic_type: '반복',
-      emoji: '🚀',
-      examples: '● IN: count=5\n● OUT: 5, 4, 3, 2, 1, 발사!',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '카운트를 5로 정한다',
-          text_py: 'count = 5',
-          /* [2026-01-24] 일부 환경에서 깨질 수 있는 복합 이모지(5️⃣)를 안정적인 이모지(⏲️)로 교체 */
-          icon: '⏲️',
-          color: 'blue',
-          action: 'init_count'
-        },
-        {
-          id: 'b2',
-          text_ko: '카운트가 0보다 큰 동안 반복한다',
-          text_py: 'while count > 0:',
-          icon: '🔁',
-          color: 'purple',
-          isLoop: true,
-          action: 'check_loop'
-        },
-        {
-          id: 'b3',
-          text_ko: '    현재 카운트를 외친다',
-          text_py: '    print(count)',
-          icon: '📢',
-          color: 'green',
-          indent: 1,
-          action: 'print_count'
-        },
-        {
-          id: 'b4',
-          text_ko: '    카운트를 1 감소시킨다',
-          text_py: '    count = count - 1',
-          icon: '⬇️',
-          color: 'orange',
-          indent: 1,
-          action: 'decrease_count'
-        },
-        {
-          id: 'b5',
-          text_ko: '발사!',
-          text_py: 'launch()',
-          icon: '🚀',
-          color: 'red',
-          action: 'launch'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4', 'b5'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 },
-          { id: 'b4', indent: 1 },
-          { id: 'b5', indent: 0 }
-        ],
-        execution: {
-          function_name: "rocket_countdown",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (반복문) */
-          implementation_hint: {
-            main: "로켓 발사를 위한 5, 4, 3, 2, 1 반복(while)은 def rocket_countdown(): 에서 시작하꽥!",
-            sub: "반복문 안에서 카운트를 1씩 줄이는 것(count = count - 1)을 잊지 마꽥!"
-          }
-        }
-      },
-      reasoning: {
-        question: '반복문 안에서 `count = count - 1`이 꼭 필요한 이유는 무엇일까요?',
-        options: [
-          '코드가 너무 짧으면 오류가 나기 때문입니다',
-          '조건을 변화시켜서 언젠가는 반복문이 멈추게(탈출하게) 하기 위해서입니다',
-          '단순히 화면에 숫자를 예쁘게 표시하기 위해서입니다',
-          '파이썬에서는 변수 값을 항상 바꿔줘야 하기 때문입니다'
-        ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '발사 성공! 우주로 날아갑니다! 🌌',
-        failure: '카운트가 줄지 않으면 영원히 반복됩니다(무한루프)!',
-        hint: '반복문 안에서 조건을 변화시켜야 멈출 수 있어요.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '완벽해요! 만약 `count = count - 1` 부분을 빼먹으면 어떻게 될까요?',
-          options: [
-            '로켓이 즉시 발사됩니다',
-            '카운트가 줄어들지 않아 무한히 반복됩니다',
-            '컴퓨터가 로켓 사진을 출력합니다',
-            '코드가 더 간결해집니다'
-          ],
-          correctIndex: 1,
-          explanation: '반복문이 끝나기 위해서는 반드시 탈출 조건(카운트 감소 등)이 변화해야 한다는 걸 잊지 마꽥!'
-        }
-      ]
+        mapPos: { x: 500, y: 350 }
     },
     {
-      id: 'quest_lv3_02',
-      level: 3,
-      title: '풍선 불기 게임',
-      description: '풍선을 적당한 크기(10)까지 불어보세요. 너무 크면 펑!',
-      logic_type: '반복',
-      emoji: '🎈',
-      examples: '● IN: size=0\n● OUT: 풍선 크기 10 달성',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '풍선 크기를 0으로 시작',
-          text_py: 'size = 0',
-          icon: '🔵',
-          color: 'blue',
-          action: 'init_size'
-        },
-        {
-          id: 'b2',
-          text_ko: '크기가 10보다 작은 동안 반복',
-          text_py: 'while size < 10:',
-          icon: '🔁',
-          color: 'purple',
-          isLoop: true,
-          action: 'check_size'
-        },
-        {
-          id: 'b3',
-          text_ko: '    바람을 분다',
-          text_py: '    blow_air()',
-          icon: '💨',
-          color: 'green',
-          indent: 1,
-          action: 'blow'
-        },
-        {
-          id: 'b4',
-          text_ko: '    크기를 1 키운다',
-          text_py: '    size = size + 1',
-          icon: '⬆️',
-          color: 'orange',
-          indent: 1,
-          action: 'increase_size'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 },
-          { id: 'b4', indent: 1 }
+        id: 4,
+        title: "평균 제곱 오차 (MSE)",
+        category: "AI Basic",
+        emoji: "📈",
+        desc: "예측값과 실제값의 차이를 계산하는 인공지능 기초입니다.",
+        rewardXP: 180,
+        cards: [
+            { id: 'b1', text: '오차 = 실제 - 예측', color: 'border-indigo-500', icon: '➖' },
+            { id: 'b2', text: '제곱_오차 = 오차 ** 2', color: 'border-amber-500', icon: '✖️' },
+            { id: 'b3', text: '오차_총합에 더하기', color: 'border-emerald-500', icon: '➕' },
+            { id: 'b4', text: '전체 개수로 나누기', color: 'border-indigo-500', icon: '➗' },
+            { id: 'b5', text: '최종 MSE 반환', color: 'border-amber-500', icon: '🏁' }
         ],
-        execution: {
-          function_name: "blow_balloon",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (반복 조건) */
-          implementation_hint: {
-            main: "풍선이 펑 터지기 전(크기 < 10)까지 계속 바람을 불어넣어주꽥!",
-            sub: "while size < 10: 아래에 바람 불기와 크기 키우기 코드를 나란히 넣어주면 된다꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '`while size < 10:` 조건이 의미하는 바는 무엇일까요?',
-        options: [
-          '크기가 10이 될 때까지 딱 한 번만 실행한다는 뜻입니다',
-          '크기가 10보다 작은 동안에는 계속해서 바람을 불겠다는 뜻입니다',
-          '크기를 항상 10으로 고정하겠다는 뜻입니다',
-          '10번을 무조건 반복하겠다는 뜻입니다'
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '10', fee1: '8', fee2: '4' },
+        quizOptions: [
+            { text: "A. 음수 오차를 없애기 위해 제곱을 사용한다.", correct: true },
+            { text: "B. 오차는 항상 0이어야 한다.", correct: false },
+            { text: "C. 제곱 대신 절대값을 써도 되지만 미분은 어렵다.", correct: true }
         ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '적당한 크기로 풍선을 잘 불었습니다!',
-        failure: '조건을 잘못 설정하면 풍선이 펑! 터져버릴지도 몰라요.',
-        hint: '반복문은 \'조건이 참인 동안\'에만 계속 실행된다는 점을 기억하세요.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '잘했어요! 만약 풍선 크기를 한 번에 2씩 키우고 싶다면 어떻게 수정해야 할까요?',
-          options: [
-            'size = size + 2',
-            'while size < 20:',
-            'blow_air() 를 두 번 씁니다',
-            '수정할 수 없습니다'
-          ],
-          correctIndex: 0,
-          explanation: '변수에 더해지는 값을 바꾸면 반복의 결과도 달라지게 된다꽥!'
-        }
-      ]
-    },
-
-    // LV4 - 리스트
-    {
-      id: 'quest_lv4_01',
-      level: 4,
-      title: '장바구니 총액 계산',
-      description: '장바구니에 담긴 물건들의 가격을 모두 더해 계산하세요.',
-      logic_type: '리스트 순회',
-      emoji: '🛒',
-      examples: '● IN: prices=[1000, 500, 200]\n● OUT: total=1700',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '가격 리스트와 총액 변수(0)를 준비',
-          text_py: 'prices = [1000, 500, 200]\ntotal = 0',
-          icon: '🏪',
-          color: 'blue',
-          action: 'init_prices'
-        },
-        {
-          id: 'b2',
-          text_ko: '리스트의 각 가격(p)에 대해 반복',
-          text_py: 'for p in prices:',
-          icon: '🔁',
-          color: 'purple',
-          isLoop: true,
-          action: 'loop_prices'
-        },
-        {
-          id: 'b3',
-          text_ko: '    total에 가격(p)을 더한다',
-          text_py: '    total = total + p',
-          icon: '➕',
-          color: 'green',
-          indent: 1,
-          action: 'add_price'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 }
-        ],
-        execution: {
-          function_name: "calculate_total",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (리스트 순회) */
-          implementation_hint: {
-            main: "가격을 하나씩 꺼내서(for p in prices) 합계에 더해주면 된다꽥!",
-            sub: "total = total + p 로 총액을 누적시키는 것이 이 문제의 핵심이꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '이 코드에서 `p` 변수의 역할은 무엇일까요?',
-        options: [
-          '리스트 전체의 합계를 저장하는 변수입니다',
-          '반복할 때마다 리스트에서 하나씩 꺼내온 현재 물건의 가격입니다',
-          '리스트의 길이(데이터의 개수)를 나타냅니다',
-          '더 이상 반복할 데이터가 있는지 확인하는 스위치입니다'
-        ],
-        correctIndex: 1
-      },
-      feedback: {
-        success: '계산 정확해요! 누적 합계(Accumulator) 패턴은 정말 자주 쓰인답니다.',
-        failure: '더하는 동작은 반복문 안에서 계속 일어나야 합니다.',
-        hint: '반복문 밖에서 더하면 마지막 물건 가격만 더해질 수 있습니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '완벽해요! 리스트의 모든 숫자를 더한 `total` 값을 마지막에 한 번만 확인하려면 어디서 출력해야 할까요?',
-          options: [
-            'for 문 안쪽에서',
-            'for 문이 모두 끝난 뒤 바깥쪽에서',
-            '코드 맨 처음에서',
-            '수도코드 카드 위에서'
-          ],
-          correctIndex: 1,
-          explanation: '중간 과정이 아닌 최종 결과만 필요하다면 반복문이 완전히 끝난 뒤에 처리해야 효율적이라꽥!'
-        }
-      ]
+        mapPos: { x: 650, y: 250 }
     },
     {
-      id: 'quest_lv4_02',
-      level: 4,
-      title: '짝수 찾기 게임',
-      description: '숫자 카드 중에서 짝수(2로 나누어 떨어지는 수)만 골라내 보세요.',
-      logic_type: '리스트+조건',
-      emoji: '🎯',
-      examples: '● IN: cards = [1, 2, 3, 4]\n● OUT: 2, 4 발견',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '숫자 카드 리스트를 준비한다',
-          text_py: 'cards = [1, 2, 3, 4]',
-          icon: '🎴',
-          color: 'blue',
-          action: 'init_cards'
-        },
-        {
-          id: 'b2',
-          text_ko: '각 카드(num)에 대해 반복한다',
-          text_py: 'for num in cards:',
-          icon: '🔁',
-          color: 'purple',
-          isLoop: true,
-          action: 'loop_cards'
-        },
-        {
-          id: 'b3',
-          text_ko: '    만약 2로 나눈 나머지가 0이라면',
-          text_py: '    if num % 2 == 0:',
-          icon: '❓',
-          color: 'orange',
-          isCondition: true,
-          indent: 1,
-          action: 'check_even'
-        },
-        {
-          id: 'b4',
-          text_ko: '        \'짝수 발견\'을 출력한다',
-          text_py: '        print(num)',
-          icon: '✅',
-          color: 'green',
-          indent: 2,
-          action: 'print_even'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 },
-          { id: 'b4', indent: 2 }
+        id: 5,
+        title: "배달비 자동 계산",
+        category: "Logistics",
+        emoji: "🚚",
+        desc: "주문 금액이 5만원 이상이면 배달비가 무료입니다.",
+        rewardXP: 200,
+        cards: [
+            { id: 'b1', text: '만약 주문_금액 >= 50000 이면:', color: 'border-indigo-500', icon: '❓' },
+            { id: 'b2', text: '    배달비 = 0', color: 'border-emerald-500', icon: '💰' },
+            { id: 'b3', text: '아니면:', color: 'border-indigo-500', icon: '🔄' },
+            { id: 'b4', text: '    배달비 = 2500', color: 'border-emerald-500', icon: '💰' },
+            { id: 'b5', text: '최종 배달비 반환', color: 'border-amber-500', icon: '🏁' }
         ],
-        execution: {
-          function_name: "find_evens",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (필터링) */
-          implementation_hint: {
-            main: "리스트를 돌면서 짝수인지 확인(if num % 2 == 0)하는 로직을 완성하꽥!",
-            sub: "조건에 맞는 경우에만 동작하도록 들여쓰기 깊이를 주의해서 작성하꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '반복문(`for`) 안에 조건문(`if`)을 넣었을 때 얻을 수 있는 효과는?',
-        options: [
-          '코드를 더 복잡하게 만들어서 보안을 강화합니다',
-          '리스트의 모든 데이터를 그대로 출력합니다',
-          '리스트를 돌면서 특정한 조건을 만족하는 데이터만 골라서 처리할 수 있습니다',
-          '반복 횟수를 더 늘릴 수 있습니다'
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '50000', fee1: '0', fee2: '2500' },
+        quizOptions: [
+            { text: "A. 거리에 따른 할증을 고려하지 않았다.", correct: true },
+            { text: "B. 5만원 미만도 무료로 해준다.", correct: false },
+            { text: "C. 배달비 변수를 먼저 선언하면 더 깔끔하다.", correct: true }
         ],
-        correctIndex: 2
-      },
-      feedback: {
-        success: '짝수만 쏙쏙 잘 골라냈군요! 나머지 연산(%)을 잘 이해하셨습니다.',
-        failure: '모든 숫자를 다 출력하면 안 돼요. 조건문 위치를 확인하세요.',
-        hint: '반복문 안에 조건문을 넣으면 원하는 데이터만 필터링할 수 있습니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '대단해요! 만약 짝수가 아닌 "홀수"만 골라내고 싶다면 조건을 어떻게 바꿔야 할까요?',
-          options: [
-            'num % 2 == 1',
-            'num % 2 != 0',
-            '위의 두 가지 모두 맞습니다',
-            'num / 2 == 0'
-          ],
-          correctIndex: 2,
-          explanation: '나머지가 1이거나, 0이 아니라는 조건 둘 다 홀수를 찾는 논리적인 방법이라꽥!'
-        }
-      ]
-    },
-
-    // LV5 - 고급
-    {
-      id: 'quest_lv5_01',
-      level: 5,
-      title: '가장 큰 숫자 찾기',
-      description: '리스트에 있는 숫자들 중 가장 큰 \'대장 숫자\'를 찾아보세요.',
-      logic_type: '최댓값 알고리즘',
-      emoji: '👑',
-      examples: '● IN: nums = [10, 50, 30]\n● OUT: max_val = 50',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '첫 번째 숫자를 현재 대장(max_val)으로 정한다',
-          text_py: 'max_val = nums[0]',
-          /* [2026-01-24] 일부 환경에서 깨질 수 있는 복합 이모지(1️⃣)를 안정적인 이모지(🔢)로 교체 */
-          icon: '🔢',
-          color: 'blue',
-          action: 'init_max'
-        },
-        {
-          id: 'b2',
-          text_ko: '리스트의 모든 숫자(n)를 확인한다',
-          text_py: 'for n in nums:',
-          icon: '🔁',
-          color: 'purple',
-          isLoop: true,
-          action: 'loop_nums'
-        },
-        {
-          id: 'b3',
-          text_ko: '    만약 현재 숫자(n)가 대장보다 크다면',
-          text_py: '    if n > max_val:',
-          icon: '❓',
-          color: 'orange',
-          isCondition: true,
-          indent: 1,
-          action: 'check_bigger'
-        },
-        {
-          id: 'b4',
-          text_ko: '        대장을 현재 숫자(n)로 바꾼다',
-          text_py: '        max_val = n',
-          icon: '👑',
-          color: 'green',
-          indent: 2,
-          action: 'update_max'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 0 },
-          { id: 'b3', indent: 1 },
-          { id: 'b4', indent: 2 }
-        ],
-        execution: {
-          function_name: "find_max",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (최댓값) */
-          implementation_hint: {
-            main: "지금까지 본 숫자 중 가장 큰 값을 max_val에 계속 업데이트하꽥!",
-            sub: "더 큰 숫자(n > max_val)가 나타났을 때만 대장을 교체해주면 된다꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '최댓값을 찾는 알고리즘의 원리는 무엇일까요?',
-        options: [
-          '모든 숫자를 다 더한 뒤 개수로 나누는 것입니다',
-          '리스트를 정렬한 뒤 맨 앞의 숫자를 가져오는 것입니다',
-          '하나씩 비교하면서 지금까지 본 것 중 가장 큰 값을 계속 변수에 업데이트하는 것입니다',
-          '가장 큰 숫자가 나올 때까지 무한히 기다리는 것입니다'
-        ],
-        correctIndex: 2
-      },
-      feedback: {
-        success: '진정한 챔피언을 찾아냈습니다! 최댓값 알고리즘을 마스터했네요.',
-        failure: '비교 조건이 반대로 되면 가장 작은 수를 찾게 됩니다.',
-        hint: '변수에 더 큰 값이 나타날 때마다 덮어쓰는 방식(Update)입니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '완벽합니다! 만약 리스트에 모든 숫자가 음수(-10, -50, -30)라면 `max_val`의 초기값은 무엇으로 정하는 게 가장 안전할까요?',
-          options: [
-            '0',
-            '리스트의 첫 번째 값(nums[0])',
-            '100',
-            '아무 숫자나 상관없습니다'
-          ],
-          correctIndex: 1,
-          explanation: '데이터 중 하나를 초기값으로 정해야만, 모든 값이 초기값보다 작아서 최댓값을 못 찾는 실수를 방지할 수 있다꽥!'
-        }
-      ]
+        mapPos: { x: 800, y: 150 }
     },
     {
-      id: 'quest_lv5_02',
-      level: 5,
-      title: '로그인 보안 시스템',
-      description: '아이디와 비밀번호가 모두 맞아야만 접속을 허용하는 보안 로직을 만드세요.',
-      logic_type: '중첩 조건',
-      emoji: '🔒',
-      examples: '● IN: id=\'admin\', pw=\'1234\'\n● OUT: \'접속 성공\'\n● IN: id=\'admin\', pw=\'0000\'\n● OUT: \'비번 오류\'',
-      cards: [
-        {
-          id: 'b1',
-          text_ko: '입력된 아이디가 \'admin\'인지 확인한다',
-          text_py: 'if input_id == \'admin\':',
-          icon: '🆔',
-          color: 'purple',
-          isCondition: true,
-          action: 'check_id'
-        },
-        {
-          id: 'b2',
-          text_ko: '    비밀번호가 \'1234\'인지 확인한다',
-          text_py: '    if input_pw == \'1234\':',
-          icon: '🔑',
-          color: 'orange',
-          isCondition: true,
-          indent: 1,
-          action: 'check_pw'
-        },
-        {
-          id: 'b3',
-          text_ko: '        \'접속 성공\'을 출력한다',
-          text_py: '        print(\'Success\')',
-          icon: '✅',
-          color: 'green',
-          indent: 2,
-          action: 'success'
-        },
-        {
-          id: 'b4',
-          text_ko: '    아니라면 (비번 틀림)',
-          text_py: '    else:',
-          icon: '❌',
-          color: 'red',
-          isCondition: true,
-          indent: 1,
-          action: 'else_pw'
-        },
-        {
-          id: 'b5',
-          text_ko: '        \'비밀번호 오류\'를 출력한다',
-          text_py: '        print(\'Wrong PW\')',
-          icon: '🚫',
-          color: 'red',
-          indent: 2,
-          action: 'wrong_pw'
-        }
-      ],
-      correctSequence: ['b1', 'b2', 'b3', 'b4', 'b5'],
-      validation: {
-        puzzle_solution: [
-          { id: 'b1', indent: 0 },
-          { id: 'b2', indent: 1 },
-          { id: 'b3', indent: 2 },
-          { id: 'b4', indent: 1 },
-          { id: 'b5', indent: 2 }
+        id: 6,
+        title: "최대값 찾기",
+        category: "Algorithm",
+        emoji: "🔝",
+        desc: "숫자 리스트에서 가장 큰 값을 찾는 기본 알고리즘입니다.",
+        rewardXP: 220,
+        cards: [
+            { id: 'b1', text: '최댓값 = 목록[0]', color: 'border-indigo-500', icon: '0️⃣' },
+            { id: 'b2', text: '반복: 목록의 단일_값에 대해:', color: 'border-indigo-500', icon: '🔁' },
+            { id: 'b3', text: '    만약 단일_값 > 최댓값 이면:', color: 'border-amber-500', icon: '❓' },
+            { id: 'b4', text: '        최댓값 = 단일_값', color: 'border-emerald-500', icon: '✅' },
+            { id: 'b5', text: '최종 최댓값 반환', color: 'border-amber-500', icon: '🏁' }
         ],
-        execution: {
-          function_name: "login_system",
-          test_cases: [
-            { input: "", expected: "'None'", type: "public" }
-          ],
-          /* [2026-01-24] 퀘스트 맞춤형 힌트 추가 (중첩 조건) */
-          implementation_hint: {
-            main: "아이디가 맞으면(if) 그 안에서 다시 비밀번호를 확인하는 중첩 로직이꽥!",
-            sub: "else는 비밀번호가 틀린 경우에 대응하도록 첫 번째 if 안쪽에 넣어주꽥."
-          }
-        }
-      },
-      reasoning: {
-        question: '중첩 조건문(Nested If)의 특징은 무엇일까요?',
-        options: [
-          '바깥쪽 조건(`if id == \'admin\'`)이 참일 때만 안쪽 조건(`if pw == \'1234\'`)을 검사합니다',
-          '두 조건 중 하나만 맞으면 무조건 성공합니다',
-          '여러 조건을 한 줄에 적는 것보다 속도가 느립니다',
-          '사용자의 아이디와 비밀번호를 항상 공개합니다'
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: 'lists', fee1: 'compare', fee2: 'max' },
+        quizOptions: [
+            { text: "A. 처음 값을 최댓값으로 가정하고 시작한다.", correct: true },
+            { text: "B. 모든 정렬 알고리즘은 최댓값을 찾는다.", correct: false },
+            { text: "C. 빈 리스트일 경우 에러가 날 수 있다.", correct: true }
         ],
-        correctIndex: 0
-      },
-      feedback: {
-        success: '보안 시스템 가동 완료! 해커도 뚫지 못하겠네요.',
-        failure: '아이디만 맞다고 통과시켜주면 보안 사고가 발생합니다!',
-        hint: 'if문 안에 또 if문을 넣으면 더 까다롭고 정교한 조건을 만들 수 있습니다.'
-      },
-      /* [2026-01-24] 심화 평가를 위한 인터랙티브 질문 구조로 변경 */
-      interviewQuestions: [
-        {
-          trigger: 'success',
-          question: '🎉 축하합니다! 모든 문제를 클리어했어요! 보안 시스템에서 `if` 문을 중첩해서 사용하는 가장 큰 이유는 무엇일까요?',
-          options: [
-            '코드를 더 길게 만들기 위해서',
-            '아이디가 맞을 때만 비밀번호를 확인하는 "단계적 보안"을 위해서',
-            '비밀번호를 화면에 출력하기 위해서',
-            '컴퓨터를 더 뜨겁게 만들기 위해서'
-          ],
-          correctIndex: 1,
-          explanation: '단계별로 조건을 검사하면 불필요한 확인 과정을 줄이고 보안 논리를 명확하게 짤 수 있다꽥! 정말 고생 많으셨어꽥!'
-        }
-      ]
+        mapPos: { x: 700, y: 450 }
+    },
+    {
+        id: 7,
+        title: "연속 출석 체크",
+        category: "Service",
+        emoji: "📅",
+        desc: "하루라도 빠지면 초기화되는 스트릭 시스템을 만듭니다.",
+        rewardXP: 250,
+        cards: [
+            { id: 'b1', text: '만약 오늘_방문 == 참 이면:', color: 'border-indigo-500', icon: '✅' },
+            { id: 'b2', text: '    연속_일수 += 1', color: 'border-emerald-500', icon: '🔥' },
+            { id: 'b3', text: '아니면:', color: 'border-indigo-500', icon: '❌' },
+            { id: 'b4', text: '    연속_일수 = 0', color: 'border-rose-500', icon: '❄️' },
+            { id: 'b5', text: '연속_일수 반환', color: 'border-amber-500', icon: '🏁' }
+        ],
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: 'True', fee1: 'streak+1', fee2: '0' },
+        quizOptions: [
+            { text: "A. 방문하지 않아도 일수를 늘린다.", correct: false },
+            { text: "B. '그외(else)' 섹션이 초기화의 핵심이다.", correct: true },
+            { text: "C. 데이터베이스 저장 로직이 추가로 필요하다.", correct: true }
+        ],
+        mapPos: { x: 550, y: 550 }
+    },
+    {
+        id: 8,
+        title: "스마트 점등 제어",
+        category: "IoT",
+        emoji: "💡",
+        desc: "주변 밝기에 따라 전등을 자동으로 켜고 끕니다.",
+        rewardXP: 280,
+        cards: [
+            { id: 'b1', text: '만약 조도_센서 < 100 이면:', color: 'border-indigo-500', icon: '🌑' },
+            { id: 'b2', text: '    전등.상태 = "ON"', color: 'border-emerald-500', icon: '💡' },
+            { id: 'b3', text: '아니고_만약 조도_센서 > 500 이면:', color: 'border-indigo-500', icon: '☀️' },
+            { id: 'b4', text: '    전등.상태 = "OFF"', color: 'border-rose-500', icon: '🌑' },
+            { id: 'b5', text: '상태 메시지 반환', color: 'border-amber-500', icon: '🏁' }
+        ],
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '100', fee1: 'ON', fee2: 'OFF' },
+        quizOptions: [
+            { text: "A. 100~500 사이일 때는 이전 상태를 유지한다.", correct: true },
+            { text: "B. 센서 값이 600이면 등이 켜진다.", correct: false },
+            { text: "C. 센서 오차를 줄이기 위해 평균값을 쓸 수 있다.", correct: true }
+        ],
+        mapPos: { x: 400, y: 650 }
+    },
+    {
+        id: 9,
+        title: "비밀번호 안전성",
+        category: "Security",
+        emoji: "🛡️",
+        desc: "길이가 너무 짧은 비밀번호를 거르는 보안 로직입니다.",
+        rewardXP: 300,
+        cards: [
+            { id: 'b1', text: '길이 = 문자열_길이(비번)', color: 'border-indigo-500', icon: '📏' },
+            { id: 'b2', text: '만약 길이 < 8 이면:', color: 'border-indigo-500', icon: '❓' },
+            { id: 'b3', text: '    반환 "위험(Security Low)"', color: 'border-rose-500', icon: '🚨' },
+            { id: 'b4', text: '아니면:', color: 'border-indigo-500', icon: '🔄' },
+            { id: 'b5', text: '    반환 "안전(Security High)"', color: 'border-emerald-500', icon: '✅' }
+        ],
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: '8', fee1: 'Low', fee2: 'High' },
+        quizOptions: [
+            { text: "A. 길이만 체크하는 것은 충분하지 않다.", correct: true },
+            { text: "B. 특수문자 포함 여부도 체크하면 더 좋다.", correct: true },
+            { text: "C. 짧은 비밀번호가 더 기억하기 쉽고 안전하다.", correct: false }
+        ],
+        mapPos: { x: 250, y: 550 }
+    },
+    {
+        id: 10,
+        title: "비속어 필터링",
+        category: "NLP",
+        emoji: "🚫",
+        desc: "채팅창의 깨끗한 환경을 위해 비속어를 마스킹합니다.",
+        rewardXP: 500,
+        cards: [
+            { id: 'b1', text: '반복: 금지어_목록의 단어에 대해:', color: 'border-indigo-500', icon: '🔁' },
+            { id: 'b2', text: '    만약 메시지에 단어가 포함되면:', color: 'border-amber-500', icon: '❗' },
+            { id: 'b3', text: '        단어를 "***"로 치환한다', color: 'border-rose-500', icon: '🫧' },
+            { id: 'b4', text: '반복 종료', color: 'border-indigo-500', icon: '🏁' },
+            { id: 'b5', text: '정화된 메시지 반환', color: 'border-emerald-500', icon: '✨' }
+        ],
+        solution: ['b1', 'b2', 'b3', 'b4', 'b5'],
+        codeValidation: { price: 'words', fee1: 'replace', fee2: 'clean_msg' },
+        quizOptions: [
+            { text: "A. 모든 단어를 지워버린다.", correct: false },
+            { text: "B. 반복문을 통해 금지어 리스트를 순회한다.", correct: true },
+            { text: "C. 대소문자를 구분하지 않도록 소문자로 바꾸면 더 좋다.", correct: true }
+        ],
+        mapPos: { x: 100, y: 450 }
     }
-  ]
-};
-
-export const getQuest = (questId) => {
-  return gameData.quests.find(q => q.id === questId);
-};
-
-export const getTutorial = () => {
-  return gameData.tutorial;
-};
-
-export const getTotalQuests = () => {
-  return gameData.quests.length;
-};
+];

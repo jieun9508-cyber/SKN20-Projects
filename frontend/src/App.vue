@@ -46,7 +46,7 @@
                     {{ game.currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
                   </template>
                   <template v-else>
-                    {{ game.activeUnit?.unitTitle || game.activeUnit?.problems?.[0]?.title || game.activeUnit?.name }}
+                    {{ game.activeUnit?.unitTitle || (game.activeUnit?.problems && game.activeUnit.problems[0]?.title) || game.activeUnit?.name || 'Loading...' }}
                   </template>
                 </h2>
               </div>
@@ -105,8 +105,8 @@
                 <button class="game-mode-btn vibe-cleanup" :class="{ 'active': game.currentDebugMode === 'vibe-cleanup' }" @click="selectGameMode('vibe-cleanup')">✨ Vibe Code Clean Up</button>
               </template>
               <template v-else>
-                <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>1개 활성화</div>
-                <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ (displayProblems.length || 1) + displayLabelsCount - 1 }}개 잠금</div>
+                <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>{{ game.currentUnitProgress.length }}개 활성화</div>
+                <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ displayProblems.length - game.currentUnitProgress.length }}개 잠금</div>
               </template>
             </footer>
           </div>
@@ -151,40 +151,44 @@ const leaderboard = ref([
 
 // Computed
 const isPracticePage = computed(() => {
-  const practiceRoutes = ['LogicMirror', 'LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
+  // LogicMirror는 모달로 띄우기 위해 practiceRoutes에서 제외합니다. (배경 유지 목적)
+  const practiceRoutes = [
+    'SystemArchitecturePractice', 
+    'BugHunt', 
+    'VibeCodeCleanUp', 
+    'OpsPractice'
+  ];
   return practiceRoutes.includes(route?.name);
 });
 
 const displayProblems = computed(() => {
-  if (game.activeUnit?.name === 'Debug Practice') {
+  const activeUnit = game.activeUnit;
+  if (!activeUnit) return [];
+
+  if (activeUnit.name === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
-      // Bug Hunt의 경우 progressive-problems.json에서 동적으로 로드
-      return progressiveData.progressiveProblems.map(mission => ({
+      return (progressiveData?.progressiveProblems || []).map(mission => ({
         id: mission.id,
         title: mission.project_title,
         displayNum: mission.id
       }));
     } else {
-      // Vibe Code Clean Up
-      const title = 'Vibe Code Clean Up';
-      return [{ id: game.currentDebugMode, title }];
+      return [{ id: game.currentDebugMode, title: 'Vibe Code Clean Up' }];
     }
   }
-  return game.activeUnit?.problems || [];
+  return activeUnit.problems || [];
 });
 
 const displayLabelsCount = computed(() => {
-  if (game.activeUnit?.name === 'Debug Practice') {
-    // Bug Hunt는 progressive 문제 개수에 맞춰 계산
-    const currentCount = displayProblems.value?.length || 0;
-    return Math.max(0, 7 - currentCount); // 전체 10개 노드 중 현재 문제 수를 뺀 나머지
-  }
   const currentCount = displayProblems.value?.length || 0;
-  return Math.max(0, 10 - currentCount);
+  const targetCount = game.activeUnit?.name === 'Debug Practice' ? 7 : 10;
+  return Math.max(0, targetCount - currentCount);
 });
 
 const currentMaxIdx = computed(() => {
-  return Math.max(...game.currentUnitProgress);
+  const progress = game.currentUnitProgress;
+  if (!Array.isArray(progress) || progress.length === 0) return 0;
+  return Math.max(...progress);
 });
 
 // Methods
@@ -247,8 +251,10 @@ function selectProblem(problem) {
   if (chapterName === 'Pseudo Practice') {
     game.selectedQuestIndex = problem.questIndex || 0;
     ui.isLogicMirrorOpen = true;
+    router.push({ name: 'PseudoPractice' });
   } else if (chapterName === 'System Practice') {
-    router.push('/practice/system-architecture');
+    game.selectedSystemProblemIndex = problem.problemIndex || 0;
+    router.push({ path: '/practice/system-architecture', query: { problem: problem.problemIndex || 0 } });
   } else if (chapterName === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
       // p1, p2, p3 미션으로 바로 이동
@@ -312,6 +318,33 @@ onMounted(() => {
     if (window.lucide) window.lucide.createIcons();
   });
 });
+
+// [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
+import { watch } from 'vue';
+
+// [2026-01-27] 데이터 로드 완료 시 라우트에 따른 activeUnit 자동 복구
+watch(() => game.chapters, (newChapters) => {
+    if (newChapters.length > 0 && route.name === 'PseudoPractice' && !game.activeUnit) {
+        const pseudoUnit = newChapters.find(c => c.name === 'Pseudo Practice');
+        if (pseudoUnit) game.activeUnit = pseudoUnit;
+    }
+}, { deep: true });
+
+watch(() => route.name, (newName) => {
+    // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
+    if (newName === 'PseudoPractice') {
+        ui.isLogicMirrorOpen = true; // /practice/pseudo 접속 시 모달 활성화
+        
+        // [2026-01-27] 직접 URL 접근이나 새로고침 시 activeUnit이 상실되는 문제 해결
+        if (game.chapters.length > 0 && !game.activeUnit) {
+            const pseudoUnit = game.chapters.find(c => c.name === 'Pseudo Practice');
+            if (pseudoUnit) game.activeUnit = pseudoUnit;
+        }
+    } else if (!isPracticePage.value) {
+        // 2. 다른 일반 페이지(Landing 등)로 이동 시 모든 실습 모달을 명시적으로 닫습니다.
+        ui.isLogicMirrorOpen = false;
+    }
+}, { immediate: true });
 
 onUpdated(() => {
   nextTick(() => {
