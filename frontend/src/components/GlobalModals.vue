@@ -149,7 +149,7 @@ const onSignUpSuccess = (nickname) => {
 };
 
 const handleCloseLogicMirror = () => {
-    // [2026-01-24] 라우트 기반 모달이므로 닫을 때 메인으로 주소 이동
+    // [2026-01-27] PseudoPractice 라우트 기반 모달이므로 닫을 때 메인으로 주소 이동
     ui.isLogicMirrorOpen = false;
     router.push('/');
     ui.isUnitModalOpen = true; // 실습 종료 후 다시 유닛 선택창 노출

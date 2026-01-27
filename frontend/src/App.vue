@@ -251,6 +251,7 @@ function selectProblem(problem) {
   if (chapterName === 'Pseudo Practice') {
     game.selectedQuestIndex = problem.questIndex || 0;
     ui.isLogicMirrorOpen = true;
+    router.push({ name: 'PseudoPractice' });
   } else if (chapterName === 'System Practice') {
     game.selectedSystemProblemIndex = problem.problemIndex || 0;
     router.push({ path: '/practice/system-architecture', query: { problem: problem.problemIndex || 0 } });
@@ -323,7 +324,7 @@ import { watch } from 'vue';
 
 // [2026-01-27] 데이터 로드 완료 시 라우트에 따른 activeUnit 자동 복구
 watch(() => game.chapters, (newChapters) => {
-    if (newChapters.length > 0 && route.name === 'LogicMirror' && !game.activeUnit) {
+    if (newChapters.length > 0 && route.name === 'PseudoPractice' && !game.activeUnit) {
         const pseudoUnit = newChapters.find(c => c.name === 'Pseudo Practice');
         if (pseudoUnit) game.activeUnit = pseudoUnit;
     }
@@ -331,8 +332,8 @@ watch(() => game.chapters, (newChapters) => {
 
 watch(() => route.name, (newName) => {
     // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
-    if (newName === 'LogicMirror') {
-        ui.isLogicMirrorOpen = true; // /practice/logic-mirror 접속 시 모달 활성화
+    if (newName === 'PseudoPractice') {
+        ui.isLogicMirrorOpen = true; // /practice/pseudo 접속 시 모달 활성화
         
         // [2026-01-27] 직접 URL 접근이나 새로고침 시 activeUnit이 상실되는 문제 해결
         if (game.chapters.length > 0 && !game.activeUnit) {

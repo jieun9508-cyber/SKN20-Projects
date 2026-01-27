@@ -13,7 +13,7 @@
       <div class="bg-slate-900 text-white flex justify-between items-center font-jua border-b-4 border-slate-800" 
            style="padding: 80px 80px 40px 80px;">
         <div class="flex items-center gap-6">
-          <h1 class="text-4xl font-black text-yellow-400 drop-shadow-md">PsuedoPractice</h1>
+          <h1 class="text-4xl font-black text-yellow-400 drop-shadow-md">PseudoPractice</h1>
           <span class="bg-white/10 px-6 py-1.5 rounded-full text-lg border border-white/20">{{ currentStep }}층 진행 중</span>
         </div>
         <div class="flex items-center gap-8">
