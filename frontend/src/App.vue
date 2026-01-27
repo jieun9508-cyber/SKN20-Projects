@@ -145,7 +145,7 @@ const leaderboard = [
 // 현재 보고 있는 화면이 실습(Practice) 도구 페이지인지 판단 (배경 레이아웃 제어용)
 const isPracticePage = computed(() => {
     // [2026-01-24] LogicMirror는 모달로 띄우기 위해 practiceRoutes에서 제외 (배경 유지 목적)
-    const practiceRoutes = ['LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
+    const practiceRoutes = ['SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
     return practiceRoutes.includes(route.name);
 });
 
@@ -244,13 +244,26 @@ onMounted(() => {
 // [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
 // 이 영역은 향후 Unit 2, Unit 3 등을 '라우트 기반 모달'로 전환할 때 확장 포인트가 됩니다.
 import { watch } from 'vue';
+// [2026-01-27] 데이터 로드 완료 시 라우트에 따른 activeUnit 자동 복구
+watch(() => game.chapters, (newChapters) => {
+    if (newChapters.length > 0 && route.name === 'LogicMirror' && !game.activeUnit) {
+        const pseudoUnit = newChapters.find(c => c.name === 'Pseudo Practice');
+        if (pseudoUnit) game.activeUnit = pseudoUnit;
+    }
+}, { deep: true });
+
 watch(() => route.name, (newName) => {
     // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
     if (newName === 'LogicMirror') {
         ui.isLogicMirrorOpen = true; // /practice/logic-mirror 접속 시 모달 활성화
+        
+        // [2026-01-27] 직접 URL 접근이나 새로고침 시 activeUnit이 상실되는 문제 해결
+        if (game.chapters.length > 0 && !game.activeUnit) {
+            const pseudoUnit = game.chapters.find(c => c.name === 'Pseudo Practice');
+            if (pseudoUnit) game.activeUnit = pseudoUnit;
+        }
     } else if (!isPracticePage.value) {
         // 2. 다른 일반 페이지(Landing 등)로 이동 시 모든 실습 모달을 명시적으로 닫습니다.
-        // 향후 다른 유닛 모달이 추가되면 이곳에서 ui.isOtherUnitOpen = false 형태로 초기화 로직을 보강하십시오.
         ui.isLogicMirrorOpen = false;
     }
 }, { immediate: true });
