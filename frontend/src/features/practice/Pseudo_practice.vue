@@ -1,10 +1,15 @@
 ﻿<template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <!-- 로딩 화면 -->
-    <div v-if="isLoading" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center">
-      <div class="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mb-6"></div>
-      <h2 class="text-2xl font-bold mb-2 font-jua">데이터 로딩 중...</h2>
-      <p class="text-slate-400 text-sm italic">{{ loadingStep }}</p>
+    <!-- [로딩 화면 또는 AI 평가 대기 화면] -->
+    <div v-if="isLoading || isEvaluating" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900 text-white p-6 text-center animate-in fade-in duration-700">
+      <div class="relative w-48 h-48 bg-slate-800 rounded-full flex items-center justify-center p-8 shadow-inner overflow-hidden border-4 border-slate-700 mb-8">
+        <img :src="duckAssets.idle" class="w-full h-full object-contain animate-pixar-fly">
+        <div class="absolute inset-0 bg-indigo-500/10 animate-pulse"></div>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-4xl font-black text-white font-jua">{{ isEvaluating ? '코드 위저드가 분석 중...' : '퀘스트 준비 중...' }}</h2>
+        <p class="text-slate-400 font-bold animate-pulse text-lg">{{ isEvaluating ? '당신의 아키텍처 통찰력을 정교하게 분석하고 있습니다.' : '잠시만 기다려주세요!' }}</p>
+      </div>
     </div>
 
     <!-- 메인 컨테이너 -->
@@ -13,7 +18,7 @@
       <div class="bg-slate-900 text-white flex justify-between items-center font-jua border-b-4 border-slate-800" 
            style="padding: 40px 80px 20px 80px;">
         <div class="flex items-center gap-6">
-          <h1 class="text-4xl font-black text-yellow-400 drop-shadow-md">PsuedoPractice</h1>
+          <h1 class="text-4xl font-black text-yellow-400 drop-shadow-md">PseudoPractice</h1>
           <span class="bg-white/10 px-6 py-1.5 rounded-full text-lg border border-white/20">{{ currentStep }}층 진행 중</span>
         </div>
         <div class="flex items-center gap-8">
@@ -368,8 +373,8 @@
             </div>
 
             <div class="flex gap-4">
-              <button @click="resetGame" class="bg-indigo-600 text-white px-10 py-5 rounded-[2rem] font-black shadow-xl hover:scale-105 transition-all text-xl">다시 시작하기</button>
-              <button @click="$emit('close')" class="bg-slate-800 text-white px-10 py-5 rounded-[2rem] font-black shadow-xl hover:scale-105 transition-all text-xl">나가기</button>
+              <button @click="resetGame" class="bg-indigo-600 text-white px-8 py-4 rounded-[2rem] font-black shadow-xl hover:scale-105 transition-all text-lg">다시 시작하기</button>
+              <button @click="$emit('close')" class="bg-slate-800 text-white px-8 py-4 rounded-[2rem] font-black shadow-xl hover:scale-105 transition-all text-lg">나가기</button>
             </div>
           </div>
         </div>
@@ -396,6 +401,7 @@ const emit = defineEmits(['close', 'quest-complete']);
 const currentQuestIdx = ref(props.initialQuestIndex);
 const currentQuest = computed(() => aiQuests[currentQuestIdx.value] || aiQuests[0]);
 const isLoading = ref(true);
+const isEvaluating = ref(false); // [2026-01-27] AI 평가 대기 상태 추가
 const loadingStep = ref("캐릭터 준비 중...");
 const stage = ref(1);
 const score = ref(0);
@@ -412,6 +418,28 @@ const showBubble = ref(false);
 const isFalling = ref(false);
 const isFlying = ref(false);
 const isHovering = ref(false);
+
+// [수정일: 2026-01-27] Gemini 제안 다차원 평가 데이터 구조
+const evaluationResults = reactive({
+  logicScore: 0,      // 1단계: 논리 구조화
+  codingScore: 0,     // 2단계: 코드 구현
+  designScore: 0,     // 3단계: 아키텍처 설계
+  penaltyCount: 0,    // 틀린 횟수
+  hintsUsed: 0,       // 사용한 힌트 수
+  timeSpent: 0,       // 총 소요 시간 (초)
+  stageTimestamps: {
+    start: null,
+    stage2Start: null,
+    stage3Start: null,
+    end: null
+  },
+  perkFlags: {
+    oneShotCoding: true, // 2단계 한 번에 성공 여부
+    perfectDesign: false // 3단계 성공 여부
+  }
+});
+
+const personaTitle = ref("평범한 개발자");
 
 // Quiz State
 const availableBlocks = ref([]);
@@ -435,15 +463,19 @@ const initQuestData = () => {
     stage.value = 1;
     score.value = 0;
     
-    // 이 시점에 codeInputs는 이미 반응형 객체로 하단에 정의되어 있어야 함
+    // 평가 초기화
+    Object.assign(evaluationResults, {
+      logicScore: 0, codingScore: 0, designScore: 0,
+      penaltyCount: 0, hintsUsed: 0, timeSpent: 0,
+      stageTimestamps: { start: Date.now(), stage2Start: null, stage3Start: null, end: null },
+      perkFlags: { oneShotCoding: true, perfectDesign: false }
+    });
+    
     codeInputs.price = '';
     codeInputs.fee1 = '';
     codeInputs.fee2 = '';
     
-    // 로딩 완료 처리
-    setTimeout(() => {
-        isLoading.value = false;
-    }, 800);
+    setTimeout(() => { isLoading.value = false; }, 800);
 };
 
 import { watch } from 'vue';
@@ -482,9 +514,9 @@ const isLogical = ref(true); // AI가 판단한 논리적 일관성
 const isSubmittingAnswer = ref(false); // 답변 제출 중 로딩 상태
 
 const finalGrade = computed(() => {
-    if (score.value >= 250) return 'S';
-    if (score.value >= 200) return 'A';
-    if (score.value >= 150) return 'B';
+    if (score.value >= 90) return 'S';
+    if (score.value >= 75) return 'A';
+    if (score.value >= 60) return 'B';
     return 'C';
 });
 
@@ -568,7 +600,7 @@ const onDrop = (e, stairIdx) => {
     if (id === correctId) {
         droppedBlocks.value[stairIdx] = block;
         currentStep.value++;
-        score.value += 20;
+        
         currentEmotion.value = 'happy';
         showHint.value = false;
         displayMessage("정답이에요! 껑충!");
@@ -578,6 +610,7 @@ const onDrop = (e, stairIdx) => {
             displayMessage("파닥파닥! 날아올라요! 🐥");
             setTimeout(() => { 
                 stage.value = 2; 
+                evaluationResults.stageTimestamps.stage2Start = Date.now();
                 isFlying.value = false;
                 currentEmotion.value = 'idle'; 
             }, 2500);
@@ -602,9 +635,12 @@ const removeBlock = (idx) => {
 };
 
 const handleFailure = () => {
+    evaluationResults.penaltyCount++; // [2026-01-27] 패널티 카운트 증가
     currentEmotion.value = 'sad';
     displayMessage("으아앙! 틀렸어요!");
     showHint.value = true;
+    if (stage.value === 1) evaluationResults.hintsUsed++; // 1단계 힌트 사용 체크
+    if (stage.value === 2) evaluationResults.perkFlags.oneShotCoding = false; // 2단계 오답 시 깃발 종료
     
     // 오리가 계단에서 미끄러지는 연출
     isFalling.value = true;
@@ -617,10 +653,13 @@ const handleFailure = () => {
 const checkStage2 = () => {
     const val = currentQuest.value.codeValidation;
     if (codeInputs.price === val.price && codeInputs.fee1 === val.fee1 && codeInputs.fee2 === val.fee2) {
-        score.value += 50;
         currentEmotion.value = 'happy';
         displayMessage("코드 구현 성공!");
-        setTimeout(() => { stage.value = 3; currentEmotion.value = 'idle'; }, 1500);
+        setTimeout(() => { 
+            stage.value = 3; 
+            evaluationResults.stageTimestamps.stage3Start = Date.now();
+            currentEmotion.value = 'idle'; 
+        }, 1500);
     } else {
         handleFailure();
     }
@@ -697,6 +736,47 @@ const submitFinalAnswer = async () => {
         stage.value = 4;
     } finally {
         isSubmittingAnswer.value = false;
+    }
+};
+
+const calculateFinalResults = async () => {
+    const res = evaluationResults;
+    const ts = res.stageTimestamps;
+    res.timeSpent = (ts.end - ts.start) / 1000;
+
+    try {
+        // [2026-01-27] 백엔드 AI 평가 API 호출
+        const response = await axios.post('/api/core/ai-evaluate/', {
+            quest: currentQuest.value,
+            performance: {
+                timeSpent: res.timeSpent,
+                penaltyCount: res.penaltyCount,
+                hintsUsed: res.hintsUsed,
+                perkFlags: res.perkFlags
+            }
+        });
+
+        const data = response.data;
+        res.logicScore = data.logicScore || 0;
+        res.codingScore = data.codingScore || 0;
+        res.designScore = data.designScore || 0;
+        personaTitle.value = data.personaTitle || "분석 실패";
+        evaluationMessageOverride.value = data.feedbackMessage || "AI가 분석한 당신의 학습 성과를 확인해보세요!";
+        score.value = data.totalScore || 0;
+
+    } catch (error) {
+        console.error("AI Evaluation failed, falling back to local logic:", error);
+        evaluationMessageOverride.value = "AI 위저드와 일시적으로 연결이 원활하지 않아,\n표준 결과 시스템으로 평가를 진행했습니다.";
+        // 폴백 로직 (기존 로직 유지)
+        res.logicScore = Math.max(0, 100 - (res.penaltyCount * 5) - (res.hintsUsed * 10));
+        const stage2Duration = (ts.stage3Start - ts.stage2Start) / 1000;
+        let codeBase = res.perkFlags.oneShotCoding ? 100 : 70;
+        if (stage2Duration > 60) codeBase -= 10;
+        res.codingScore = Math.max(0, codeBase);
+        res.designScore = res.perkFlags.perfectDesign ? 100 : 0;
+        const finalScore = (res.logicScore * 0.3) + (res.codingScore * 0.3) + (res.designScore * 0.4) - (res.penaltyCount * 2);
+        score.value = Math.max(0, finalScore);
+        personaTitle.value = "꼼꼼한 탐험가";
     }
 };
 
@@ -899,6 +979,25 @@ onMounted(() => {
     100% { transform: translateY(600px) rotate(1080deg); opacity: 0; }
 }
 .animate-fall { animation: fall 1s forwards cubic-bezier(0.55, 0.055, 0.675, 0.19); }
+
+@keyframes bounceSlow {
+    0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+    50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+.feedback-paragraph {
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.feedback-paragraph::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #6366f1;
+    font-weight: 900;
+}
+
+.animate-bounce-slow { animation: bounceSlow 3s infinite; }
 
 .duck-bubble {
     position: relative;

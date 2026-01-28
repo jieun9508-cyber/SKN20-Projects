@@ -17,11 +17,11 @@
           OPEN BETA v1.2
         </div>
         <h1 class="playground-title-v2">
-          <span class="text-glow-premium">Architecture</span><br>
+          <span class="text-glow-premium">AI-Engineer</span><br>
           <span class="text-neon-ultimate">Playground!</span>
         </h1>
         <p class="playground-subtitle-v2">
-          단순한 실습을 넘어선 **압도적 아키텍처 경험.**<br>
+          단순한 실습을 넘어선 **압도적 AI 엔지니어링 경험.**<br>
           이제 오리들과 함께 당신의 한계를 돌파하세요.
         </p>
         
@@ -43,17 +43,38 @@
     </header>
 
     <!-- [Navigation Bar - Glassmorphism] -->
-    <nav class="navbar-v2" :class="{ 'bookmark-mode': isScrolled }">
+    <nav class="navbar-v2" :class="{ 'is-hidden': isScrolled }">
       <div class="logo-playground">
         <Dumbbell class="logo-icon" />
-        <span class="logo-text">AI-GYM</span>
+        <span class="logo-text">Engineer-Gym</span>
       </div>
       <div class="nav-links-v2">
-        <a href="#chapters" class="nav-item">
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
           <LayoutGrid class="nav-icon" />
           <span class="nav-label">Stages</span>
         </a>
-        <a href="#leaderboard" class="nav-item">
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
+          <Trophy class="nav-icon" />
+          <span class="nav-label">Hall of Fame</span>
+        </a>
+        <div class="protein-status">
+          <Milk class="icon-protein" />
+          <span class="protein-count">{{ userProteinShakes }}</span>
+        </div>
+        <slot name="auth-buttons"></slot>
+      </div>
+    </nav>
+
+    <nav class="navbar-v2 bookmark-mode" :class="{ 'is-visible': isScrolled }">
+      <div class="logo-playground">
+        <Dumbbell class="logo-icon" />
+      </div>
+      <div class="nav-links-v2">
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
+          <LayoutGrid class="nav-icon" />
+          <span class="nav-label">Stages</span>
+        </a>
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
           <Trophy class="nav-icon" />
           <span class="nav-label">Hall of Fame</span>
         </a>
@@ -80,7 +101,14 @@
           <ChevronLeft />
         </button>
 
-        <div class="slider-wrapper">
+        <div
+          class="slider-wrapper"
+          :class="{ dragging: isDragging }"
+          @pointerdown="onDragStart"
+          @pointermove="onDragMove"
+          @pointerup="onDragEnd"
+          @pointerleave="onDragEnd"
+        >
           <div class="slider-track" :style="trackStyle">
             <div v-for="(chapter, idx) in chapters" :key="chapter.id" 
                  class="gym-card-premium" 
@@ -92,10 +120,7 @@
                      'next': idx === getNextIdx,
                      'hidden': !isIndexVisible(idx)
                    }
-                 ]"
-                 @mouseenter="handleCardHover(idx)"
-                 @mouseleave="clearHoverTimer"
-                 @click="handleCardClick(chapter, idx)">
+                 ]">
               <div class="card-inner-v2">
                 <div class="card-image-wrap-v2">
                   <div class="energy-rings">
@@ -127,7 +152,7 @@
                       <Users style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" /> 
                       {{ chapter.participant_count }}+ Training
                     </span>
-                    <button class="btn-enter-mini">START</button>
+                    <button class="btn-enter-mini" @click="handleCardClick(chapter, idx)">START</button>
                   </div>
                 </div>
               </div>
@@ -250,7 +275,11 @@ export default {
       currentIdx: 0,
       isScrolled: false,
       scrollTicking: false,
-      hoverTimer: null
+      hoverTimer: null,
+      isDragging: false,
+      dragMoved: false,
+      dragStartX: 0,
+      dragThreshold: 120
     };
   },
   computed: {
@@ -296,8 +325,14 @@ export default {
         this.scrollTicking = false;
       });
     },
+    scrollToSection(sectionId) {
+      const container = this.$refs.landingContainer;
+      const section = document.getElementById(sectionId);
+      if (!container || !section) return;
+      container.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
+    },
     scrollToLeaderboard() {
-      document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' });
+      this.scrollToSection('leaderboard');
     },
     /**
      * [최상단 복귀]
@@ -351,11 +386,39 @@ export default {
     clearHoverTimer() {
       clearTimeout(this.hoverTimer);
     },
+    onDragStart(event) {
+      if (event.button !== 0) return;
+      if (event.target.closest('button') || event.target.closest('a')) return;
+      this.isDragging = true;
+      this.dragMoved = false;
+      this.dragStartX = event.clientX;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onDragMove(event) {
+      if (!this.isDragging) return;
+      const deltaX = event.clientX - this.dragStartX;
+      if (Math.abs(deltaX) < this.dragThreshold) return;
+      this.dragMoved = true;
+      const direction = deltaX > 0 ? -1 : 1;
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx + direction + this.chapters.length) % this.chapters.length;
+      }
+      this.dragStartX = event.clientX;
+    },
+    onDragEnd(event) {
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    },
     /**
      * [카드 클릭 핸들러]
      * - 이미 선택된 카드 클릭 시 상세 팝업을 열고, 아니면 해당 카드를 중앙으로 이동시킵니다.
      */
     handleCardClick(chapter, idx) {
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return;
+      }
       if (idx === this.currentIdx) {
         this.$emit('open-unit', chapter);
       } else {
@@ -629,7 +692,8 @@ export default {
   position: fixed;
   top: 1.5rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+  opacity: 1;
   width: 90%;
   max-width: 1200px;
   background: rgba(15, 23, 42, 0.4);
@@ -641,8 +705,24 @@ export default {
   justify-content: space-between;
   align-items: center;
   z-index: 1000;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              top 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              right 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              left 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              padding 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              border-radius 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  will-change: transform, top, left, right, width, padding, border-radius;
+}
+
+.navbar-v2.is-hidden {
+  transform: translate3d(-50%, -120%, 0);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .logo-playground {
@@ -699,7 +779,9 @@ export default {
   top: 50%;
   right: 1.5rem;
   left: auto;
-  transform: translateY(-50%);
+  transform: translate3d(120%, -50%, 0);
+  opacity: 0;
+  pointer-events: none;
   width: 75px;
   height: auto;
   max-height: 85vh;
@@ -713,6 +795,12 @@ export default {
   overflow: visible !important; /* 사이드 라벨 노출을 위해 visible로 변경 */
   display: flex;
   align-items: center;
+}
+
+.navbar-v2.bookmark-mode.is-visible {
+  transform: translate3d(0, -50%, 0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .navbar-v2.bookmark-mode .logo-playground {
@@ -960,6 +1048,11 @@ export default {
   max-width: 1200px;
   overflow: visible;
   position: relative;
+  cursor: grab;
+}
+
+.slider-wrapper.dragging {
+  cursor: grabbing;
 }
 
 .slider-track {
@@ -985,10 +1078,11 @@ export default {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  user-select: none;
 }
 
 .gym-card-premium.active {
-  transform: translateZ(200px);
+  transform: translateZ(0) scale(1.02);
   opacity: 1;
   z-index: 10;
   pointer-events: auto;
@@ -1004,7 +1098,7 @@ export default {
   transform: translateX(-350px) translateZ(0) rotateY(45deg) scale(0.85);
   opacity: 0.4;
   z-index: 5;
-  pointer-events: auto;
+  pointer-events: none;
   visibility: visible;
 }
 
@@ -1012,7 +1106,7 @@ export default {
   transform: translateX(350px) translateZ(0) rotateY(-45deg) scale(0.85);
   opacity: 0.4;
   z-index: 5;
-  pointer-events: auto;
+  pointer-events: none;
   visibility: visible;
 }
 
@@ -1141,6 +1235,8 @@ export default {
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: 6px solid #1a1a1a;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .gym-card-premium:hover .card-image-wrap-v2 {
@@ -1231,6 +1327,8 @@ export default {
   align-items: center;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 5;
 }
 
 .engineer-count {
@@ -1253,6 +1351,10 @@ export default {
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
   letter-spacing: 1px;
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+  transform: translateZ(0);
 }
 
 .gym-card-premium:hover .btn-enter-mini {

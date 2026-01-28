@@ -28,7 +28,7 @@ const routes = [
     name: 'Home',
     component: { render: () => null }
   },
-  // [2026-01-24] 라우트 기반 모달을 위한 Logic Mirror 경로 등록 (App.vue에서 감시하여 모달 처리)
+  // [2026-01-27] Pseudo Practice (구 Logic Mirror) 라우트 최신화
   {
     path: '/practice/pseudo-code',
     name: 'PseudoCode',

@@ -66,8 +66,10 @@ export async function evaluateBugHunt(missionTitle, steps, explanations, userCod
     const stepContext = steps.map((s, idx) => {
         const stepNum = idx + 1;
         const originalCode = s.buggy_code || '';
+        const correctCode = s.correct_code || '';
         const modifiedCode = userCodes[stepNum] || '';
         const explanation = explanations[stepNum] || '설명 없음';
+        const coaching = s.coaching || '';
 
         return `### Step ${stepNum}: ${s.title || s.bug_type}
 - 문제 설명: ${s.instruction}
@@ -77,12 +79,19 @@ export async function evaluateBugHunt(missionTitle, steps, explanations, userCod
 ${originalCode}
 \`\`\`
 
+- 정답 코드 (참고용):
+\`\`\`python
+${correctCode}
+\`\`\`
+
 - 사용자 수정 코드:
 \`\`\`python
 ${modifiedCode}
 \`\`\`
 
-- 사용자 설명: ${explanation}`;
+- 사용자 설명: ${explanation}
+
+- 현업 가이드: ${coaching}`;
     }).join('\n\n');
 
     const systemMessage = `너는 디버깅 사고를 평가하는 시스템이다.
