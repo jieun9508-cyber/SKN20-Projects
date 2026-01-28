@@ -18,13 +18,16 @@ export const useGameStore = defineStore('game', {
             'Debug Practice': [0],
             'System Practice': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             'Ops Practice': [0],
-            'Agent Practice': [0]
+            'Agent Practice': [0],
+            // [수정일: 2026-01-28] Pseudo Forest 전용 진행도 초기값 추가
+            'Pseudo Forest': [0]
         },
         activeUnit: null,
         activeProblem: null,
         activeChapter: null,
         currentDebugMode: 'bug-hunt',
-        unit1Mode: 'pseudo-practice', // [수정일: 2026-01-28] Unit 1의 현재 모드 (pseudo-practice | ai-detective)
+        // [수정일: 2026-01-28] Unit 1의 현재 모드 확장 (pseudo-practice | ai-detective | pseudo-forest)
+        unit1Mode: 'pseudo-practice',
         selectedQuestIndex: 0,
         selectedSystemProblemIndex: 0
     }),
@@ -120,6 +123,17 @@ export const useGameStore = defineStore('game', {
                         mode: 'pseudo-practice'
                     }));
                 }
+                else if (this.unit1Mode === 'pseudo-forest') {
+                    // [수정일: 2026-01-28] Pseudo Forest 전용 데이터 (현재는 placeholder)
+                    return [{
+                        id: 'forest-01',
+                        title: 'Forest Discovery',
+                        questIndex: 0,
+                        displayNum: 'F-01',
+                        difficulty: 'medium',
+                        mode: 'pseudo-forest'
+                    }];
+                }
                 else {
                     return aiDetectiveQuests.map((q, idx) => ({
                         id: q.id,
@@ -183,13 +197,19 @@ export const useGameStore = defineStore('game', {
         },
 
         unlockNextStage(unitName, index) {
-            const progress = this.unitProgress[unitName];
+            // [수정일: 2026-01-28] Unit 1의 경우 'Pseudo Practice' 또는 'AI Detective' 중 현재 활성 모드로 키값 결정
+            let targetKey = unitName;
+            if (this.activeUnit?.name === 'Pseudo Practice') {
+                targetKey = this.unit1Mode === 'pseudo-practice' ? 'Pseudo Practice' : 'AI Detective';
+            }
+
+            const progress = this.unitProgress[targetKey];
             if (progress && !progress.includes(index)) {
                 progress.push(index);
             }
             const nextIdx = index + 1;
-            // [수정일: 2026-01-28] 유닛별 최대 문제 수에 맞춰 해금 제한 동적 조절
-            const maxCount = unitName === 'AI Detective' ? 30 : 10;
+            // [수정일: 2026-01-28] 유닛별 최대 문제 수에 맞춰 해금 제한 동적 조절 (AI Detective는 30개)
+            const maxCount = targetKey === 'AI Detective' ? 30 : 10;
             if (progress && nextIdx < maxCount && !progress.includes(nextIdx)) {
                 progress.push(nextIdx);
             }
@@ -209,7 +229,12 @@ export const useGameStore = defineStore('game', {
 
             // [수정일: 2026-01-28] Unit 1의 경우 현재 모드에 따라 진행도 키값 분기 처리
             if (state.activeUnit.name === 'Pseudo Practice') {
-                const modeKey = state.unit1Mode === 'pseudo-practice' ? 'Pseudo Practice' : 'AI Detective';
+                const modeMap = {
+                    'pseudo-practice': 'Pseudo Practice',
+                    'ai-detective': 'AI Detective',
+                    'pseudo-forest': 'Pseudo Forest'
+                };
+                const modeKey = modeMap[state.unit1Mode] || 'Pseudo Practice';
                 return state.unitProgress[modeKey] || [0];
             }
 

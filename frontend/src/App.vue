@@ -46,7 +46,9 @@
                     {{ game.currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
                   </template>
                   <template v-else-if="game.activeUnit?.name === 'Pseudo Practice'">
-                    {{ game.unit1Mode === 'ai-detective' ? '🕵️ AI Detective' : '💻 Pseudo Practice' }}
+                    <template v-if="game.unit1Mode === 'ai-detective'">🕵️ AI Detective</template>
+                    <template v-else-if="game.unit1Mode === 'pseudo-forest'">🌳 Pseudo Forest</template>
+                    <template v-else>💻 Pseudo Practice</template>
                   </template>
                   <template v-else>
                     {{ game.activeUnit?.unitTitle || (game.activeUnit?.problems && game.activeUnit.problems[0]?.title) || game.activeUnit?.name || 'Loading...' }}
@@ -119,6 +121,14 @@
                 >
                   <i data-lucide="search"></i> ai detective
                 </button>
+                <!-- [수정일: 2026-01-28] Pseudo Forest 메뉴 버튼 추가 -->
+                <button 
+                  class="game-mode-btn pseudo-forest" 
+                  :class="{ 'active': game.unit1Mode === 'pseudo-forest' }" 
+                  @click="selectUnit1Mode('pseudo-forest')"
+                >
+                  <i data-lucide="trees"></i> pseudo forest
+                </button>
                 
                 <!-- [수정일: 2026-01-28] AI Detective 선택 시 난이도 필터 탭 노출 -->
                 <div v-if="game.unit1Mode === 'ai-detective'" class="difficulty-tabs animate-in fade-in slide-in-from-bottom-2">
@@ -157,7 +167,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUpdated, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUpdated, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -198,7 +208,8 @@ const isPracticePage = computed(() => {
     'BugHunt', 
     'VibeCodeCleanUp', 
     'OpsPractice',
-    'AiDetective' // [수정일: 2026-01-28] AI Detective 라우트 추가 (진입 시 모달 닫힘 오류 해결)
+    'AiDetective',
+    'PseudoForest' // [수정일: 2026-01-28] Pseudo Forest 라우트 추가
   ];
   return practiceRoutes.includes(route?.name);
 });
@@ -241,8 +252,31 @@ const displayLabelsCount = computed(() => {
 
 const currentMaxIdx = computed(() => {
   const progress = game.currentUnitProgress;
-  if (!Array.isArray(progress) || progress.length === 0) return 0;
-  return Math.max(...progress);
+  const displayedIndices = displayProblems.value.map(p => p.questIndex);
+  if (displayedIndices.length === 0) return 0;
+
+  // [수정일: 2026-01-28] 현재 화면에 표시된 문제들 중 '해금된 마지막' 문제를 선택하여 오리 위치 고정
+  // 이렇게 하면 항상 해금된 노드에 오리가 앉게 되어 즉시 클릭(선택)이 가능해집니다.
+  const unlockedIndices = displayedIndices.filter(idx => progress.includes(idx));
+  
+  if (unlockedIndices.length > 0) {
+    return Math.max(...unlockedIndices);
+  }
+  
+  // 만약 현재 난이도에서 아무것도 해금되지 않았다면(이론상 불가) 첫 번째 노드 반환
+  return displayedIndices[0];
+});
+
+// [수정일: 2026-01-28] 라우트 감시: 연습 페이지에서 홈으로 돌아올 때 유닛 상세 모달 자동 재개
+watch(() => route.name, (newNav, oldNav) => {
+  const practiceRoutes = ['PseudoCode', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice', 'AiDetective', 'PseudoForest'];
+  // 연습 페이지에서 홈('/')으로 돌아오는 경우
+  if (newNav === 'Home' && practiceRoutes.includes(oldNav)) {
+    if (game.activeUnit) {
+      ui.isUnitModalOpen = true;
+      nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+    }
+  }
 });
 
 // Methods
@@ -307,6 +341,8 @@ function selectProblem(problem) {
     // [수정일: 2026-01-28] 현재 유닛1의 모드에 따라 라우팅 분기 처리
     if (game.unit1Mode === 'ai-detective') {
       router.push('/practice/ai-detective');
+    } else if (game.unit1Mode === 'pseudo-forest') {
+      router.push('/practice/pseudo-forest');
     } else {
       router.push('/practice/pseudo-code');
     }
@@ -395,8 +431,6 @@ onMounted(() => {
 });
 
 // [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
-import { watch } from 'vue';
-
 // [2026-01-27] 데이터 로드 완료 시 라우트에 따른 activeUnit 자동 복구
 watch(() => game.chapters, (newChapters) => {
     if (newChapters.length > 0 && route.name === 'PseudoCode' && !game.activeUnit) {
@@ -405,10 +439,11 @@ watch(() => game.chapters, (newChapters) => {
     }
 }, { deep: true });
 
+// [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
 watch(() => route.name, (newName) => {
     // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
-    if (newName === 'PseudoCode') {
-        ui.isPseudoCodeOpen = true; // /practice/pseudo-code 접속 시 상태 활성화
+    if (newName === 'PseudoCode' || newName === 'AiDetective' || newName === 'PseudoForest') {
+        ui.isPseudoCodeOpen = true; // 관련 라우트 접속 시 상태 활성화
         
         // [2026-01-27] 직접 URL 접근이나 새로고침 시 activeUnit이 상실되는 문제 해결
         if (game.chapters.length > 0 && !game.activeUnit) {
@@ -493,6 +528,20 @@ onUpdated(() => {
   opacity: 1;
   box-shadow: 0 4px 20px rgba(234, 179, 8, 0.6);
   border: 2px solid #1e293b;
+}
+
+/* [수정일: 2026-01-28] Pseudo Forest 버튼 스타일 (Green 테마) */
+.game-mode-btn.pseudo-forest {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  opacity: 0.6;
+}
+
+.game-mode-btn.pseudo-forest.active {
+  opacity: 1;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6);
+  border: 2px solid white;
 }
 
 .game-mode-btn:hover {

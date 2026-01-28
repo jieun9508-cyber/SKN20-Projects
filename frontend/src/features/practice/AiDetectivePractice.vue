@@ -114,7 +114,11 @@
                 <span class="score-label">TOTAL</span>
               </div>
               <div v-if="result.success" class="next-action">
-                <button @click="$emit('close')" class="btn-next">목록으로 <i data-lucide="chevron-right"></i></button>
+                <button @click="$emit('close')" class="btn-list">목록으로</button>
+                <!-- [수정일: 2026-01-28] 다음 단계 즉시 진행 버튼 추가 -->
+                <button v-if="currentQuestIdx < 29" @click="startNextQuest" class="btn-next">
+                  다음 수사 착수 <i data-lucide="arrow-right"></i>
+                </button>
               </div>
             </div>
           </transition>
@@ -137,6 +141,20 @@ const emit = defineEmits(['close']);
 
 const game = useGameStore();
 const currentQuestIdx = ref(props.initialQuestIndex);
+
+/**
+ * [수정일: 2026-01-28] 다음 미션으로 즉시 전환하는 로직
+ */
+const startNextQuest = () => {
+    if (currentQuestIdx.value < 29) {
+        currentQuestIdx.value++;
+        result.value = null; // 결과 초기화
+        code.value = '';     // 코드 초기화
+        // Lucide 아이콘 재랜더링
+        nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+    }
+};
+
 const currentQuest = computed(() => aiDetectiveQuests[currentQuestIdx.value] || aiDetectiveQuests[0]);
 
 const userCode = ref('');
@@ -658,8 +676,11 @@ onMounted(() => {
 .score-val { display: block; font-size: 2rem; font-weight: 900; color: #facc15; line-height: 1; }
 .score-label { font-size: 0.6rem; color: #475569; font-weight: 800; }
 
-.btn-next { background: #34d399; color: #064e3b; padding: 10px 20px; border-radius: 12px; font-weight: 900; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-.btn-next:hover { transform: translateX(5px); box-shadow: 0 0 20px rgba(52, 211, 153, 0.3); }
+.next-action { display: flex; gap: 12px; }
+.btn-list { background: rgba(255, 255, 255, 0.05); color: #94a3b8; padding: 10px 20px; border-radius: 12px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; transition: all 0.2s; }
+.btn-list:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+.btn-next { background: #facc15; color: #422006; padding: 10px 24px; border-radius: 12px; font-weight: 900; display: flex; align-items: center; gap: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+.btn-next:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(250, 204, 21, 0.3); }
 
 /* 애니메이션 */
 .animate-scale-in { animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
