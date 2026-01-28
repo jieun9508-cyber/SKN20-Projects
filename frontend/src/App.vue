@@ -45,6 +45,9 @@
                   <template v-if="game.activeUnit?.name === 'Debug Practice'">
                     {{ game.currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
                   </template>
+                  <template v-else-if="game.activeUnit?.name === 'Pseudo Practice'">
+                    {{ game.unit1Mode === 'ai-detective' ? '🕵️ AI Detective' : '💻 Pseudo Practice' }}
+                  </template>
                   <template v-else>
                     {{ game.activeUnit?.unitTitle || (game.activeUnit?.problems && game.activeUnit.problems[0]?.title) || game.activeUnit?.name || 'Loading...' }}
                   </template>
@@ -67,16 +70,16 @@
 
                 <div v-for="(problem, pIdx) in displayProblems" :key="problem.id" class="node-platform-v3"
                 :class="['node-' + pIdx, {
-                  active: pIdx === currentMaxIdx,
-                  unlocked: game.currentUnitProgress.includes(pIdx)
+                  active: problem.questIndex === currentMaxIdx,
+                  unlocked: game.currentUnitProgress.includes(problem.questIndex)
                 }]"
-                @click="isUnlocked(pIdx) && selectProblem(problem)">
+                @click="isUnlocked(problem.questIndex) && selectProblem(problem)">
 
-                <div class="platform-glow-v3" v-if="pIdx === currentMaxIdx"></div>
+                <div class="platform-glow-v3" v-if="problem.questIndex === currentMaxIdx"></div>
 
                 <div class="platform-circle-v3">
-                  <template v-if="game.currentUnitProgress.includes(pIdx)">
-                    <img v-if="pIdx === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
+                  <template v-if="game.currentUnitProgress.includes(problem.questIndex)">
+                    <img v-if="problem.questIndex === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
                     <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
                   </template>
                   <template v-else>
@@ -100,10 +103,44 @@
           </div>
 
             <footer class="unit-stats-bar-v3">
-              <template v-if="game.activeUnit?.name === 'Debug Practice'">
+              <!-- [수정일: 2026-01-28] Unit 1(Pseudo Practice) 전용 모드 전환 버튼 추가 -->
+              <template v-if="game.activeUnit?.name === 'Pseudo Practice'">
+                <button 
+                  class="game-mode-btn pseudo-practice" 
+                  :class="{ 'active': game.unit1Mode === 'pseudo-practice' }" 
+                  @click="selectUnit1Mode('pseudo-practice')"
+                >
+                  <i data-lucide="code-2"></i> pseudo practice
+                </button>
+                <button 
+                  class="game-mode-btn ai-detective" 
+                  :class="{ 'active': game.unit1Mode === 'ai-detective' }" 
+                  @click="selectUnit1Mode('ai-detective')"
+                >
+                  <i data-lucide="search"></i> ai detective
+                </button>
+                
+                <!-- [수정일: 2026-01-28] AI Detective 선택 시 난이도 필터 탭 노출 -->
+                <div v-if="game.unit1Mode === 'ai-detective'" class="difficulty-tabs animate-in fade-in slide-in-from-bottom-2">
+                  <button 
+                    v-for="lv in ['초급', '중급', '고급']" 
+                    :key="lv"
+                    class="diff-tab"
+                    :class="{ 'active': detectiveLevel === lv }"
+                    @click="detectiveLevel = lv"
+                  >
+                    {{ lv }}
+                  </button>
+                </div>
+              </template>
+
+              <!-- 기존 Debug Practice 모드 전환 버튼 -->
+              <template v-else-if="game.activeUnit?.name === 'Debug Practice'">
                 <button class="game-mode-btn bug-hunt" :class="{ 'active': game.currentDebugMode === 'bug-hunt' }" @click="selectGameMode('bug-hunt')">🐞 Bug Hunt</button>
                 <button class="game-mode-btn vibe-cleanup" :class="{ 'active': game.currentDebugMode === 'vibe-cleanup' }" @click="selectGameMode('vibe-cleanup')">✨ Vibe Code Clean Up</button>
               </template>
+
+              <!-- 일반 상태 표시 (진행도/잠금) -->
               <template v-else>
                 <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>{{ game.currentUnitProgress.length }}개 활성화</div>
                 <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ displayProblems.length - game.currentUnitProgress.length }}개 잠금</div>
@@ -149,6 +186,9 @@ const leaderboard = ref([
   { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
 ]);
 
+// [수정일: 2026-01-28] AI Detective 난이도 필터링을 위한 상태
+const detectiveLevel = ref('초급');
+
 // Computed
 const isPracticePage = computed(() => {
   // PseudoCode는 페이지/모달 하이브리드로 동작 (isPracticePage에 포함하여 배경 제어)
@@ -157,7 +197,8 @@ const isPracticePage = computed(() => {
     'SystemArchitecturePractice', 
     'BugHunt', 
     'VibeCodeCleanUp', 
-    'OpsPractice'
+    'OpsPractice',
+    'AiDetective' // [수정일: 2026-01-28] AI Detective 라우트 추가 (진입 시 모달 닫힘 오류 해결)
   ];
   return practiceRoutes.includes(route?.name);
 });
@@ -166,15 +207,27 @@ const displayProblems = computed(() => {
   const activeUnit = game.activeUnit;
   if (!activeUnit) return [];
 
+  // [수정일: 2026-01-28] Unit 1(Pseudo Practice)의 경우 현재 모드(unit1Mode) 전환을 감지하여 문제 목록을 즉시 갱신
+  if (activeUnit.name === 'Pseudo Practice') {
+    const mode = game.unit1Mode; // 반응성 핵심: 이 값을 참조해야 함
+    const unitIndex = game.chapters.indexOf(activeUnit);
+    const allProblems = game.mapDetailsToProblems(activeUnit, unitIndex + 1);
+    
+    // AI Detective 모드인 경우 현재 선택된 난이도(detectiveLevel)로 필터링
+    if (mode === 'ai-detective') {
+      // [수정일: 2026-01-28] 문자열 불일치 방지를 위해 trim() 적용
+      const filtered = allProblems.filter(p => p.level?.trim() === detectiveLevel.value?.trim());
+      return filtered;
+    }
+    return allProblems;
+  }
+
+  // [기존 로직 복구] Debug Practice는 현재 디버그 모드에 따라 문제 세트 분기
   if (activeUnit.name === 'Debug Practice') {
     if (game.currentDebugMode === 'bug-hunt') {
-      return (progressiveData?.progressiveProblems || []).map(mission => ({
-        id: mission.id,
-        title: mission.project_title,
-        displayNum: mission.id
-      }));
+      return activeUnit.problems || [];
     } else {
-      return [{ id: game.currentDebugMode, title: 'Vibe Code Clean Up' }];
+      return activeUnit.vibeProblems || [];
     }
   }
   return activeUnit.problems || [];
@@ -251,7 +304,12 @@ function selectProblem(problem) {
 
   if (chapterName === 'Pseudo Practice') {
     game.selectedQuestIndex = problem.questIndex || 0;
-    router.push('/practice/pseudo-code');
+    // [수정일: 2026-01-28] 현재 유닛1의 모드에 따라 라우팅 분기 처리
+    if (game.unit1Mode === 'ai-detective') {
+      router.push('/practice/ai-detective');
+    } else {
+      router.push('/practice/pseudo-code');
+    }
   } else if (chapterName === 'System Practice') {
     game.selectedSystemProblemIndex = problem.problemIndex || 0;
     router.push({ path: '/practice/system-architecture', query: { problem: problem.problemIndex || 0 } });
@@ -284,6 +342,15 @@ function handlePracticeClose() {
     router.push('/');
     // 닫은 후 유닛 선택 팝업을 다시 보여주어 연속성 유지
     ui.isUnitModalOpen = true;
+}
+
+function selectUnit1Mode(mode) {
+  // [수정일: 2026-01-28] 모드 전환 시 스토어 값만 변경해도 displayProblems가 자동으로 갱신됨
+  game.unit1Mode = mode;
+  
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
 }
 
 function selectGameMode(mode) {
@@ -399,6 +466,72 @@ onUpdated(() => {
 .game-mode-btn.vibe-cleanup:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(255, 255, 0, 0.5);
+}
+
+/* [수정일: 2026-01-28] Unit 1 전용 모드 전환 버튼 스타일 추가 */
+.game-mode-btn.pseudo-practice {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+  opacity: 0.6;
+}
+
+.game-mode-btn.pseudo-practice.active {
+  opacity: 1;
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.6);
+  border: 2px solid white;
+}
+
+.game-mode-btn.ai-detective {
+  background: linear-gradient(135deg, #facc15, #eab308); /* yellow 계열 */
+  color: #1e293b;
+  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);
+  opacity: 0.6;
+}
+
+.game-mode-btn.ai-detective.active {
+  opacity: 1;
+  box-shadow: 0 4px 20px rgba(234, 179, 8, 0.6);
+  border: 2px solid #1e293b;
+}
+
+.game-mode-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+/* [수정일: 2026-01-28] AI Detective 난이도 탭 스타일 추가 */
+.difficulty-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  border-radius: 12px;
+  margin-left: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.diff-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #64748b;
+  background: transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.diff-tab.active {
+  background: #facc15;
+  color: #0f172a;
+  box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+}
+
+.diff-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #facc15;
 }
 
 /* Auth Buttons for LandingView Slot */

@@ -19,6 +19,7 @@ import SystemArchitecturePractice from './features/practice/SystemArchitecturePr
 import BugHunt from './features/practice/BugHunt.vue'
 import VibeCodeCleanUp from './features/practice/VibeCodeCleanUp.vue'
 import OpsPractice from './features/practice/OpsPractice.vue'
+import AiDetectivePractice from './features/practice/AiDetectivePractice.vue' // [수정일: 2026-01-28] AI Detective 컴포넌트 임포트
 
 const routes = [
   {
@@ -51,6 +52,12 @@ const routes = [
     path: '/practice/ops-practice',
     name: 'OpsPractice',
     component: OpsPractice
+  },
+  {
+    // [수정일: 2026-01-28] AI Detective 라우트 등록
+    path: '/practice/ai-detective',
+    name: 'AiDetective',
+    component: AiDetectivePractice
   },
   {
     path: '/main.html',
