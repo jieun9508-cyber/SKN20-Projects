@@ -90,7 +90,12 @@
                 </div>
 
                 <div class="node-label-premium">
-                  {{ problem.displayNum || problem.title }} - {{ problem.title }}
+                  <template v-if="game.activeUnit?.name === 'Debug Practice' && game.currentDebugMode === 'vibe-cleanup'">
+                    개발중..
+                  </template>
+                  <template v-else>
+                    {{ problem.displayNum || problem.title }} - {{ problem.title }}
+                  </template>
                 </div>
               </div>
 
@@ -238,7 +243,9 @@ const displayProblems = computed(() => {
     if (game.currentDebugMode === 'bug-hunt') {
       return activeUnit.problems || [];
     } else {
-      return activeUnit.vibeProblems || [];
+      // Vibe 문제 세트가 없으면 기본 문제 목록으로 폴백
+      const vibeProblems = activeUnit.vibeProblems || [];
+      return vibeProblems.length > 0 ? vibeProblems : (activeUnit.problems || []);
     }
   }
   return activeUnit.problems || [];
