@@ -131,26 +131,47 @@ const RAW_STAGES = [
     }
 ];
 
+// --- 개선된 EVALUATORS (Feedback 중심) ---
 const EVALUATORS = {
     comparison: (c, val) => {
-        if (c.includes('returnn>0') || (c.includes('ifn>0') && (c.includes('returnTrue') || c.includes('return True')))) return val > 0;
-        return null;
+        if (!c.includes('return')) return { pass: false, msg: "[Syntax] Return 구문이 누락되었습니다." };
+        if (c.includes('returnn>0') || (c.includes('ifn>0') && (c.includes('returnTrue') || c.includes('return True')))) {
+            const res = val > 0;
+            return { pass: res, msg: res ? "Valid" : "Boundary/Logic Error" };
+        }
+        return { pass: false, msg: "[Logic] 표준 비교 연산 규격을 준수하십시오. (> 0)" };
     },
     mod: (c, val) => {
-        if (c.includes('data%2==0')) return val % 2 === 0;
-        return null;
+        if (!c.includes('return')) return { pass: false, msg: "[Syntax] Return 구문이 누락되었습니다." };
+        if (c.includes('data%2==0')) {
+            const res = val % 2 === 0;
+            return { pass: res, msg: res ? "Valid" : "Parity Logic Error" };
+        }
+        return { pass: false, msg: "[Logic] Modulo 연산자(%)를 활용하십시오." };
     },
     abs: (c, val) => {
-        if (c.includes('abs(val)') || (c.includes('ifval<0') && c.includes('return-val'))) return Math.abs(val);
-        return null;
+        if (!c.includes('return')) return { pass: false, msg: "[Syntax] Return 구문이 누락되었습니다." };
+        if (c.includes('abs(val)') || (c.includes('ifval<0') && c.includes('return-val'))) {
+             const res = Math.abs(val) === (val < 0 ? -val : val);
+             return { pass: res, msg: res ? "Valid" : "Calculation Error" };
+        }
+        return { pass: false, msg: "[Logic] 절대값 산출 로직을 확인하십시오." };
     },
     len: (c, val) => {
-        if (c.includes('len(text)>=5')) return val.length >= 5;
-        return null;
+        if (!c.includes('return')) return { pass: false, msg: "[Syntax] Return 구문이 누락되었습니다." };
+        if (c.includes('len(text)>=5')) {
+             const res = val.length >= 5;
+             return { pass: res, msg: res ? "Valid" : "Length Logic Error" };
+        }
+        return { pass: false, msg: "[Logic] 길이 검증 규격(len)을 확인하십시오." };
     },
     range: (c, val) => {
-        if (c.includes('18<=temp<=26') || (c.includes('temp>=18') && c.includes('temp<=26'))) return val >= 18 && val <= 26;
-        return null;
+         if (!c.includes('return')) return { pass: false, msg: "[Syntax] Return 구문이 누락되었습니다." };
+         if (c.includes('18<=temp<=26') || (c.includes('temp>=18') && c.includes('temp<=26'))) {
+              const res = val >= 18 && val <= 26;
+              return { pass: res, msg: res ? "Valid" : "Range Logic Error" };
+         }
+         return { pass: false, msg: "[Logic] 온도 임계값 범위를 확인하십시오." };
     }
 };
 
@@ -201,8 +222,8 @@ const haruSummary = computed(() => {
     return `System: ${stage.fnName}(${stage.params}) 정책 구현 요청 수신.`;
 });
 
-// Monaco Editor 옵션
-const editorOptions = {
+// Monaco Editor 옵션 (난이도별 제어)
+const editorOptions = computed(() => ({
     minimap: { enabled: false },
     fontSize: 16,
     lineHeight: 24,
@@ -211,7 +232,10 @@ const editorOptions = {
     renderLineHighlight: 'all',
     scrollBeyondLastLine: false,
     automaticLayout: true,
-};
+    // [Difficulty] Easy: 자동 완성, Hard: 엄격 모드
+    quickSuggestions: gameDifficulty.value === 'easy',
+    suggestOnTriggerCharacters: gameDifficulty.value === 'easy',
+}));
 
 // --- 메소드 (Methods) ---
 const typeHaru = (text) => {
@@ -253,18 +277,25 @@ const loadStage = (idx) => {
 const startGame = (difficulty) => {
     gameDifficulty.value = difficulty;
     gameStarted.value = true;
-    typeHaru("인사 발령 확인되었습니다. 운영팀 리드 하루입니다. 본 시뮬레이션을 통해 귀하의 업무 적합성을 평가하겠습니다.");
+    typeHaru(`[SYSTEM] ${difficulty.toUpperCase()} MODE ACTIVATED. 인사 발령 확인되었습니다. 운영팀 리드 하루입니다.`);
     
-    // 약간의 딜레이 후 첫 스테이지 로드
     setTimeout(() => {
         loadStage(0);
     }, 1500);
 };
 
 const handleHint = () => {
+    // [Difficulty] Hard 모드는 힌트 불가
+    if (gameDifficulty.value === 'hard') {
+        typeHaru("⚠️ [AUDIT WARNING] 감사(Audit) 모드에서는 힌트 접근이 제한됩니다. 정책 문서를 스스로 분석하십시오.");
+        return;
+    }
+    // [Difficulty] Normal 모드: 3회 제한 (현재 힌트 배열 길이로 자연스럽게 제한됨)
+    // 좀 더 명시적인 카운팅이 필요하다면 추가 변수 사용 가능하나, 여기서는 단계별 힌트 제공으로 대체
+    
     const stage = currentStage.value;
     if (hintIdx.value < stage.hints.length) {
-        typeHaru(stage.hints[hintIdx.value++]);
+        typeHaru(`[HINT ${hintIdx.value + 1}/${stage.hints.length}] ${stage.hints[hintIdx.value++]}`);
     } else {
         typeHaru("추가 가이드는 제공되지 않습니다. 기존 정책 문서를 재확인하십시오.");
     }
@@ -276,17 +307,26 @@ const runCode = () => {
     const evalFunc = EVALUATORS[stage.evalType];
     const tests = stage.testCases[gameDifficulty.value];
 
+    // [Difficulty] Hard 모드: 세미콜론 검사 (Strict Syntax) - Python이지만 가상의 엄격함 적용
+    // 혹은 특정 키워드 제한 등. 여기서는 간단히 'pass' 키워드 사용 금지 등 예시
+    if (gameDifficulty.value === 'hard' && userCode.includes('pass')) {
+         typeHaru("⚠️ [AUDIT WARNING] 'pass' 임시 구문은 프로덕션 코드에 허용되지 않습니다.");
+         return;
+    }
+
     let passCount = 0;
-    let firstFailType = null;
+    let failedMsg = null;
 
     for (let i = 0; i < tests.length; i++) {
         const test = tests[i];
-        const result = evalFunc(userCode, test.i);
+        const result = evalFunc(userCode, test.i); // Returns { pass: bool, msg: string }
 
-        if (result === test.e) {
+        if (result && result.pass === test.e) {
             passCount++;
-        } else if (firstFailType === null) {
-            firstFailType = (result === null) ? 'syntax' : test.type;
+        } else {
+            failedMsg = result ? result.msg : "Unknown Error";
+            // Hard 모드는 첫 실패 시 즉시 중단 및 재시도 강요
+            if (gameDifficulty.value === 'hard') break;
         }
     }
 
@@ -294,22 +334,17 @@ const runCode = () => {
 
     if (allPass) {
         isStageClear.value = true;
-        typeHaru("검증 통과. 정책 준수 여부가 확인되었습니다. 해당 티켓을 Close 처리합니다.");
+        typeHaru("✅ 검증 통과. 정책 준수 여부가 확인되었습니다. 해당 티켓을 Close 처리합니다.");
     } else {
-        const feedback = {
-            syntax: "Syntax Error 감지: 시스템이 해석 불가능한 구문 혹은 반환값 누락이 발생했습니다.",
-            logic: "Logic Error 감지: 표준 데이터 처리 결과가 정책과 불일치합니다.",
-            boundary: `Boundary Error 감지: 경계값 처리 정책 위반입니다.`,
-            negative: `Negative Value Error 감지: 음수 데이터 예외 처리가 미흡합니다.`,
-            missingCase: `Exception Error: Null 또는 예외 상황에 대한 핸들링이 누락되었습니다.`
-        };
-
-        let resultSummary = `검증 결과: ${tests.length}개 정책 중 ${passCount}개 준수\n`;
-
+        // [Difficulty] Fail Feedback
         if (gameDifficulty.value === 'hard') {
-            typeHaru(resultSummary + (feedback[firstFailType] || "Critical Error: 중대한 정책 위반입니다. 즉시 수정하십시오."));
+            typeHaru(`⛔ [CRITICAL FAILURE] ${failedMsg}\n보안 감사 기준 미달로 스테이지가 초기화됩니다.`);
+            // 스테이지 리셋 (코드 초기화)
+            setTimeout(() => {
+                editorContent.value = `def ${stage.fnName}(${stage.params}):\n    # RE-TRY REQUIRED\n    `;
+            }, 2000);
         } else {
-            typeHaru("검증 실패. 일부 항목에서 정책 위반이 감지되었습니다. 로그를 확인하십시오.");
+             typeHaru(`❌ 검증 실패 (${passCount}/${tests.length} 통과).\nSystem Feedback: ${failedMsg || "데이터 처리 로직을 점검하십시오."}`);
         }
     }
 };
