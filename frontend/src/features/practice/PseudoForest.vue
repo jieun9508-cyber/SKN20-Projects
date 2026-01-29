@@ -70,11 +70,33 @@
               </div>
             </div>
 
-            <!-- 입력 영역: 파이썬 빈칸 채우기 (4단계) [수정일: 2026-01-28] -->
+            <!-- 입력 영역: 파이썬 빈칸 채우기 (4단계) [수정일: 2026-01-29] 터미널 디자인 적용 -->
             <div id="python-fill-input" v-if="currentStep.type === 'python-fill'">
               <p id="quest-desc" class="dark-text">의사코드를 파이썬으로 변환해봅시다. 빈칸을 채워 완성하세요!</p>
-              <div class="python-code-block">
-                <div class="python-code-content"><template v-for="(part, pIdx) in codeParts" :key="pIdx"><span v-if="part.type === 'text'" class="code-text-part">{{ part.content }}</span><input v-else type="text" class="code-blank-input" v-model="pythonBlanks[part.blankIndex]" :style="{ width: Math.max(40, (pythonBlanks[part.blankIndex] || '').length * 12) + 'px' }" :disabled="isStepFeedbackOpen" /></template></div>
+              <div class="python-terminal">
+                <div class="terminal-header">
+                  <div class="terminal-controls">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                  </div>
+                  <div class="terminal-title">Python Terminal</div>
+                </div>
+                <div class="python-code-block">
+                  <div class="python-code-content">
+                    <template v-for="(part, pIdx) in codeParts" :key="pIdx">
+                      <span v-if="part.type === 'text'" class="code-text-part">{{ part.content }}</span>
+                      <input 
+                        v-else 
+                        type="text" 
+                        class="code-blank-input" 
+                        v-model="pythonBlanks[part.blankIndex]" 
+                        :style="{ width: Math.max(40, (pythonBlanks[part.blankIndex] || '').length * 12) + 'px' }" 
+                        :disabled="isStepFeedbackOpen" 
+                      />
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -108,7 +130,7 @@
                 class="btn primary"
                 :disabled="isAnalyzing || isStepFeedbackOpen"
               >
-                {{ isAnalyzing ? 'AI 분석 중...' : '답변 제출하기' }}
+                {{ isAnalyzing ? currentAnalysisLog : '답변 제출하기' }}
               </button>
             </div>
           </div>
@@ -123,6 +145,13 @@
                 <h3>{{ stepResult.success ? '훌륭해요!' : '조금 더 생각해볼까요?' }}</h3>
               </div>
               <p class="feedback-msg" v-html="stepResult.message"></p>
+              
+              <!-- [수정일: 2026-01-29] 모범 답안 노출 영역 추가 -->
+              <div v-if="currentStep.modelAnswer" class="model-answer-section animate-fade-in">
+                <div class="model-answer-label">💡 마을 현자의 모범 답안 :</div>
+                <div class="model-answer-text">{{ currentStep.modelAnswer }}</div>
+              </div>
+
               <button @click="proceedNext" class="btn next-btn">
                 {{ currentStepIndex < currentStage.steps.length - 1 ? '다음 단계로' : '종합 평가 보기' }}
               </button>
@@ -282,6 +311,7 @@ const duckHint = computed(() => {
 });
 
 const isAnalyzing = ref(false);
+const currentAnalysisLog = ref("AI 분석 중..."); // [수정일: 2026-01-29] 동적 분석 로그용
 const isStepFeedbackOpen = ref(false);
 const isFinalEvalOpen = ref(false);
 
@@ -291,6 +321,31 @@ const stageLogs = ref([]); // 현재 스테이지의 3단계 답변 및 평가 �
 
 // [수정일: 2026-01-29] 메모리 누수 방지를 위한 타이머 관리 변수
 let analysisTimer = null;
+let logCyclingInterval = null; // [수정일: 2026-01-29] 로그 사이클링용 인터벌
+
+const ANALYSIS_LOGS = [
+  "구문 파싱 중...",
+  "키워드 통찰 추출 중...",
+  "논리 구조 검증 중...",
+  "의사코드 패턴 매칭 중...",
+  "알고리즘 최적성 검토 중..."
+];
+
+const startLogCycling = () => {
+  let logIdx = 0;
+  currentAnalysisLog.value = ANALYSIS_LOGS[0];
+  logCyclingInterval = setInterval(() => {
+    logIdx = (logIdx + 1) % ANALYSIS_LOGS.length;
+    currentAnalysisLog.value = ANALYSIS_LOGS[logIdx];
+  }, 250);
+};
+
+const stopLogCycling = () => {
+  if (logCyclingInterval) {
+    clearInterval(logCyclingInterval);
+    logCyclingInterval = null;
+  }
+};
 
 
 // --- 핸들러: 주관식 제출 ---
@@ -305,17 +360,23 @@ const submitSubjective = () => {
     return;
   }
   isAnalyzing.value = true;
+  startLogCycling(); // [수정일: 2026-01-29] 로그 사이클링 시작
 
   // AI 분석 시뮬레이션 [수정일: 2026-01-29] flexibleMatch 기반 유연한 채점 로직으로 고도화
   // [수정일: 2026-01-29] 타이머 참조 저장
   analysisTimer = setTimeout(() => {
+    stopLogCycling(); // [수정일: 2026-01-29] 로그 사이클링 중지
     const code = userResponse.value.toLowerCase();
     const criteria = currentStep.value.evalCriteria;
     
-    // [수정일: 2026-01-29] 시맨틱 매칭 기반으로 점수 계산 (기술 용어 포용)
-    const insightMatches = criteria.insightKeywords.filter(kw => semanticMatch(code, kw));
-    const structureMatches = criteria.structureKeywords.filter(kw => semanticMatch(code, kw));
-    const precisionMatches = criteria.precisionKeywords.filter(kw => semanticMatch(code, kw));
+    // [수정일: 2026-01-29] 시맨틱 매칭 기반으로 점수 계산 (기술 용어 포용) [방어 코드 추가]
+    const insightKeywords = criteria.insightKeywords || [];
+    const structureKeywords = criteria.structureKeywords || [];
+    const precisionKeywords = criteria.precisionKeywords || [];
+
+    const insightMatches = insightKeywords.filter(kw => semanticMatch(code, kw));
+    const structureMatches = structureKeywords.filter(kw => semanticMatch(code, kw));
+    const precisionMatches = precisionKeywords.filter(kw => semanticMatch(code, kw));
 
     let score = 0;
     if (insightMatches.length > 0) score += 40;
@@ -330,8 +391,8 @@ const submitSubjective = () => {
       const bestKw = insightMatches[0] || structureMatches[0] || "핵심 로직";
       msg = `<strong>AI 통찰:</strong> '${bestKw}'을(를) 포함한 논리적 구성이 훌륭합니다! 단계별 요구사항을 정확히 꿰뚫어 보셨네유.`;
     } else {
-      // 누락된 키워드 중 첫 번째를 힌트로 활용
-      const missingKw = criteria.insightKeywords.find(kw => !insightMatches.includes(kw)) || criteria.insightKeywords[0];
+      // 누락된 키워드 중 첫 번째를 힌트로 활용 [방어 코드 반영]
+      const missingKw = insightKeywords.find(kw => !insightMatches.includes(kw)) || insightKeywords[0] || "전반적인 내용";
       msg = `<strong>AI 조언:</strong> 논리가 조금 부족해유. 혹시 <strong>'${missingKw}'</strong> 개념을 활용해서 다시 설명해주실 수 있나유?`;
       if (currentStep.value.duckEncouragement) {
         msg += `<br><span style='font-size:0.9em; color:#64748b;'>💡 힌트: ${currentStep.value.duckEncouragement}</span>`;
@@ -375,8 +436,12 @@ const submitPythonFill = () => {
     return;
   }
 
+  isAnalyzing.value = true; // [수정일: 2026-01-29] 분석 상태 활성화
+  startLogCycling(); // [수정일: 2026-01-29] 로그 사이클링 시작
+
   // [수정일: 2026-01-29] 타이머 참조 저장 및 다중 정답 지원 로직 강화
   analysisTimer = setTimeout(() => {
+    stopLogCycling(); // [수정일: 2026-01-29] 로그 사이클링 중지
     let correctCount = 0;
     pythonBlanks.value.forEach((val, idx) => {
       const userValue = val.trim();
@@ -522,7 +587,7 @@ onUnmounted(() => {
 .pseudo-forest-overlay::before { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); }
 
 #game-container {
-  position: relative; width: 100%; max-width: 1100px; height: 90vh;
+  position: relative; width: 100%; max-width: 1100px; height: 95vh; /* [수정일: 2026-01-29] 90vh -> 95vh 확장 */
   background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(20px);
   border-radius: 40px; border: 8px solid #5d4037; box-shadow: 0 40px 100px rgba(0,0,0,0.5);
   overflow: hidden; display: flex; flex-direction: column;
@@ -535,7 +600,7 @@ onUnmounted(() => {
 }
 .btn-close-forest:hover { transform: scale(1.1) rotate(90deg); background: #d32f2f; }
 
-#content-layer { flex: 1; display: flex; flex-direction: column; padding: 30px; }
+#content-layer { flex: 1; display: flex; flex-direction: column; padding: 25px; } /* 패딩 살짝 축소 */
 
 #status-bar {
   display: flex; justify-content: space-between; align-items: center;
@@ -572,18 +637,18 @@ onUnmounted(() => {
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 #speaker-name { position: absolute; top: -20px; left: 20px; background: #f9a825; color: white; padding: 5px 20px; border-radius: 12px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-#dialogue-text { font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; color: #5d4037; line-height: 1.6; }
-.step-question { font-size: 2rem; font-weight: 800; color: #1b5e20; border-top: 3px dashed #fbc02d; padding-top: 15px; line-height: 1.5; }
+#dialogue-text { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; color: #5d4037; line-height: 1.5; } /* 1.8rem -> 1.5rem */
+.step-question { font-size: 1.6rem; font-weight: 800; color: #1b5e20; border-top: 3px dashed #fbc02d; padding-top: 10px; line-height: 1.4; } /* 2rem -> 1.6rem */
 
 #right-panel { display: flex; flex-direction: column; gap: 20px; }
-#code-section { flex: 1; display: flex; flex-direction: column; min-height: 400px; }
+#code-section { flex: 1; display: flex; flex-direction: column; min-height: 300px; } /* 400px -> 300px */
 
 #quest-desc { 
-  font-size: 1.8rem; 
+  font-size: 1.4rem; /* 1.8rem -> 1.4rem */
   font-weight: 800; 
-  margin-bottom: 10px; 
+  margin-bottom: 8px; 
   color: #5d4037; 
-  line-height: 1.6;
+  line-height: 1.4;
   text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
 }
 .dark-text { color: #5d4037 !important; font-weight: 800; } 
@@ -642,12 +707,12 @@ onUnmounted(() => {
   flex: 1; /* 가용한 너비 모두 차지 */
   background: #fff9c4;
   border: 4px solid #fbc02d;
-  padding: 15px 20px;
-  border-radius: 24px;
-  font-size: 1.5rem;
+  padding: 12px 18px; /* 패딩 축소 */
+  border-radius: 20px;
+  font-size: 1.25rem; /* 1.5rem -> 1.25rem */
   font-weight: 700;
   color: #5d4037;
-  line-height: 1.5;
+  line-height: 1.4;
   box-shadow: 0 6px 15px rgba(0,0,0,0.1);
   position: relative;
 }
@@ -663,8 +728,8 @@ onUnmounted(() => {
   border-bottom: 10px solid transparent;
 }
 .duck-img {
-  width: 130px; /* 더 크게 확대 (100px -> 130px) */
-  height: 130px;
+  width: 100px; /* 130px -> 100px 축소 */
+  height: 100px;
   object-fit: contain;
   filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
   flex-shrink: 0;
@@ -782,28 +847,96 @@ onUnmounted(() => {
 @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
 @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
 
-/* [수정일: 2026-01-28] 파이썬 빈칸 채우기 스타일 */
+/* [수정일: 2026-01-29] 파이썬 빈칸 채우기 터미널 스타일 */
+.python-terminal {
+  background: #1e1e1e;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 4px solid #5d4037;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+
+.terminal-header {
+  background: #333;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 2px solid #5d4037;
+}
+
+.terminal-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-controls .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot.red { background: #ff5f56; }
+.dot.yellow { background: #ffbd2e; }
+.dot.green { background: #27c93f; }
+
+.terminal-title {
+  color: #888;
+  font-size: 0.9rem;
+  font-family: 'Nanum Gothic Coding', monospace;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
 .python-code-block {
-  background: #23241f; color: #f8f8f2; padding: 25px; border-radius: 20px;
+  background: #1e1e1e; color: #f8f8f2; padding: 25px; 
   font-family: 'Nanum Gothic Coding', monospace; font-size: 1.1rem; line-height: 1.6;
-  overflow-x: auto; border: 4px solid #5d4037; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  overflow-x: auto;
 }
 .python-code-content {
   white-space: pre; word-break: normal; margin: 0;
   display: block; font-family: 'Nanum Gothic Coding', monospace;
-  font-size: 1.1rem; line-height: 1.8;
+  font-size: 1.3rem; line-height: 2.0; /* 폰트 크기 및 높이 상향 */
 }
 .code-text-part {
   display: inline; white-space: pre;
 }
 .code-blank-input {
   background: #3e3e3e; border: 2px solid #fbc02d; color: #ffeb3b;
-  padding: 1px 8px; border-radius: 6px; font-family: inherit; font-size: 1.1rem;
-  transition: 0.3s; margin: 0 4px; outline: none;
-  vertical-align: middle; display: inline-block;
-  box-sizing: border-box; position: relative; top: -1px;
+  border-radius: 6px; padding: 2px 8px; font-family: inherit; font-size: 1.2rem;
+  font-weight: 800; text-align: center; outline: none; transition: 0.3s;
 }
-.code-blank-input:focus { background: #4e4e4e; box-shadow: 0 0 10px #fbc02d; border-color: #fdd835; }
+
+.code-blank-input:focus {
+  background: #4a4a4a;
+  box-shadow: 0 0 12px #ffeb3b;
+  border-color: #fff176;
+}
+
+/* [수정일: 2026-01-29] 피드백 모달 모범 답안 스타일 */
+.model-answer-section {
+  background: #f1f5f9;
+  border-left: 6px solid #fbc02d;
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 0 16px 16px 0;
+  text-align: left;
+}
+
+.model-answer-label {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #0369a1;
+  margin-bottom: 10px;
+}
+
+.model-answer-text {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: #334155;
+  font-weight: 700;
+  word-break: keep-all;
+}
 
 .animate-fade-in { animation: fadeIn 0.4s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

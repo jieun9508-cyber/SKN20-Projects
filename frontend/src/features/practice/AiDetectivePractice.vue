@@ -187,18 +187,18 @@ const submitLogic = async () => {
     const code = userCode.value.toLowerCase();
     const quest = currentQuest.value;
     
-    // 1. 통찰력 (Insight) 평가: 타겟 데이터 및 미션 핵심 키워드 인식 여부
+    // 1. 통찰력 (Insight) 평가: 타겟 데이터 및 미션 핵심 키워드 인식 여부 [방어 코드 추가]
     let insightScore = 0;
-    const targetKeywords = quest.target.toLowerCase().split(/[,|]/).map(s => s.trim());
-    const dataKeywords = quest.data.map(d => d.name.toLowerCase());
+    const targetKeywords = (quest.target || '').toLowerCase().split(/[,|]/).map(s => s.trim()) || [];
+    const dataKeywords = (quest.data || []).map(d => (d.name || '').toLowerCase()) || [];
     
     // [수정일: 2026-01-28] 미션에서 수치(임계값 등) 추출하여 동적 검증 루틴 추가
-    const missionNumbers = quest.mission.match(/\d+(\.\d+)?/g) || [];
+    const missionNumbers = (quest.mission || '').match(/\d+(\.\d+)?/g) || [];
     const hasMissionNumbers = missionNumbers.some(num => code.includes(num));
 
-    // [수정일: 2026-01-29] flexibleMatch를 사용하여 더 유연하게 데이터 및 타겟 탐지
-    const hasDataRef = dataKeywords.some(k => flexibleMatch(code, k));
-    const hasTargetRef = targetKeywords.some(k => flexibleMatch(code, k));
+    // [수정일: 2026-01-29] semanticMatch를 사용하여 더 유연하고 지능적으로 데이터 및 타겟 탐지
+    const hasDataRef = dataKeywords.some(k => semanticMatch(code, k));
+    const hasTargetRef = targetKeywords.some(k => semanticMatch(code, k));
     
     if (hasDataRef) insightScore += 20;
     if (hasTargetRef) insightScore += 20;

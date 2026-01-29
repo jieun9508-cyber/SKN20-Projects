@@ -1,537 +1,438 @@
 /**
- * Pseudo Forest 10 Stages x 4 Steps Data Design
+ * Pseudo Forest AI Engineer 10 Stages Data Design
+ * [수정일: 2026-01-29] 초보 AI 엔지니어 타겟 커리큘럼 (전체 스테이지 완성본)
  * 
- * [수정일: 2026-01-28] 4단계(파이썬 실습) 및 종합 평가 데이터(finalAppraisal) 추가 완료
+ * 정제되지 않은 데이터에서 시작하여 모델의 추론(Inference)까지 이어지는
+ * 엔드투엔드 AI 개발 파이프라인을 의사코드 숲의 테마로 구성했습니다.
  */
 const forestGameData = [
     {
         stageId: 1,
         character: {
-            name: "감자쥬 (카피바라)",
-            image: "/image/forest/char_gamjaju.png",
-            hoverImage: "/image/forest/char_gamjaju_happy.png"
+            name: "너굴 부장 (CEO)",
+            image: "/image/forest/ceo_neogul.png",
+            hoverImage: "/image/forest/ceo_neogul_happy.png"
         },
-        dialogue: "뭐~ 되면 됐쥬. 마을 입구 공지판이 너무 복잡해유. 똑같은 글은 한 번만 보이게 정리해주면 고맙겠쥬~",
+        dialogue: "김 사원, 마을 버섯 무게 데이터에 999kg 같은 말도 안 되는 수치가 섞여 있구리. 이런 '이상치'를 어떻게 걸러낼지 로직을 짜보게나!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 중복된 게시글을 어떻게 찾아내고 제거할지 기본적인 아이디어를 말해보세요!",
+                question: "1. 데이터에서 평균이나 중앙값보다 비정상적으로 크거나 작은 값을 걸러내기 위한 의사코드를 작성해보세요.",
                 evalCriteria: {
-                    insightKeywords: ["중복", "제거", "검사", "확인"],
-                    structureKeywords: ["비교", "하나씩", "반복"],
-                    precisionKeywords: ["삭제", "지우기"]
-                }
+                    insightKeywords: ["이상치", "임계값", "기준"],
+                    structureKeywords: ["비교", "필터링", "제외"],
+                    precisionKeywords: ["Outlier", "조건문"]
+                },
+                modelAnswer: "전체 데이터의 평균과 표준편차를 구합니다. 데이터의 값이 (평균 ± 3 * 표준편차) 범위를 벗어나는 경우 이상치로 간주하여 리스트에서 제외하거나 정상 범위의 최댓값/최솟값으로 대체합니다."
             },
             {
                 type: "objective",
-                question: "2. 수만 개의 게시글이 있을 때, 가장 빠르게 중복을 체크할 수 있는 자료구조는 무엇일까요?",
-                options: ["배열 (Array)", "집합 (Set)", "연결 리스트 (Linked List)", "스택 (Stack)"],
+                question: "2. 이상치를 처리할 때, 무조건 삭제하는 것보다 더 안전한 방법은 무엇일까요?",
+                options: ["그냥 0으로 바꾼다", "중앙값(Median)으로 대체한다", "무시하고 학습시킨다", "데이터를 모두 삭제한다"],
                 correctIndex: 1,
-                explanation: "Set은 데이터의 존재 여부를 평균적으로 O(1) 시간에 확인할 수 있어 매우 효율적입니다."
+                explanation: "중앙값은 이상치의 영향을 거의 받지 않기 때문에 비정상적인 데이터를 보정하는 데 유용합니다."
             },
             {
                 type: "subjective",
-                question: "3. 만약 '글을 쓴 순서'를 그대로 유지하면서 중복만 제거해야 한다면, 로직에 무엇을 추가해야 할까요?",
+                question: "3. 상자 그림(Box Plot)에서 이상치를 판단하는 기준인 IQR(사분위 범위)의 정의는 무엇일까요?",
                 evalCriteria: {
-                    insightKeywords: ["순서", "유지", "처음"],
-                    structureKeywords: ["새로운", "배열", "담기"],
-                    precisionKeywords: ["결과", "그대로"]
-                }
+                    insightKeywords: ["3사분위", "1사분위", "차이"],
+                    structureKeywords: ["계산", "구간"],
+                    precisionKeywords: ["Q3 - Q1", "범위"]
+                },
+                modelAnswer: "제3사분위수(Q3)에서 제1사분위수(Q1)를 뺀 값입니다. 보통 이 IQR의 1.5배를 넘어서는 구간의 값을 이상치로 판정합니다."
             },
             {
                 type: "python-fill",
-                question: "4. 파이썬의 set을 사용하여 리스트의 중복을 제거하는 코드를 완성해보세유!",
-                codeSnippet: "def clean_board(posts):\n    # 중복을 제거한 결과를 리스트로 반환\n    return {{blank}}(set(posts))",
-                blanks: ["list"],
-                duckEncouragement: "리스트를 집합(set)으로 변환하면 중복이 싹 사라지쥬!"
+                question: "4. Pandas를 이용해 특정 열의 이상치를 제거하는 코드를 완성해보세유!",
+                codeSnippet: "clean_df = df[df['weight'] {{blank}} 900]",
+                blanks: ["<"],
+                duckEncouragement: "900kg보다 작은 값들만 남겨야 이상치가 사라지겠쥬?"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "중복 제거의 핵심인 Set 활용법을 완벽히 이해하셨군유! 마을 게시판이 아주 깨끗해졌슈.",
-                mid: "데이터를 정리하는 감각이 좋으시구먼유. 순서 유지 조건도 한 번 더 고민해보셔유.",
-                low: "중복을 찾는 건 프로그래밍의 기초쥬! 차근차근 다시 해보자구유."
+                high: "데이터 클렌징 실력이 대단하구리! 이제 깨끗한 데이터로 분석을 시작할 수 있겠어.",
+                mid: "이상치 탐지 개념은 잡았구리. IQR 계산법을 조금 더 복잡하게 적용해보게나.",
+                low: "데이터가 오염되면 AI도 바보가 된다구리! 필터링 조건을 다시 확인해봐."
             },
-            insightMentions: { high: "효율적인 자료구조 선택 능력이 탁월해유.", low: "데이터의 특징을 파악하는 연습이 필요해유." },
-            structureMentions: { high: "조건에 맞는 논리 구성이 아주 탄탄해유.", low: "처리 순서를 좀 더 명확히 기술하면 좋겠슈." },
-            precisionMentions: { high: "파이썬 문법 이해도가 아주 높으시구먼유.", low: "함수와 타입 변환에 익숙해지셔야겠슈." }
+            insightMentions: { high: "통계적 기준을 아주 잘 활용하네유.", low: "이상치 판단 기준이 모호해유." },
+            structureMentions: { high: "처리 로직이 매우 안정적이에유.", low: "예외 데이터 처리에 더 신경 쓰셔유." },
+            precisionMentions: { high: "판다스 문법 활용이 아주 정확해유.", low: "비교 연산자 사용에 주의하셔유." }
         }
     },
     {
         stageId: 2,
         character: {
-            name: "두부 (강아지)",
+            name: "두부 대리 (Dog)",
             image: "/image/forest/char_dubu.png",
             hoverImage: "/image/forest/char_dubu_happy.png"
         },
-        dialogue: "이장님, 날씨에 따라 산책 루트가 달라지면 더 편할 것 같아요! 비 오는 날엔 미끄러운 곳을 피하고 싶거든요.",
+        dialogue: "숲의 지도 일부가 찢어져서 값이 비어 있는 곳(Missing Values)이 있구먼유. 이 구멍들을 어떻게 메워야 할까유?",
         steps: [
             {
                 type: "subjective",
-                question: "1. 맑은 날씨일 때, 단순히 '거리'만 고려하여 최단 경로를 찾는 로직을 어떻게 설계할까요?",
+                question: "1. 수치형 데이터에서 결측치(NaN)가 발생했을 때, 가장 보편적으로 채워넣는 값은 무엇일까요?",
                 evalCriteria: {
-                    insightKeywords: ["맑음", "거리", "최소"],
-                    structureKeywords: ["비교", "가장 짧은"],
-                    precisionKeywords: ["결과", "ID"]
-                }
-            },
-            {
-                type: "subjective",
-                question: "2. 비 오는 날씨에는 '미끄러움' 수치를 1순위로 고려해야 합니다. 어떤 조건문이 추가되어야 할까요?",
-                evalCriteria: {
-                    insightKeywords: ["비", "미끄러움", "우선"],
-                    structureKeywords: ["만약", "if", "조건"],
-                    precisionKeywords: ["비교", "최소"]
-                }
+                    insightKeywords: ["평균", "중앙값", "채우기"],
+                    structureKeywords: ["대체", "계산"],
+                    precisionKeywords: ["Mean", "Median"]
+                },
+                modelAnswer: "해당 컬럼의 전체 평균값(Mean)이나 중앙값(Median)으로 결측치를 대체하여 데이터의 손실을 방지하고 연속성을 유지합니다."
             },
             {
                 type: "objective",
-                question: "3. 미끄러움 수치가 동일한 두 경로가 있다면, 최종적으로 무엇을 기준으로 선택해야 할까요?",
-                options: ["도착 시간", "경로의 아름다움", "경로의 거리", "주변 상점 수"],
-                correctIndex: 2,
-                explanation: "1순위 조건이 동일할 때는 거리와 같은 2순위 조건을 통해 결정을 내리는 '타이브레이크' 로직이 필요합니다."
+                question: "2. 결측치가 너무 많을 때(예: 80% 이상), 가장 알맞은 처리 방법은 무엇일까요?",
+                options: ["모두 0으로 채운다", "해당 변수(컬럼)를 삭제한다", "평균으로 채운다", "무작위 숫자를 넣는다"],
+                correctIndex: 1,
+                explanation: "대부분의 데이터가 유실된 컬럼은 정보를 왜곡할 수 있으므로 삭제하는 것이 분석에 더 도움이 됩니다."
             },
             {
                 type: "python-fill",
-                question: "4. 여러 경로 중 거리가 최소인 값을 찾아내는 파이썬 코드를 완성해봅시다!",
-                codeSnippet: "min_dist = float('inf')\nfor d in distances:\n    if d < min_dist:\n        min_dist = {{blank}}",
-                blanks: ["d"],
-                duckEncouragement: "현재까지 찾은 가장 짧은 거리(min_dist)보다 더 짧은 게 나오면 바꿔줘야쥬!"
+                question: "3. Pandas에서 결측치를 특정 값으로 채우는 메서드 이름을 적어주세유!",
+                codeSnippet: "df['height'] = df['height'].{{blank}}(0)",
+                blanks: ["fillna"],
+                duckEncouragement: "Fill(채우다) + NA(결측치)를 합친 아주 직관적인 메서드쥬!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "다양한 조건을 고려한 경로 탐색 능력이 대단하셔유! 두부가 안전하게 산책하겠구먼유.",
-                mid: "조건부 검색 로직을 잘 이해하고 계셔유. 우선순위 결정 기준을 좀 더 명확히 해보셔유.",
-                low: "최솟값을 찾는 건 아주 중요한 기본이쥬. 반복문과 조건문을 더 연습해봅시다유."
-            },
-            insightMentions: { high: "문제 상황에 따른 변수 설정이 아주 똑똑해유.", low: "우선순위의 개념을 잡는 게 중요해유." },
-            structureMentions: { high: "이중 조건 로직을 깔끔하게 구성하셨네유.", low: "예외 상황에 대한 처리가 조금 아쉬워유." },
-            precisionMentions: { high: "단순 비교 로직 구현이 아주 정확해유.", low: "변수 초기화와 비교 대상을 잘 확인하셔유." }
+                high: "데이터의 빈틈을 완벽하게 메우셨군유! 이제 탄탄한 분석 기반이 마련됐슈.",
+                mid: "결측치 처리 전략이 준수해유. 데이터의 성격에 따라 평균과 중앙값 중 무엇이 나을지 고민해보셔유.",
+                low: "값이 비어 있으면 모델이 학습을 못 해유. 채우는 법부터 다시 연습해봅시다유."
+            }
         }
     },
     {
         stageId: 3,
         character: {
-            name: "유리 (고양이)",
+            name: "유리 과장 (Cat)",
             image: "/image/forest/char_yuri.png",
             hoverImage: "/image/forest/char_yuri_happy.png"
         },
-        dialogue: "마을 창고가 엉망이에유. 물건들을 가나다 순서대로 정리하고 싶은데, 어떻게 하면 빠를까유?",
+        dialogue: "데이터의 분포를 한눈에 파악하고 싶구랴. 숲의 나무들이 어디에 많이 몰려 있는지 지도를 그려볼 수 있겠나?",
         steps: [
             {
                 type: "subjective",
-                question: "1. 뒤죽박죽인 물건 리스트를 정렬하기 위한 가장 간단한 방법(알고리즘)을 설명해보세요.",
+                question: "1. 데이터의 분포(Distribution)를 확인하기 위해 가장 많이 사용하는 막대 그래프 형태의 차트 이름은?",
                 evalCriteria: {
-                    insightKeywords: ["정렬", "순서", "비교"],
-                    structureKeywords: ["버블", "선택", "하나씩"],
-                    precisionKeywords: ["오름차순", "가나다"]
-                }
+                    insightKeywords: ["히스토그램", "분포", "도수"],
+                    structureKeywords: ["구간", "막대"],
+                    precisionKeywords: ["Histogram", "bins"]
+                },
+                modelAnswer: "히스토그램(Histogram)입니다. 데이터를 일정 구간(bin)으로 나누어 각 구간에 속하는 데이터의 개수를 막대 형태로 시각화합니다."
             },
             {
                 type: "objective",
-                question: "2. 이미 정렬된 데이터에 새로운 물건 하나가 들어왔을 때, 가장 효율적인 정렬 방식은?",
-                options: ["전체 다시 정렬", "삽입 정렬 (Insertion Sort)", "무시하기", "거꾸로 정렬"],
-                correctIndex: 1,
-                explanation: "삽입 정렬은 거의 정렬된 데이터에 새 요소를 넣을 때 매우 효율적입니다."
-            },
-            {
-                type: "subjective",
-                question: "3. 물건 이름이 똑같을 경우, '유통기한'이 짧은 것부터 앞에 두려면 조건문에 무엇을 넣어야 할까요?",
-                evalCriteria: {
-                    insightKeywords: ["동일", "유통기한", "우선"],
-                    structureKeywords: ["비교", "조건 추가"],
-                    precisionKeywords: ["날짜", "작은"]
-                }
+                question: "2. 두 변수 간의 관계(상관관계)를 점의 형태로 흩뿌려 시각화하는 차트는?",
+                options: ["파이 차트", "라인 그래프", "산점도 (Scatter Plot)", "박스 플롯"],
+                correctIndex: 2,
+                explanation: "산점도는 x축과 y축의 데이터를 점으로 표현하여 두 변수의 경향성을 파악하기에 최적입니다."
             },
             {
                 type: "python-fill",
-                question: "4. 간단한 버블 정렬의 비교문을 완성해봅시다. 가나다 순(오름차순)이 되게 하려면?",
-                codeSnippet: "if items[j] {{blank}} items[j+1]:\n    items[j], items[j+1] = items[j+1], items[j]",
-                blanks: [">"],
-                duckEncouragement: "앞에 게 뒤에 것보다 더 크면(>) 자리를 바꿔줘야 정렬이 되겠쥬?"
+                question: "3. Matplotlib을 이용해 히스토그램을 그리는 함수는 무엇일까유?",
+                codeSnippet: "plt.{{blank}}(data['age'], bins=20)\nplt.show()",
+                blanks: ["hist"],
+                duckEncouragement: "Histogram의 앞 네 글자만 따오면 된다꽥!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "창고지기 자격이 충분하셔유! 정렬 알고리즘의 원리를 아주 잘 꿰뚫고 계시네유.",
-                mid: "기본적인 정렬 로직은 아시는구먼유. 상황에 따른 효율적인 알고리즘 선택을 공부해봐유.",
-                low: "물건들이 아직 뒤죽박죽이에유. 비교와 교체의 원리를 다시 생각해보셔유."
-            },
-            insightMentions: { high: "정렬 방식에 따른 시간 복잡도를 잘 이해하고 있슈.", low: "데이터가 많아질 때를 대비한 해결책이 필요해유." },
-            structureMentions: { high: "조건에 의한 분기 처리가 매우 섬세해유.", low: "불필요한 반복을 줄이는 방법을 고민해보셔유." },
-            precisionMentions: { high: "파이썬의 swap 문법을 아주 잘 활용하시네유.", low: "비교 연산자의 방향에 주의하셔야겠슈." }
+                high: "데이터 시각화의 정석을 보여주셨구랴! 숲의 비경이 한눈에 들어오는구먼.",
+                mid: "분포 파악 능력이 좋으시네유. 상관관계 해석에도 신경을 좀 더 써보셔유.",
+                low: "그림을 그려야 데이터가 말을 거는 법이지유. 차트 종류부터 익혀봅시다유."
+            }
         }
     },
     {
         stageId: 4,
         character: {
-            name: "모래 (햄스터)",
+            name: "모래 요원 (Hamster)",
             image: "/image/forest/char_morae.png",
             hoverImage: "/image/forest/char_morae_happy.png"
         },
-        dialogue: "겨울나기용 해바라기씨를 모아야 해유. 마을에 있는 여러 씨앗 주머니 중 가장 무거운 걸 찾고 싶어유!",
+        dialogue: "씨앗들의 무게는 그람(g) 단위인데, 나무 키는 미터(m) 단위라 숫자의 단위가 너무 달라유! 모델이 혼동하지 않게 범위를 맞춰줘유!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 주머니들을 하나씩 확인하면서 지금까지 본 것 중 가장 무거운 것을 기억하는 로직을 써보세요.",
+                question: "1. 데이터의 범위를 [0, 1] 사이로 변환하여 단위 차이를 극복하는 기법의 이름은?",
                 evalCriteria: {
-                    insightKeywords: ["최대값", "비교", "기억"],
-                    structureKeywords: ["반복", "변수", "교체"],
-                    precisionKeywords: ["무게", "갱신"]
-                }
+                    insightKeywords: ["정규화", "최소", "최대"],
+                    structureKeywords: ["범위", "스케일링"],
+                    precisionKeywords: ["Normalization", "Min-Max"]
+                },
+                modelAnswer: "정규화(Normalization 또는 Min-Max Scaling)입니다. 데이터를 최솟값 0, 최댓값 1 사이의 일정한 범위로 변환하는 과정입니다."
             },
             {
                 type: "objective",
-                question: "2. 만약 씨앗 주머니들이 이미 '무게 순'으로 정렬되어 있다면, 가장 무거운 것을 찾는 데 걸리는 시간은?",
-                options: ["매번 다름", "비례해서 늘어남 (O(n))", "즉시 확인 가능 (O(1))", "비교 불가능"],
-                correctIndex: 2,
-                explanation: "정렬되어 있다면 첫 번째나 마지막 요소만 확인하면 되므로 즉시 찾을 수 있습니다."
-            },
-            {
-                type: "subjective",
-                question: "3. 가장 무거운 주머니 TOP 3를 뽑으려면 어떤 방식으로 로직을 확장할 수 있을까요?",
-                evalCriteria: {
-                    insightKeywords: ["상위", "3개", "순위"],
-                    structureKeywords: ["배열", "정렬 후", "슬라이스"],
-                    precisionKeywords: ["결과", "세 개"]
-                }
+                question: "2. 평균을 0, 표준편차를 1로 만드는 스케일링 방식은 무엇일까요?",
+                options: ["로그 변환", "표준화 (Standardization)", "이진화", "절댓값 변환"],
+                correctIndex: 1,
+                explanation: "표준화는 데이터를 표준정규분포 형태로 변환하여 이상치에 좀 더 유연하게 대응하게 해줍니다."
             },
             {
                 type: "python-fill",
-                question: "4. 최댓값을 갱신해 나가는 파이썬 코드를 완성해봅시다유!",
-                codeSnippet: "max_w = 0\nfor w in weights:\n    if w > {{blank}}:\n        max_w = w",
-                blanks: ["max_w"],
-                duckEncouragement: "새로운 무게가 지금까지의 최대값(max_w)보다 크면 주머니를 갈아치워야쥬!"
+                question: "3. Sklearn의 MinMaxScaler를 사용하여 데이터를 변환(Transform)하는 코드를 완성해보세유!",
+                codeSnippet: "scaler = MinMaxScaler()\nscaled_data = scaler.{{blank}}_transform(data)",
+                blanks: ["fit"],
+                duckEncouragement: "학습(Fit)과 변환(Transform)을 동시에 하는 아주 편리한 메서드쥬!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "모래가 올겨울 아주 배부르게 지내겠어유! 탐색 로직의 달인이시구먼유.",
-                mid: "최대값 찾기는 식은 죽 먹기쥬? 상위 여러 개를 뽑는 법도 더 연습해보셔유.",
-                low: "가장 큰 걸 찾는 건 모든 비교의 시작이에유. 반복문을 차근차근 뜯어보자구유."
-            },
-            insightMentions: { high: "데이터의 정렬 상태를 활용할 줄 아는군요.", low: "전수 조사 말고 더 빠른 방법이 있을지 고민해봐유." },
-            structureMentions: { high: "갱신 로직이 아주 깔끔하고 군더더기 없네유.", low: "변수 선언과 할당 순서를 잘 지켜주셔유." },
-            precisionMentions: { high: "조건식 작성이 아주 정확하고 완벽해유.", low: "비교 대상이 무엇인지 명확히 해야겠슈." }
+                high: "데이터의 균형을 아주 잘 잡으셨군유! 모델이 씨앗이랑 나무를 헷갈리지 않겠어유.",
+                mid: "스케일링의 필요성을 잘 이해하고 있네유. 정규화와 표준화의 활용 차이를 더 파헤쳐보셔유.",
+                low: "숫자 크기가 다르면 편향이 생겨유. 단위 맞추기부터 다시 가르쳐주겠슈."
+            }
         }
     },
     {
         stageId: 5,
         character: {
-            name: "밤송이 (고슴도치)",
+            name: "밤송이 수석 (Hedgehog)",
             image: "/image/forest/char_bamsong.png",
             hoverImage: "/image/forest/char_bamsong_happy.png"
         },
-        dialogue: "밤송이가 너무 많아서 바구니에 다 안 들어가유. 가치는 높고 무게는 가벼운 것부터 담으려면 어떡하쥬?",
+        dialogue: "연습한 데이터로만 시험을 보면 당연히 점수가 잘 나오지 않겠유? 새로운 데이터에도 강한 모델인지 테스트해봐야 해유!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 각 밤송이의 '무게 대비 가치'를 계산하여 우선순위를 정하는 로직을 설명해보세요.",
+                question: "1. 훈련 데이터에만 너무 과하게 적응되어 새로운 데이터에 대해 성능이 떨어지는 현상을 무엇이라 하나요?",
                 evalCriteria: {
-                    insightKeywords: ["효율", "비율", "가중치"],
-                    structureKeywords: ["나누기", "계산", "정렬"],
-                    precisionKeywords: ["무게", "가치"]
-                }
+                    insightKeywords: ["과적합", "적응", "훈련"],
+                    structureKeywords: ["성능 저하", "일반화"],
+                    precisionKeywords: ["Overfitting", "Overfit"]
+                },
+                modelAnswer: "과적합(Overfitting)입니다. 모델이 훈련 데이터의 노이즈까지 학습하여 실제 환경(새로운 데이터)에서의 일반화 성능이 낮아지는 현상입니다."
             },
             {
                 type: "objective",
-                question: "2. 이런 식으로 현재 상황에서 최선의 선택을 계속해 나가는 알고리즘 방식을 무엇이라 할까요?",
-                options: ["그리디 (Greedy) 알고리즘", "브루트 포스 (Brute Force)", "완전 탐색", "안전 탐색"],
-                correctIndex: 0,
-                explanation: "매 순간 최적이라고 생각되는 것을 선택해 나가는 방식이 그리디 알고리즘입니다."
-            },
-            {
-                type: "subjective",
-                question: "3. 바구니 무게 제한이 10kg일 때, 더 이상 담을 수 없는지 확인하는 조건문을 작성해보세요.",
-                evalCriteria: {
-                    insightKeywords: ["제한", "초과", "누적"],
-                    structureKeywords: ["합계", "if", "10"],
-                    precisionKeywords: ["중단", "멈춤"]
-                }
+                question: "2. 데이터를 훈련용(Train)과 테스트용(Test)으로 나누는 가장 보편적인 비율은?",
+                options: ["1:9", "5:5", "8:2", "0:10"],
+                correctIndex: 2,
+                explanation: "일반적으로 80%를 학습에 쓰고 20%를 검증에 사용하는 것이 안정적인 성능 측정을 돕습니다."
             },
             {
                 type: "python-fill",
-                question: "4. 무게 합계가 10kg을 넘지 않을 때만 바구니에 담는 코드를 완성해보세유!",
-                codeSnippet: "if total_weight + item_w <= {{blank}}:\n    basket.append(item)\n    total_weight += item_w",
-                blanks: ["10"],
-                duckEncouragement: "바구니가 터지면 안 되니까 10kg 제한을 꼭 체크해줘야쥬!"
+                question: "3. 데이터를 분산시키는 파이썬 함수를 적어주세유!",
+                codeSnippet: "X_train, X_test, y_train, y_test = {{blank}}(X, y, test_size=0.2)",
+                blanks: ["train_test_split"],
+                duckEncouragement: "기차(Train)와 시험(Test) 사이의 밑줄(_)을 잊지 마세유!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "가장 가치 있는 바구니를 만드셨군유! 그리디 전략을 아주 잘 활용하셨슈.",
-                mid: "효율성 중심의 사고방식이 좋으시구먼유. 배낭 문제의 다른 유형도 찾아보셔유.",
-                low: "욕심쟁이 알고리즘(그리디)은 단순하지만 강력하쥬! 기본 원리를 더 익혀봐유."
-            },
-            insightMentions: { high: "단위 무게당 가치라는 개념을 정확히 짚었슈.", low: "단순히 하나만 보고 결정하면 손해를 볼 수 있슈." },
-            structureMentions: { high: "누적 합산과 제한 조건 로직이 매우 정교해유.", low: "조건문의 위치가 바뀌면 결과도 달라진다는 걸 기억해유." },
-            precisionMentions: { high: "복합 대입 연산자(+=) 사용이 아주 익숙하시네유.", low: "숫자 상수를 하드코딩하기보다 변수를 써보셔유." }
+                high: "일반화 능력이 탁월한 모델이 탄생하겠군유! 과적합 감시 능력이 매우 뛰어나셔유.",
+                mid: "데이터 분할의 중요성을 잘 아시는구먼유. 검증 데이터(Validation)의 존재도 한 번 알아보셔유.",
+                low: "훈련 점수만 믿다간 실전에서 큰일 나유! 데이터를 나누는 법부터 다시 해봅시다유."
+            }
         }
     },
     {
         stageId: 6,
         character: {
-            name: "바나나 (원숭이)",
+            name: "바나나 팀장 (Monkey)",
             image: "/image/forest/char_banana.png",
             hoverImage: "/image/forest/char_banana_happy.png"
         },
-        dialogue: "바나나가 높은 곳에 있슈. 사다리를 타고 올라가야 하는디, 아래에서부터 차근차근 기록하며 올라가볼까유?",
+        dialogue: "나무 높이를 예측했는데 정답이랑 얼마나 차이가 나는지 계산해봐야겠슈. 틀린 만큼 벌점을 주는 로직을 짜보세유!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 1단부터 N단까지 올라가는 모든 경로를 기록하기 위해 적합한 자료구조와 그 이유를 말해보세요.",
+                question: "1. 정답과 예측값의 차이를 제곱하여 평균을 낸 벌점 시스템(손실 함수)의 이름은?",
                 evalCriteria: {
-                    insightKeywords: ["경로", "기록", "역순"],
-                    structureKeywords: ["스택", "배열", "히스토리"],
-                    precisionKeywords: ["추가", "마지막"]
-                }
+                    insightKeywords: ["평균", "제곱", "오차"],
+                    structureKeywords: ["차이", "계산"],
+                    precisionKeywords: ["MSE", "Mean Squared Error"]
+                },
+                modelAnswer: "평균 제곱 오차(MSE, Mean Squared Error)입니다. 각 데이터의 오차를 제곱하여 평균을 냄으로써 큰 오차에 더 엄격한 벌점을 부여합니다."
             },
             {
                 type: "objective",
-                question: "2. '가장 최근에 확인한 지점'으로 돌아가서 다른 길을 찾아야 할 때 유용한 원칙은?",
-                options: ["FIFO (First In First Out)", "LIFO (Last In First Out)", "Random Access", "Priority Only"],
-                correctIndex: 1,
-                explanation: "마지막에 들어온 것을 먼저 처리하는 LIFO(Stack) 방식이 되돌아가기에 적합합니다."
-            },
-            {
-                type: "subjective",
-                question: "3. 사다리가 부러진 칸을 피해서 끝까지 도달했는지 확인하는 완수 조건 로직을 작성해보세요.",
-                evalCriteria: {
-                    insightKeywords: ["장애물", "피하기", "도착"],
-                    structureKeywords: ["조건문", "값 체크", "목표"],
-                    precisionKeywords: ["성공", "true"]
-                }
+                question: "2. 분류 문제(개인지 고양이인지)에서 주로 활용하는 손실 함수는?",
+                options: ["MSE", "MAE", "교차 엔트로피 (Cross Entropy)", "히스토그램"],
+                correctIndex: 2,
+                explanation: "교차 엔트로피는 확률 분포의 차이를 측정하여 분류 모델의 정확도를 높이는 데 최적입니다."
             },
             {
                 type: "python-fill",
-                question: "4. 경로 리스트(스택)에 현재 위치를 추가하는 파이썬 메서드를 써보셔유!",
-                codeSnippet: "path.{{blank}}(current_step)\n# 만약 되돌아가야 한다면?\npath.pop()",
-                blanks: ["append"],
-                duckEncouragement: "스택의 맨 뒤에 데이터를 넣을 때는 append 메서드를 쓴다꽥!"
+                question: "3. 두 값의 차이의 절댓값을 평균 내는 MAE를 계산할 때 쓰는 함수는 무엇일까유?",
+                codeSnippet: "error = np.{{blank}}(np.abs(y_pred - y_true))",
+                blanks: ["mean"],
+                duckEncouragement: "평균(Mean)을 구하려면 넘파이의 mean 함수를 써야쥬!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "바나나 따기 장인이시네유! 스택을 이용한 경로 추적 실력이 대단하셔유.",
-                mid: "되돌아가기(Backtracking)의 기초인 스택을 잘 다루시는구먼유.",
-                low: "차곡차곡 쌓고 뒤에서부터 빼는 원리를 다시 한 번 생각해보자구유."
-            },
-            insightMentions: { high: "LIFO 구조의 핵심 활용 방안을 정확히 알구 있슈.", low: "먼저 들어온 게 먼저 나가면 경로가 꼬일 수 있슈." },
-            structureMentions: { high: "추가와 삭제의 균형을 맞춘 로직이 매우 안정적이에유.", low: "데이터를 쌓기만 하면 메모리가 터질지도 몰라유." },
-            precisionMentions: { high: "리스트 메서드 활용이 아주 능숙하고 정확해유.", low: "pop과 append의 짝을 잘 맞춰주셔야 해유." }
+                high: "오차 계산이 아주 정확하시구먼유! 이제 모델이 얼마나 반성해야 할지 명확해졌슈.",
+                mid: "손실 함수의 종류를 잘 파악하고 계시네유. 각 함수가 어떤 상황에 유리할지 더 깊게 파보셔유.",
+                low: "얼마나 틀렸는지 모르면 고칠 수도 없어유. 오차 계산법부터 다시 배워봅시다유."
+            }
         }
     },
     {
         stageId: 7,
         character: {
-            name: "라임 (개구리)",
+            name: "라임 과장 (Frog)",
             image: "/image/forest/char_lime.png",
             hoverImage: "/image/forest/char_lime_happy.png"
         },
-        dialogue: "연못에 붕어와 잉어가 살고 있슈. 그물을 던졌을 때 어떤 물고기가 잡힐지 미리 예측해볼 수 있을까유?",
+        dialogue: "연못의 가장 깊은 곳(오차 최소점)을 찾아가야 해유. 미끄러지지 않게 보폭(Learning Rate)을 잘 조절해서 내려가 보세유!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 연못의 총 물고기 수 대비 붕어의 비율을 계산하여 '잡힐 확률'을 출력하는 로직을 써보세요.",
+                question: "1. 기울기를 따라 조금씩 이동하며 오차가 최소가 되는 점을 찾는 알고리즘의 이름은?",
                 evalCriteria: {
-                    insightKeywords: ["확률", "비율", "전체"],
-                    structureKeywords: ["나누기", "카운트"],
-                    precisionKeywords: ["결과", "%"]
-                }
-            },
-            {
-                type: "objective",
-                question: "2. 컴퓨터에서 0.0부터 1.0 사이의 임의의 숫자를 생성하여 잡기 성공 여부를 판단할 때 사용하는 함수는?",
-                options: ["Math.floor", "Math.random", "Math.ceil", "Math.abs"],
-                correctIndex: 1,
-                explanation: "Math.random()은 0 이상 1 미만의 부동 소수점 난수를 반환합니다."
+                    insightKeywords: ["경사하강법", "최소", "기울기"],
+                    structureKeywords: ["내려가기", "반복"],
+                    precisionKeywords: ["Gradient Descent", "Optimizer"]
+                },
+                modelAnswer: "경사하강법(Gradient Descent)입니다. 현재 위치에서의 미분값(기울기)을 구해 그 반대 방향으로 가중치를 업데이트하며 최적의 해를 찾아갑니다."
             },
             {
                 type: "subjective",
-                question: "3. 연속으로 3번 잡기에 성공했을 때 특별한 보상을 주는 카운팅 로직을 설계해보세요.",
+                question: "2. 가중치를 업데이트할 때 보폭이 너무 크면 어떤 문제가 발생할까요?",
                 evalCriteria: {
-                    insightKeywords: ["연속", "보상", "누적"],
-                    structureKeywords: ["변수 + 1", "if", "== 3"],
-                    precisionKeywords: ["초기화", "성공"]
-                }
+                    insightKeywords: ["발산", "지나침", "최적점"],
+                    structureKeywords: ["넘어감", "못 찾음"],
+                    precisionKeywords: ["Divergence", "Overshoot"]
+                },
+                modelAnswer: "학습율(Learning Rate)이 너무 크면 최소점을 지나쳐버리는 '발산(Divergence)' 현상이 발생하여 최적의 오차 지점에 도달하지 못할 수 있습니다."
             },
             {
                 type: "python-fill",
-                question: "4. 잡힐 확률이 50%(0.5)일 때 성공 여부를 결정하는 조건식을 완성해보세유!",
-                codeSnippet: "import random\nif random.random() < {{blank}}:\n    print('붕어를 잡았다!')",
-                blanks: ["0.5"],
-                duckEncouragement: "0부터 1 사이의 난수가 0.5보다 작을 확률이 딱 절반이쥬!"
+                question: "3. 가중치를 업데이트하는 의사코드를 완성해보세유! (lr은 학습율, grad는 기울기)",
+                codeSnippet: "W = W - {{blank}} * grad",
+                blanks: ["lr"],
+                duckEncouragement: "보폭(lr)만큼 기울기 방향으로 곱해서 빼줘야쥬!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "연못의 신이 내린 점쟁이시군유! 확률과 통계 논리가 아주 정확해유.",
-                mid: "랜덤한 상황을 제어하는 법을 알고 계시구먼유. 연속 성공 로직도 잘 만드셨슈.",
-                low: "운에 맡기기보다 수학적인 확률로 접근하는 연습을 더 해보자구유."
-            },
-            insightMentions: { high: "난수를 활용한 시뮬레이션 감각이 아주 뛰어나네유.", low: "전체 집합의 크기를 고려하는 게 확률의 시작이에유." },
-            structureMentions: { high: "조건부 누적(카운팅) 로직 설계가 매우 깔끔해유.", low: "성공했을 때와 실패했을 때의 변수 처리를 확인해봐유." },
-            precisionMentions: { high: "파이썬 random 모듈 이해도가 아주 훌륭하시네유.", low: "비교 연산의 기준 값을 설정할 때 신중하셔야 해유." }
+                high: "최적화의 고수이시군유! 연못 바닥까지 아주 부드럽게 안착하셨슈.",
+                mid: "경사하강법의 원리를 잘 이해하셨네유. 로컬 미니멈(Local Minimum) 같은 함정도 주의하셔유.",
+                low: "너무 성급하면 넘어져유. 기울기를 따라 천천히 내려가는 법부터 다시 해봅시다유."
+            }
         }
     },
     {
         stageId: 8,
         character: {
-            name: "감자쥬 (카피바라)",
+            name: "감자쥬 연구원 (Capybara)",
             image: "/image/forest/char_gamjaju.png",
             hoverImage: "/image/forest/char_gamjaju_happy.png"
         },
-        dialogue: "야시장에 전구를 켜야 해유. 전력이 부족해서 한 번에 3개만 켤 수 있는디, 이걸 어떻게 순환시킬까유?",
+        dialogue: "신경망을 통과할 때 일정한 전기 신호(역치)가 넘어야만 다음으로 전달되게 하고 싶어유. 이 '활성화 함수'들을 점검해주셔유!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 전구 10개를 3개씩 끊어서 순서대로(1-3, 4-6...) 켜는 로직의 핵심 아이디어를 써보세요.",
+                question: "1. 0보다 작은 값은 0으로, 0보다 큰 값은 그대로 통과시키는 가장 대중적인 활성화 함수는?",
                 evalCriteria: {
-                    insightKeywords: ["순환", "범위", "인덱스"],
-                    structureKeywords: ["나머지 연산", "모듈로", "더하기"],
-                    precisionKeywords: ["시작", "끝"]
-                }
+                    insightKeywords: ["ReLU", "0 이하", "그대로"],
+                    structureKeywords: ["변환", "양수"],
+                    precisionKeywords: ["릴루", "Rectified Linear Unit"]
+                },
+                modelAnswer: "ReLU(Rectified Linear Unit) 함수입니다. 연산이 빠르고 기울기 소실 문제를 완화하여 딥러닝에서 가장 널리 사용됩니다."
             },
             {
                 type: "objective",
-                question: "2. 리스트의 인덱스가 끝에 도달했을 때 다시 처음(0)으로 부드럽게 돌아가게 만드는 연산자는?",
-                options: ["+", "*", "% (Modulo)", "**"],
-                correctIndex: 2,
-                explanation: "나머지 연산자(%)를 사용하면 값이 특정 범위 내에서 순환하게 만들 수 있습니다."
-            },
-            {
-                type: "subjective",
-                question: "3. 전구가 모두 꺼졌을 때 '전체 소등' 상태를 확인하고 시스템을 중단하는 로직을 작성해보세요.",
-                evalCriteria: {
-                    insightKeywords: ["모두", "상태 확인", "확인"],
-                    structureKeywords: ["반복문", "전부", "체크"],
-                    precisionKeywords: ["false", "꺼짐"]
-                }
+                question: "2. 결과를 0과 1 사이의 확률값으로 압축하여 이진 분류에 주로 쓰이는 함수는?",
+                options: ["ReLU", "Sigmoid (시그모이드)", "Tanh", "소프트맥스"],
+                correctIndex: 1,
+                explanation: "시그모이드 함수는 모든 실수를 (0, 1) 사이로 매핑하여 확률 판단에 적합합니다."
             },
             {
                 type: "python-fill",
-                question: "4. 인덱스를 0부터 9까지 계속 순환하게 만드는 코드를 완성해봅시다유!",
-                codeSnippet: "for i in range(100):\n    current_light = i % {{blank}}\n    print(f'{current_light}번 전구 점등')",
-                blanks: ["10"],
-                duckEncouragement: "10으로 나눈 나머지(%)를 구하면 0~9 사이에서 뱅뱅 돌게 되쥬!"
+                question: "3. 파이토치에서 ReLU 활성화를 적용하는 메서드 이름을 적어주세유!",
+                codeSnippet: "import torch.nn.functional as F\noutput = F.{{blank}}(input_tensor)",
+                blanks: ["relu"],
+                duckEncouragement: "함수 이름 그대로 소문자로 적으면 된다꽥!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "야시장의 불빛이 이장님 덕분에 영원히 빛나겠슈! 순환 로직의 정석이시구먼유.",
-                mid: "나머지 연산의 묘미를 아시는구먼유. 일정한 간격으로 끊는 로직도 연구해봐유.",
-                low: "끝에서 다시 처음으로 가는 건 프로그래밍의 마법이쥬! % 연산자를 정복해봐유."
-            },
-            insightMentions: { high: "모듈로 연산의 실용적 가치를 아주 정확히 파악했슈.", low: "인덱스 범위를 벗어나지 않게 주의하는 게 핵심이에유." },
-            structureMentions: { high: "루프 안에서 상태를 검증하는 흐름이 매우 탄탄해유.", low: "모든 경우의 수를 체크하는 효율적인 방법을 찾아봐유." },
-            precisionMentions: { high: "나머지 연산 수식 적용이 아주 깔끔하고 완벽해유.", low: "나누는 수(제수) 크기에 따라 범위가 결정된다는 걸 기억해유." }
+                high: "신경망의 신호 체계가 아주 건강하군유! 활성화 함수의 특성을 완벽히 꿰뚫고 계셔유.",
+                mid: "다양한 활성화 함수를 알고 계시네유. 왜 시그모이드 대신 ReLU를 쓰는지 더 연구해보셔유.",
+                low: "신호가 끊기면 안 돼유. 비선형성을 부여하는 활성화 함수의 기본부터 다시 가르쳐줄게유."
+            }
         }
     },
     {
         stageId: 9,
         character: {
-            name: "두부 (강아지)",
-            image: "/image/forest/char_dubu.png",
-            hoverImage: "/image/forest/char_dubu_happy.png"
+            name: "너굴 부장 (Reviewer)",
+            image: "/image/forest/ceo_neogul.png",
+            hoverImage: "/image/forest/ceo_neogul_happy.png"
         },
-        dialogue: "잃어버린 뼈다귀를 찾고 싶어유. 마을 지도를 따라서 빠트리는 곳 없이 전부 뒤져보려면 어떻게 해야 할까유?",
+        dialogue: "데이터 한 바퀴 다 돌았구리! 이제 전체 데이터를 반복해서 학습시키며 성능을 끌어올려보세. 몇 번이나 반복할 텐가구리?",
         steps: [
             {
                 type: "subjective",
-                question: "1. 만나는 갈림길마다 끝까지 가본 뒤 돌아와서 다른 길을 찾는 탐색 방식을 설명해보세요.",
+                question: "1. 전체 데이터셋을 한 번 모두 학습했을 때의 단위를 무엇이라 하나요?",
                 evalCriteria: {
-                    insightKeywords: ["깊이", "끝까지", "되돌아오기"],
-                    structureKeywords: ["DFS", "재귀", "스택"],
-                    precisionKeywords: ["방문", "체크"]
-                }
-            },
-            {
-                type: "subjective",
-                question: "2. 반대로 내 위치에서 가장 가까운 곳부터 넓게 퍼져나가며 찾는 방식은 무엇일까요?",
-                evalCriteria: {
-                    insightKeywords: ["가까운", "넓게", "순서대로"],
-                    structureKeywords: ["BFS", "큐", "레벨"],
-                    precisionKeywords: ["차례로", "확장"]
-                }
+                    insightKeywords: ["에폭", "반복", "전체"],
+                    structureKeywords: ["단위", "학습 횟수"],
+                    precisionKeywords: ["Epoch", "에포크"]
+                },
+                modelAnswer: "에폭(Epoch)입니다. 학습 시 전체 훈련 데이터셋이 신경망을 한 번 통과한 횟수를 의미합니다."
             },
             {
                 type: "objective",
-                question: "3. 한 번 가본 곳을 다시 가지 않기 위해 꼭 기록해야 하는 정보는 무엇일까요?",
-                options: ["방문 여부 (Visited)", "이동 거리", "주변 풍경", "현재 시간"],
-                correctIndex: 0,
-                explanation: "이미 방문한 지점을 표시해야 무한 루프에 빠지지 않고 모든 곳을 탐색할 수 있습니다."
+                question: "2. 데이터를 작게 쪼개어 학습을 진행할 때, 그 쪼갠 조각의 크기를 무엇이라 하나요?",
+                options: ["에폭 크기", "배치 사이즈 (Batch Size)", "학습율", "데이터 조각"],
+                correctIndex: 1,
+                explanation: "배치 사이즈는 한 번의 가중치 업데이트를 위해 사용하는 데이터의 묶음 크기입니다."
             },
             {
                 type: "python-fill",
-                question: "4. 방문한 지점을 기록하는 set(집합)을 활용하는 코드를 완성해보세유!",
-                codeSnippet: "if node not in {{blank}}:\n    print('처음 온 곳이유!')\n    visited.add(node)",
-                blanks: [["visited", "checked", "seen", "visited_nodes"]],
-                duckEncouragement: "이미 왔던 곳인지 visited 리스트나 집합에서 꼭 확인해야쥬!"
+                question: "3. 10번의 에폭을 반복하는 루프문을 완성해보세유!",
+                codeSnippet: "for epoch in {{blank}}(10):\n    train_model(data)",
+                blanks: ["range"],
+                duckEncouragement: "파이썬에서 숫자만큼 반복할 때는 range 함수가 최고쥬!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "뼈다귀 수색 대장이시군유! DFS와 BFS의 차이를 완벽히 꿰뚫고 계셔유.",
-                mid: "마을 지도를 읽는 눈이 좋으시구먼유. 방문 체크의 중요성을 잊지 마셔유.",
-                low: "길을 잃지 않으려면 어디를 갔다 왔는지 기록하는 게 제일 중요해유!"
-            },
-            insightMentions: { high: "상황에 맞는 탐색 우선순위(깊이vs너비) 결정이 훌륭해유.", low: "무한 루프에 빠지지 않는 구조적 설계가 필요해유." },
-            structureMentions: { high: "재귀적 사고와 큐 활용 능력이 아주 돋보이네유.", low: "데이터를 넣고 빼는 순서가 탐색 방향을 결정해유." },
-            precisionMentions: { high: "멤버십 연산자(in) 활용이 매우 신속하고 정확해유.", low: "변수가 선언된 위치(스코프)를 잘 확인해주셔야겠슈." }
+                high: "끈기 있는 학습이군유! 에폭과 배치의 균형을 아주 잘 잡으셨슈.",
+                mid: "반복 학습의 개념을 잘 이해하고 있네유. 배치 사이즈가 너무 작으면 시간이 오래 걸린다는 것도 잊지 마셔유.",
+                low: "반복 없이 천재가 될 수 없쥬. 한 번 봐선 몰라유, 여러 번 반복해서 돌려보자구유!"
+            }
         }
     },
     {
         stageId: 10,
         character: {
-            name: "라임 (대현자)",
+            name: "라임 이사 (Director)",
             image: "/image/forest/char_lime.png",
             hoverImage: "/image/forest/char_lime_happy.png"
         },
-        dialogue: "훌륭해유! 마지막으로 마을의 7개 구역을 최소한의 도로 길이로 모두 연결하는 마법의 설계를 보여주셔유.",
+        dialogue: "드디어 마지막 업무구리! 완성된 모델에 새로운 데이터를 넣어 결과를 내보내는 '추론' 파이프라인을 점검해보자구리!",
         steps: [
             {
                 type: "subjective",
-                question: "1. 모든 점을 연결하면서 사이클(순환)이 생기지 않게 하는 '나무' 구조의 특징을 설명해보세요.",
+                question: "1. 모델을 서비스에 배포하기 전, 학습 때 썼던 가중치를 고정하고 평가 모드로 전환해야 하는 이유는?",
                 evalCriteria: {
-                    insightKeywords: ["연결", "사이클 없음", "최소"],
-                    structureKeywords: ["간선", "노드", "N-1"],
-                    precisionKeywords: ["신장 트리", "Tree"]
-                }
-            },
-            {
-                type: "subjective",
-                question: "2. 가장 짧은 길부터 하나씩 선택하되, 연결했을 때 순환이 생기면 버리는 방식의 아이디어를 써보세요.",
-                evalCriteria: {
-                    insightKeywords: ["짧은", "선택", "순환 방지"],
-                    structureKeywords: ["크루스칼", "오름차순", "정렬 후"],
-                    precisionKeywords: ["연결", "성공"]
-                }
-            },
-            {
-                type: "objective",
-                question: "3. 마을의 모든 집을 가장 효율적으로 연결했을 때, 이 구조를 부르는 용어는?",
-                options: ["최단 경로", "최소 신장 트리 (MST)", "완전 그래프", "이분 그래프"],
-                correctIndex: 1,
-                explanation: "모든 정점을 최소 비용으로 연결한, 사이클이 없는 그래프를 최소 신장 트리라고 합니다."
+                    insightKeywords: ["가중치", "고정", "평가"],
+                    structureKeywords: ["드롭아웃", "배치 정규화"],
+                    precisionKeywords: ["eval()", "Inference"]
+                },
+                modelAnswer: "학습 시에만 사용되는 드롭아웃이나 배치 정규화를 평가 모드로 전환하여 일관된 결과를 내기 위해서입니다. 또한 기울기 계산을 멈춰 메모리를 아낍니다."
             },
             {
                 type: "python-fill",
-                question: "4. 두 집이 아직 연결되지 않았다면 합치는(Union) 로직을 완성해봅시다유!",
-                codeSnippet: "if find(house1) != find(house2):\n    {{blank}}(house1, house2)\n    total_cost += cost",
-                blanks: ["union"],
-                duckEncouragement: "뿌리가 다른(연결 안 된) 두 집을 하나로 합쳐주는 union 함수가 필요해유!"
+                question: "2. 모델을 평가 모드로 바꾸는 메서드 이름을 채워보세유!",
+                codeSnippet: "model.{{blank}}()\nwith torch.no_grad():\n    output = model(input_data)",
+                blanks: ["eval"],
+                duckEncouragement: "Evaluation의 약자를 써서 모델에게 '지금은 시험 시간이야!'라고 알려주세유!"
             }
         ],
         finalAppraisal: {
             overallSummary: {
-                high: "이제 완벽한 이장님이자 대현자시군유! 마을 전체를 아우르는 최적의 설계를 마치셨슈.",
-                mid: "복잡한 그래프 논리도 척척 풀어내시는구먼유. 네트워크 최적화의 대가이셔유.",
-                low: "최소 신장 트리는 좀 어렵지유? 짧은 것부터 잇는 원리를 다시 음미해봐유."
-            },
-            insightMentions: { high: "전체 시스템의 연결 구조를 바라보는 시야가 매우 넓어유.", low: "사이클이 생기면 안 된다는 점을 꼭 명심해야 해유." },
-            structureMentions: { high: "분할 정복 및 Union-Find 로직 이해가 매우 깊어유.", low: "작은 조각들을 합쳐 큰 그림을 그리는 법을 더 익혀봐유." },
-            precisionMentions: { high: "고급 알고리즘의 함수명과 역할을 아주 정확히 아시네유.", low: "비용을 누적하고 상태를 갱신하는 타이밍을 잘 보셔유." }
+                high: "이제 완벽한 AI 엔지니어구리! 무인도 AI 연구소를 성공적으로 구축했어.",
+                mid: "추론 파이프라인 이해도가 높으시네유. 모델 저장과 로드 방식도 마스터해보게나.",
+                low: "마지막 마무리가 중요구리! 평가 모드로 바꾸는 걸 잊으면 결과가 춤을 출 거야."
+            }
         }
     }
 ];
