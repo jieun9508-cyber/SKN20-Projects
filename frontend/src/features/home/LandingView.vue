@@ -1,13 +1,13 @@
 <!-- 
 수정일: 2026-01-23
 수정내용: AI 엔지니어들을 위한 'Architecture Playground' 테마의 랜딩 페이지 구현.
-          sports_gym.mp4 배경, 운동하는 오리 GIF 및 플로팅 애니메이션 적용.
+          game_duck.mp4 배경, 운동하는 오리 GIF 및 플로팅 애니메이션 적용.
 -->
 <template>
   <div class="landing-container" ref="landingContainer" @scroll="handleScroll">
     <!-- [Hero Section] -->
     <header class="hero-playground-premium">
-      <video id="hero-video" src="/image/sports_gym.mp4" autoplay muted loop playsinline></video>
+      <video id="hero-video" src="/image/game_duck.mp4" autoplay muted loop playsinline></video>
       <div class="hero-overlay-refined"></div>
       <div class="hero-scanline"></div>
       
