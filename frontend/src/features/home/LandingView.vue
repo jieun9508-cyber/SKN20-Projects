@@ -7,7 +7,7 @@
   <div class="landing-container" ref="landingContainer" @scroll="handleScroll">
     <!-- [Hero Section] -->
     <header class="hero-playground-premium">
-      <video id="hero-video" src="/image/sports_gym.mp4" autoplay muted loop playsinline></video>
+      <video id="hero-video" src="/image/game_duck.mp4" autoplay muted loop playsinline></video>
       <div class="hero-overlay-refined"></div>
       <div class="hero-scanline"></div>
       
