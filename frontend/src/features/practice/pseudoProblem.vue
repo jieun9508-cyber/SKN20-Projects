@@ -532,8 +532,16 @@
                   <RotateCcw class="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
                   Recalibrate_System
                 </button>
-                <button @click="$emit('close')"
+                
+                <!-- [수정일: 2026-01-31] 다음 미션으로 바로 가기 버튼 추가 (조건부 노출) -->
+                <button v-if="currentQuestIdx < aiQuests.length - 1" @click="goToNextQuest"
                   class="group px-14 py-6 bg-cyan-600 text-black font-black uppercase tracking-[0.2em] text-xs hud-button-clip hover:bg-cyan-400 hover:shadow-[0_0_30px_#00f3ff] transition-all active:scale-95 flex items-center gap-4">
+                  <Terminal class="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  Initialize_Next_Mission_Protocol
+                </button>
+
+                <button @click="$emit('close')"
+                  class="group px-14 py-6 bg-white/10 hover:bg-white/20 text-white font-black uppercase tracking-[0.2em] text-xs border border-white/10 hud-button-clip transition-all active:scale-95 flex items-center gap-4">
                   <ChevronRight class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   Return_To_Hub_Command
                 </button>
@@ -654,9 +662,12 @@ const {
   nextStep,
   goToStep,
   reloadApp,
+  goToNextQuest, // [수정일: 2026-01-31] 추가
   insertSnippet,
   askCoduck,
-  imageSrc // [수정일: 2026-01-31] 추가
+  aiQuests,      // [수정일: 2026-01-31] 추가
+  currentQuestIdx, // [수정일: 2026-01-31] 추가
+  imageSrc
 } = usePseudoProblem(props, emit)
 </script>
 

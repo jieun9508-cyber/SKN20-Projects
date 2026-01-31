@@ -32,8 +32,11 @@ export function usePseudoProblem(props, emit) {
     const userScore = reactive({ step1: 0, step2: 0, step3: 0, step4: 0 })
     const pseudoInput = ref('')
 
+    // [수정일: 2026-01-31] 캐릭터 명칭 동적 참조
+    const charName = computed(() => currentQuest.value.character?.name || 'Coduck')
+
     const chatMessages = ref([
-        { sender: 'Coduck', text: '엔지니어님, 깨어나하셨군요! 데이터 바다를 정화해 정보를 복구해야 제 기억이 돌아옵니다. 오른쪽 패널에 한글로 로직을 설계해주세요.' }
+        { sender: charName.value, text: `엔지니어님, 깨어나셨군요! 데이터 바다를 정화해 정보를 복구해야 제 기억이 돌아옵니다. 오른쪽 패널에 한글로 로직을 설계해주세요.` }
     ])
     const chatContainer = ref(null)
 
@@ -160,70 +163,65 @@ export function usePseudoProblem(props, emit) {
     const inactivityTimer = ref(null)
     const resetInactivityTimer = () => {
         if (inactivityTimer.value) clearTimeout(inactivityTimer.value)
-        inactivityTimer.value = setTimeout(nudgeUser, 30000) // 30초 휴면 시 발동
+        // [수정일: 2026-01-31] 사용자 피드백 반영: 넛지 딜레이 단축 (30초 -> 15초)
+        inactivityTimer.value = setTimeout(nudgeUser, 15000)
     }
 
-    // [수정일: 2026-01-31] nudgeUser 고도화: 단순 키워드 체크를 넘어 코드 완성도(AST 대용)와 문맥을 분석
+    // [수정일: 2026-01-31] nudgeUser 고도화: 사용자가 이미 구현한 논리를 인식하여 중복 가이드를 방지하고 칭찬과 다른 힌트를 제공
     const nudgeUser = () => {
         const questions = currentQuest.value.interviewQuestions || []
-        // Stage 1 인터뷰 중일 때는 별도 넛지 생략 (인터뷰 자체가 가이드)
         if (currentStep.value === 1 && questions.length > 0) return
 
         let nudgeText = ""
         const code = (currentStep.value === 2) ? pseudoInput.value : pythonInput.value
 
-        // 코드 완성도 체커
+        // [수정일: 2026-01-31] 상세 논리 상태 분석
         const getCompleteness = (txt, type) => {
-            if (!txt) return 0
-            let score = 0
-            if (type === 'pseudo') {
-                if (/(반복|하나씩|for|each)/.test(txt)) score += 30
-                if (/(만약|일 때|if|경우)/.test(txt)) score += 30
-                if (/(제거|삭제|추가|저장|기록|append|remove|continue|clean)/.test(txt)) score += 30
-                if (txt.length > 50) score += 10
-            } else {
-                if (/for\s+\w+\s+in\s+/.test(txt)) score += 30
-                if (/if\s+/.test(txt)) score += 30
-                if (/\.append\(/.test(txt) || /continue/.test(txt)) score += 30
-                if (txt.length > 100) score += 10
+            if (!txt) return { score: 0, hasLoop: false, hasCondition: false, hasAction: false }
+            let s = 0
+            const state = {
+                hasLoop: type === 'pseudo' ? /(반복|하나씩|for|each)/.test(txt) : /for\s+\w+\s+in\s+/.test(txt),
+                hasCondition: type === 'pseudo' ? /(만약|일 때|if|경우)/.test(txt) : /if\s+/.test(txt),
+                hasAction: type === 'pseudo' ? /(제거|삭제|추가|저장|기록|append|remove|continue|clean)/.test(txt) : (/\.append\(/.test(txt) || /continue/.test(txt))
             }
-            return score
+            if (state.hasLoop) s += 30
+            if (state.hasCondition) s += 30
+            if (state.hasAction) s += 30
+            if (txt.length > (type === 'pseudo' ? 50 : 100)) s += 10
+            return { score: s, ...state }
         }
 
-        const completeness = getCompleteness(code, currentStep.value === 2 ? 'pseudo' : 'python')
+        const stats = getCompleteness(code, currentStep.value === 2 ? 'pseudo' : 'python')
 
-        if (completeness >= 90) {
-            // 완성도가 높을 때의 격려형 힌트 (오만한 톤 배제)
+        if (stats.score >= 90) {
             const compliments = [
-                "오! 논리 구조가 거의 완벽해요. 마지막 디테일만 점검하고 제출해보시겠어요?",
-                "굉장히 훌륭한 코드네요! 제가 더 이상 드릴 말씀이 없을 정도예요. 꽥!",
-                "엔지니어님의 실력이 대단하시네요. 실행 버튼을 눌러 결과를 확인해보고 싶어요."
+                "캬! 논리 구조가 완벽합니다. 이제 제출해서 결과를 확인해볼까요?",
+                "굉장히 훌륭한 로직이네요! 제가 더 가이드할 게 없어서 심심할 정도예요. 꽥!",
+                "엔지니어님의 설계 능력이 대단합니다. 바로 실행 엔진으로 돌려보고 싶어요."
             ]
             nudgeText = compliments[Math.floor(Math.random() * compliments.length)]
         } else if (currentStep.value === 2) {
-            if (completeness < 30) {
-                nudgeText = "먼저 전체적인 흐름을 잡아볼까요? 데이터를 어떻게 '반복'해서 살펴볼지 생각해보세요."
-            } else if (completeness < 60) {
-                nudgeText = "반복 구조는 잡혔네요! 이제 특정 데이터를 걸러낼 '조건'을 추가해볼까요?"
-            } else {
-                nudgeText = "조건에 따른 '행동(저장/제거)'까지 명시해주시면 완벽한 설계가 될 거예요."
+            if (!stats.hasLoop) {
+                nudgeText = "데이터를 하나씩 살펴봐야 해요. '반복'해서 확인하는 구조를 먼저 잡아보면 어떨까요?"
+            } else if (!stats.hasCondition) {
+                nudgeText = "반복문은 아주 좋습니다! 이제 오염된 데이터를 판별할 '조건(만약~)'을 넣어볼까요?"
+            } else if (!stats.hasAction) {
+                nudgeText = "논리가 거의 완성됐어요. 조건을 만족했을 때 '삭제'하거나 '건너뛰는' 행동을 명시해주세요."
             }
         } else if (currentStep.value === 3) {
-            if (completeness < 30) {
-                nudgeText = "파이썬 문법이 낯선가요? 상단의 스니펫 버튼을 눌러 'for'문부터 시작해보세요!"
-            } else if (completeness < 60) {
-                nudgeText = "코드의 뼈대가 보이네요. 'if'문을 사용해 퀘스트 목표에 맞는 조건을 채워주세요."
-            } else {
-                nudgeText = "정화된 데이터를 리스트에 'append'하는 부분을 확인해보셨나요? 꽥!"
+            if (!stats.hasLoop) {
+                nudgeText = "파이썬의 'for'문을 사용해 리스트를 순회해보세요. 상단의 스니펫이 도움이 될 거예요."
+            } else if (!stats.hasCondition) {
+                nudgeText = "코드 뼈대가 튼튼하네요! 'if'문을 사용해 필터링 조건을 채워주시면 됩니다."
+            } else if (!stats.hasAction) {
+                nudgeText = "마지막 단계예요! 'continue'로 넘기거나 'append'로 저장하는 로직을 마무리해주세요. 꽥!"
             }
         }
 
+        // 중복 답변 방지 및 상태 기반 출력
         if (nudgeText && !chatMessages.value.some(m => m.text === nudgeText)) {
-            chatMessages.value.push({
-                sender: 'Coduck',
-                text: nudgeText,
-                isNudge: true
-            })
+            // "이미 ~하셨네요!" 식의 보강 (사용자가 이미 했다면 nudgeText를 위에서 다른 걸로 바꿨을 것이므로 여기서는 출력만)
+            chatMessages.value.push({ sender: charName.value, text: nudgeText, isNudge: true })
             scrollToBottom()
         }
     }
@@ -237,16 +235,7 @@ export function usePseudoProblem(props, emit) {
         if (pythonWorker) pythonWorker.terminate()
     })
 
-    watch(pseudoInput, (newVal) => {
-        if (newVal.length > 10 && !chatMessages.value.some(m => m.text.includes('시작'))) {
-            chatMessages.value.push({ sender: 'Coduck', text: '좋습니다. 먼저 데이터를 하나씩 꺼내는 "반복" 구조가 필요해 보입니다.' })
-            scrollToBottom()
-        }
-        if (newVal.includes('만약') && !chatMessages.value.some(m => m.text.includes('조건'))) {
-            chatMessages.value.push({ sender: 'Coduck', text: '조건문을 잘 작성하고 계시군요. "제거"하거나 "저장"하는 행동도 명시해주세요.' })
-            scrollToBottom()
-        }
-    })
+    // [수정일: 2026-01-31] 단순 키워드 와처는 지능형 넛지 시스템(nudgeUser)으로 통합하여 중복 방지
 
     // --- Methods ---
     const scrollToBottom = () => {
@@ -313,7 +302,7 @@ export function usePseudoProblem(props, emit) {
     const askCoduck = async () => {
         const code = pseudoInput.value.trim()
         if (code.length < 5) {
-            chatMessages.value.push({ sender: 'Coduck', text: '질문하시려면 먼저 로직을 조금 작성해주세요!' })
+            chatMessages.value.push({ sender: charName.value, text: '질문하시려면 먼저 로직을 조금 작성해주세요!' })
             scrollToBottom()
             return
         }
@@ -366,7 +355,7 @@ export function usePseudoProblem(props, emit) {
         }
 
         isEvaluating.value = true
-        chatMessages.value.push({ sender: 'Coduck', text: '꽥! 잠시만 기다려주세요. 엔지니어님의 논리 엔진을 정밀 분석 중입니다...' })
+        chatMessages.value.push({ sender: charName.value, text: `${charName.value === 'Coduck' ? '꽥! ' : ''}잠시만 기다려주세요. 엔지니어님의 논리 엔진을 정밀 분석 중입니다...` })
         scrollToBottom()
 
         try {
@@ -397,7 +386,7 @@ export function usePseudoProblem(props, emit) {
           </div>
           ${metricsHtml}
           <div class="mt-4 pt-4 border-t border-white/10 text-lg">
-            <p class="text-cyan-400 font-bold italic">Coduck의 조언: ${result.advice || "훌륭한 접근입니다!"}</p>
+            <p class="text-cyan-400 font-bold italic">${charName.value}의 조언: ${result.advice || "훌륭한 접근입니다!"}</p>
           </div>
         </div>
       `
@@ -410,9 +399,9 @@ export function usePseudoProblem(props, emit) {
             )
         } catch (error) {
             console.error("AI Evaluation Failed:", error)
-            const oldScore = (hasLoop ? 6 : 0) + (hasCondition ? 6 : 0) + (hasAction ? 6 : 0) + 7
+            const oldScore = (stats.hasLoop ? 6 : 0) + (stats.hasCondition ? 6 : 0) + (stats.hasAction ? 6 : 0) + 7
             userScore.step2 = oldScore
-            showFeedback("🦆 Coduck의 간이 평가", "통신 장애로 인해 간이 분석기로 대체합니다.", "논리 키워드 기반으로 분석되었습니다.", true)
+            showFeedback(`${charName.value}의 간이 평가`, "통신 장애로 인해 간이 분석기로 대체합니다.", "논리 키워드 기반으로 분석되었습니다.", true)
         } finally {
             isEvaluating.value = false
         }
@@ -532,6 +521,12 @@ except Exception as e:
     const handleStep4Submit = (idx) => {
         const isCorrect = idx === 1
         userScore.step4 = isCorrect ? 25 : 0
+
+        // [수정일: 2026-01-31] 정답 시 다음 스테이지 자동 해금
+        if (isCorrect) {
+            gameStore.unlockNextStage('Pseudo Practice', currentQuestIdx.value)
+        }
+
         showFeedback(
             isCorrect ? "⚖️ 심화 분석: 트레이드오프" : "🤔 심화 분석: 다시 생각해보세요",
             isCorrect ? "정답입니다. 너무 엄격한 필터링은 유용한 데이터까지 버릴 수 있습니다(False Positive)." : "아닙니다. 필터링을 너무 강하게 하면 오히려 데이터 부족 현상이 발생할 수 있습니다.",
@@ -561,7 +556,41 @@ except Exception as e:
         }
     }
 
-    const reloadApp = () => location.reload()
+    // [수정일: 2026-01-31] SPA 환경에 최적화된 미션 초기화 (새로고침 없이 상태만 리셋)
+    const reloadApp = () => {
+        currentStep.value = 1
+        userScore.step1 = 0
+        userScore.step2 = 0
+        userScore.step3 = 0
+        userScore.step4 = 0
+        pseudoInput.value = ''
+        pythonInput.value = ''
+        simulationOutput.value = ''
+        isSuccess.value = false
+        currentInterviewIdx.value = 0
+        interviewResults.value = []
+        isEvaluating.value = false
+        isAsking.value = false
+        isSimulating.value = false
+
+        chatMessages.value = [
+            { sender: charName.value, text: `미션을 처음부터 다시 시작합니다.${charName.value === 'Coduck' ? ' 꽥!' : ''} 데이터 바다를 다시 정화해볼까요?` }
+        ]
+
+        feedbackModal.visible = false
+        resetInactivityTimer()
+        nextTick(() => {
+            scrollToBottom()
+        })
+    }
+
+    // [수정일: 2026-01-31] 다음 퀘스트로 직접 이동
+    const goToNextQuest = () => {
+        if (currentQuestIdx.value < aiQuests.length - 1) {
+            gameStore.selectedQuestIndex++
+            reloadApp() // 상태 초기화 후 새 퀘스트 로드
+        }
+    }
 
     const finalReviewText = computed(() => {
         let review = `엔지니어님은 데이터가 AI 모델에 미치는 영향을 정확히 이해하고 있습니다. `
@@ -575,6 +604,7 @@ except Exception as e:
     return {
         currentQuest,
         currentStep,
+        currentQuestIdx, // [수정일: 2026-01-31] 템플릿 참조를 위해 추가
         userScore,
         pseudoInput,
         pythonInput, // 추가
@@ -603,8 +633,11 @@ except Exception as e:
         nextStep,
         goToStep,
         reloadApp,
+        goToNextQuest,
         insertSnippet,
         askCoduck,
-        imageSrc: '/assets/characters/coduck.png' // [2026-01-31] 고정 이미지 경로 반환
+        aiQuests,
+        // [수정일: 2026-01-31] 데이터 기반 캐릭터 이미지 동적 반환
+        imageSrc: computed(() => currentQuest.value.character?.image || '/assets/characters/coduck.png')
     }
 }
