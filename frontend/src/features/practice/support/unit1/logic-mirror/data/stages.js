@@ -89,7 +89,7 @@ export const aiQuests = [
         desc: "학습-서빙 불일치(Skew)와 데이터 누수(Data Leakage)를 방지하는 실무 파이프라인을 설계하세요.",
         rewardXP: 300,
         subModuleTitle: "LEAKAGE_PROTECTOR",
-        character: { name: "Lion", image: "/assets/characters/lion.png" },
+        character: { name: "coduck", image: "/assets/characters/coduck.png" },
         interviewQuestions: [
             {
                 id: "q1",
