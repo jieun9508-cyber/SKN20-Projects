@@ -51,6 +51,15 @@ export function usePseudoProblem(props, emit) {
     const isEvaluating = ref(false)
     const isAsking = ref(false) // AI에게 질문 중인지 여부
     const isSuccess = ref(false) // 단계 성공 여부 추적
+
+    // [수정일: 2026-01-31] 인터랙티브 인터뷰(Stage 1) 상태 변수 추가
+    const currentInterviewIdx = ref(0)
+    const interviewResults = ref([])
+    const currentInterviewQuestion = computed(() => {
+        const questions = currentQuest.value.interviewQuestions || []
+        return questions[currentInterviewIdx.value] || null
+    })
+
     const step4Options = computed(() => currentQuest.value.step4Options || [])
 
 
@@ -118,6 +127,10 @@ export function usePseudoProblem(props, emit) {
             simulationOutput.value = ''
             isSuccess.value = false
 
+            // [수정일: 2026-01-31] 인터뷰 상태 초기화
+            currentInterviewIdx.value = 0
+            interviewResults.value = []
+
             // 챗봇용 퀘스트 정보 업데이트
             chatMessages.value = [
                 { sender: 'Coduck', text: `안녕하세요! Coduck입니다. 오늘의 미션은 [${newQuest.title}]입니다. ${newQuest.desc}` }
@@ -127,9 +140,16 @@ export function usePseudoProblem(props, emit) {
 
     // 단계(Step) 변경 시 로직
     watch(currentStep, (newStep) => {
-        // 3단계(Python 코딩) 진입 시 템플릿 로드
-        if (newStep === 3 && !pythonInput.value) {
-            pythonInput.value = currentQuest.value.pythonTemplate || ''
+        // [수정일: 2026-01-31] 3단계(Python 코딩) 진입 시 유저의 의사코드를 주석으로 연동
+        if (newStep === 3) {
+            const userLogicHeader = pseudoInput.value
+                ? `\"\"\"\n[엔지니어의 설계 가이드]\n${pseudoInput.value}\n\"\"\"\n\n`
+                : ''
+
+            // 기존 템플릿 앞에 유저의 설계를 주석으로 붙임
+            if (!pythonInput.value || pythonInput.value === currentQuest.value.pythonTemplate) {
+                pythonInput.value = userLogicHeader + (currentQuest.value.pythonTemplate || '')
+            }
         }
 
         // 단계 정답 여부 초기화
@@ -143,19 +163,59 @@ export function usePseudoProblem(props, emit) {
         inactivityTimer.value = setTimeout(nudgeUser, 30000) // 30초 휴면 시 발동
     }
 
+    // [수정일: 2026-01-31] nudgeUser 고도화: 단순 키워드 체크를 넘어 코드 완성도(AST 대용)와 문맥을 분석
     const nudgeUser = () => {
+        const questions = currentQuest.value.interviewQuestions || []
+        // Stage 1 인터뷰 중일 때는 별도 넛지 생략 (인터뷰 자체가 가이드)
+        if (currentStep.value === 1 && questions.length > 0) return
+
         let nudgeText = ""
         const code = (currentStep.value === 2) ? pseudoInput.value : pythonInput.value
 
-        if (currentStep.value === 2) {
-            if (!code.includes('만약')) nudgeText = "엔지니어님, 광고를 걸러내기 위한 '만약(if)' 조건문이 필요해 보입니다."
-            else if (!code.includes('반복')) nudgeText = "데이터가 여러 개이니 '반복' 구조를 먼저 설계해보는 건 어떨까요?"
-            else nudgeText = "설계가 막히셨나요? '제거'하거나 '저장'하는 로직을 구체화해보세요!"
+        // 코드 완성도 체커
+        const getCompleteness = (txt, type) => {
+            if (!txt) return 0
+            let score = 0
+            if (type === 'pseudo') {
+                if (/(반복|하나씩|for|each)/.test(txt)) score += 30
+                if (/(만약|일 때|if|경우)/.test(txt)) score += 30
+                if (/(제거|삭제|추가|저장|기록|append|remove|continue|clean)/.test(txt)) score += 30
+                if (txt.length > 50) score += 10
+            } else {
+                if (/for\s+\w+\s+in\s+/.test(txt)) score += 30
+                if (/if\s+/.test(txt)) score += 30
+                if (/\.append\(/.test(txt) || /continue/.test(txt)) score += 30
+                if (txt.length > 100) score += 10
+            }
+            return score
+        }
+
+        const completeness = getCompleteness(code, currentStep.value === 2 ? 'pseudo' : 'python')
+
+        if (completeness >= 90) {
+            // 완성도가 높을 때의 격려형 힌트 (오만한 톤 배제)
+            const compliments = [
+                "오! 논리 구조가 거의 완벽해요. 마지막 디테일만 점검하고 제출해보시겠어요?",
+                "굉장히 훌륭한 코드네요! 제가 더 이상 드릴 말씀이 없을 정도예요. 꽥!",
+                "엔지니어님의 실력이 대단하시네요. 실행 버튼을 눌러 결과를 확인해보고 싶어요."
+            ]
+            nudgeText = compliments[Math.floor(Math.random() * compliments.length)]
+        } else if (currentStep.value === 2) {
+            if (completeness < 30) {
+                nudgeText = "먼저 전체적인 흐름을 잡아볼까요? 데이터를 어떻게 '반복'해서 살펴볼지 생각해보세요."
+            } else if (completeness < 60) {
+                nudgeText = "반복 구조는 잡혔네요! 이제 특정 데이터를 걸러낼 '조건'을 추가해볼까요?"
+            } else {
+                nudgeText = "조건에 따른 '행동(저장/제거)'까지 명시해주시면 완벽한 설계가 될 거예요."
+            }
         } else if (currentStep.value === 3) {
-            if (!code.includes('for')) nudgeText = "파이썬의 'for news in news_list:' 문법을 활용해 데이터를 하나씩 꺼내보세요."
-            else if (!code.includes('if')) nudgeText = "필터링의 핵심은 'if' 조건문입니다. 5자 미만이나 '광고' 단어를 체크해보세요."
-            else if (!code.includes('append')) nudgeText = "정화된 데이터를 'cleaned_data.append(news)'로 저장하는 것을 잊지 마세요!"
-            else nudgeText = "코드가 거의 완성된 것 같습니다. 상단의 '코드 실행 및 검증' 버튼을 눌러보시겠어요?"
+            if (completeness < 30) {
+                nudgeText = "파이썬 문법이 낯선가요? 상단의 스니펫 버튼을 눌러 'for'문부터 시작해보세요!"
+            } else if (completeness < 60) {
+                nudgeText = "코드의 뼈대가 보이네요. 'if'문을 사용해 퀘스트 목표에 맞는 조건을 채워주세요."
+            } else {
+                nudgeText = "정화된 데이터를 리스트에 'append'하는 부분을 확인해보셨나요? 꽥!"
+            }
         }
 
         if (nudgeText && !chatMessages.value.some(m => m.text === nudgeText)) {
@@ -197,15 +257,56 @@ export function usePseudoProblem(props, emit) {
         })
     }
 
-    const handleStep1Submit = (idx) => {
-        const isCorrect = currentQuest.value.quizOptions[idx].correct
-        userScore.step1 = isCorrect ? 25 : 0
-        showFeedback(
-            isCorrect ? "✅ 정답: GIGO 원칙의 이해" : "⚠️ 오답: 다시 생각해보세요",
-            isCorrect ? "훌륭합니다. '쓰레기가 들어가면 쓰레기가 나온다(Garbage In, Garbage Out)'는 AI 엔지니어링의 제1원칙입니다. 아무리 좋은 모델도 데이터가 더러우면 소용없습니다." : "데이터의 양보다는 '질'이 우선입니다. 노이즈가 섞인 데이터는 모델의 판단력을 흐리게 만듭니다.",
-            "활용 사례: 실제 현업에서도 전체 프로젝트 기간의 80%를 데이터 전처리에 사용합니다. 금융 사기 탐지 모델에서 정상 거래를 사기로 오해하지 않게 하려면 노이즈 제거가 필수적입니다.",
+    // [수정일: 2026-01-31] handleStep1Submit 개편: 다단계 인터뷰 지원
+    const handleStep1Submit = (option) => {
+        const questions = currentQuest.value.interviewQuestions || []
+
+        // 인터뷰 데이터가 없는 경우 기존 퀴즈 방식 호환
+        if (questions.length === 0) {
+            const isCorrect = option.correct
+            userScore.step1 = isCorrect ? 25 : 0
+            showFeedback(
+                isCorrect ? "✅ 정답: GIGO 원칙의 이해" : "⚠️ 오답: 다시 생각해보세요",
+                isCorrect ? "훌륭합니다. '쓰레기가 들어가면 쓰레기가 나온다'는 AI 엔지니어링의 제1원칙입니다." : "데이터의 질이 모델의 성능을 결정합니다.",
+                "전처리 과정의 중요성을 잊지 마세요.",
+                isCorrect
+            )
+            return
+        }
+
+        // 인터뷰 진행
+        const currentQ = questions[currentInterviewIdx.value]
+        const isCorrect = option.correct
+
+        // 결과 저장
+        interviewResults.value.push({
+            questionId: currentQ.id,
+            answer: option.text,
             isCorrect
-        )
+        })
+
+        // 대화 기록에 추가
+        chatMessages.value.push({ sender: 'User', text: option.text })
+        chatMessages.value.push({ sender: 'Coduck', text: currentQ.coduckComment })
+        scrollToBottom()
+
+        // 다음 질문 또는 단계로 이동
+        if (currentInterviewIdx.value < questions.length - 1) {
+            currentInterviewIdx.value++
+        } else {
+            // 인터뷰 종료: 합산 점수 계산 (만점 25)
+            const correctCount = interviewResults.value.filter(r => r.isCorrect).length
+            userScore.step1 = Math.round((correctCount / questions.length) * 25)
+
+            setTimeout(() => {
+                showFeedback(
+                    "📊 요구사항 분석 완료",
+                    "Coduck과의 인터뷰를 통해 시스템 규격을 성공적으로 정의했습니다.",
+                    "이제 정의된 규격을 바탕으로 의사코드를 설계해봅시다. (점수: " + userScore.step1 + " / 25)",
+                    true
+                )
+            }, 1000)
+        }
     }
 
     // [추가] Coduck에게 질문하기 (제출 전 질의)
@@ -275,8 +376,8 @@ export function usePseudoProblem(props, emit) {
                 score: 0,
             }, { withCredentials: true })
 
-            const result = response.data
-            userScore.step2 = result.score || 0
+            const result = response.data || {}
+            userScore.step2 = result.score || 10 // 기본 점수 보장
 
             const metricsHtml = result.metrics ? `
         <div class="grid grid-cols-5 gap-2 my-4">
@@ -303,9 +404,9 @@ export function usePseudoProblem(props, emit) {
 
             showFeedback(
                 result.is_logical ? "💡 AI 논리 분석 완료" : "🔧 논리 보완 필요",
-                "복구 엔진이 의사코드를 정밀 분석했습니다.",
+                result.is_logical ? "복구 엔진이 의사코드를 정밀 분석했습니다." : "논리 구조를 조금 더 보강해야 할 것 같아요.",
                 feedbackHtml,
-                result.is_logical
+                result.is_logical ?? (userScore.step2 >= 15) // is_logical이 없으면 점수 기반으로 결정
             )
         } catch (error) {
             console.error("AI Evaluation Failed:", error)
@@ -452,6 +553,14 @@ except Exception as e:
         if (currentStep.value < 5) currentStep.value++
     }
 
+    // [수정일: 2026-01-31] 단계 이동 함수 (Feedback Loop 지원)
+    const goToStep = (step) => {
+        if (step >= 1 && step <= 5) {
+            currentStep.value = step
+            feedbackModal.visible = false
+        }
+    }
+
     const reloadApp = () => location.reload()
 
     const finalReviewText = computed(() => {
@@ -479,6 +588,9 @@ except Exception as e:
         isEvaluating,
         isAsking,
         isSuccess,
+        currentInterviewIdx,
+        currentInterviewQuestion,
+        interviewResults,
         step4Options,
         feedbackModal,
         editorOptions,
@@ -489,8 +601,10 @@ except Exception as e:
         runSimulation,
         handleStep4Submit,
         nextStep,
+        goToStep,
         reloadApp,
         insertSnippet,
-        askCoduck
+        askCoduck,
+        imageSrc: '/assets/characters/coduck.png' // [2026-01-31] 고정 이미지 경로 반환
     }
 }

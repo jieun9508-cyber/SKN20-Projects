@@ -7,6 +7,29 @@ export const aiQuests = [
         desc: "불필요한 광고성 데이터와 노이즈를 제어하는 정화 모듈을 완성하세요.",
         rewardXP: 500,
         subModuleTitle: "DATA_CLEANER",
+        // [수정일: 2026-01-31] 인터랙티브 요구사항 인터뷰 데이터 추가
+        interviewQuestions: [
+            {
+                id: "q1",
+                question: "정화 로직을 설계하기 전에, 어떤 데이터를 '오염물'로 정의하면 좋을까요?",
+                options: [
+                    { text: "단순히 짧은 뉴스 제목", value: "short" },
+                    { text: "광고성 문구나 클릭 유도 문구가 포함된 뉴스", value: "ad", correct: true },
+                    { text: "오래된 날짜의 뉴스", value: "old" }
+                ],
+                coduckComment: "맞습니다! '광고'나 '클릭' 같은 키워드가 포함된 데이터는 시스템 성능을 저하시키는 주요 오염원입니다."
+            },
+            {
+                id: "q2",
+                question: "정화 과정에서 유효한 정보까지 삭제되는 '과적합'을 피하려면 어떤 기준이 필요할까요?",
+                options: [
+                    { text: "모든 광고 단어를 무조건 삭제", value: "strict" },
+                    { text: "제목의 길이를 고려하여 문맥이 없는 것만 삭제", value: "context", correct: true },
+                    { text: "전처리를 하지 않고 내버려둠", value: "none" }
+                ],
+                coduckComment: "훌륭한 분석입니다. 데이터의 유실을 최소화하면서 노이즈만 걷어내는 보수적인 접근이 엔지니어링의 핵심이죠."
+            }
+        ],
         quizTitle: "AI 성능을 저하시키는 데이터 오염을 막기 위한 첫 번째 단계는?",
         missionObjective: "리스트에 담긴 뉴스 제목들 중 다음 조건에 해당하는 데이터를 '제거(skip)'하는 로직을 작성하세요: ① 제목이 5자 미만인 경우 ② '광고' 또는 '클릭'이라는 단어가 포함된 경우.",
         pythonSnippets: [
@@ -64,6 +87,29 @@ export const aiQuests = [
         emoji: "🔐",
         desc: "아이디와 비밀번호가 일치하는지 확인하는 로직을 조립하세요.",
         rewardXP: 100,
+        // [수정일: 2026-01-31] 인터랙티브 요구사항 인터뷰 데이터 추가
+        interviewQuestions: [
+            {
+                id: "q1",
+                question: "안전한 로그인 시스템을 위해 가장 먼저 정의해야 할 정책은 무엇일까요?",
+                options: [
+                    { text: "아이디와 비밀번호의 일치 여부 검증", value: "auth", correct: true },
+                    { text: "화려한 로그인 화면 디자인", value: "ui" },
+                    { text: "모든 사용자의 비밀번호 공개", value: "leak" }
+                ],
+                coduckComment: "정확합니다. 인증(Authentication)의 핵심은 등록된 정보와 입력된 정보가 일치하는지 논리적으로 판별하는 것입니다."
+            },
+            {
+                id: "q2",
+                question: "만약 아이디는 맞는데 비밀번호가 틀리다면 어떻게 처리해야 할까요?",
+                options: [
+                    { text: "아이디가 맞으니 로그인 성공", value: "pass" },
+                    { text: "둘 다 맞아야 하므로 로그인 거부", value: "reject", correct: true },
+                    { text: "비밀번호를 새로 만들어줌", value: "reset" }
+                ],
+                coduckComment: "논리가 완벽하시네요! 보안 시스템에서는 모든 조건이 '참(True)'일 때만 관문을 열어주어야 합니다."
+            }
+        ],
         quizTitle: "보안 시스템의 논리 구조 중 가장 적절한 것은?",
         missionObjective: "사용자 로그인 인증 로직의 핵심 규칙을 설계하세요: ① 아이디가 'lion'이어야 함 ② 비밀번호가 '1234'여야 함 (두 조건이 모두 충족될 때만 성공).",
         pythonTemplate: `def login_check(user_id, user_pw):

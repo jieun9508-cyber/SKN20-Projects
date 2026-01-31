@@ -71,63 +71,91 @@
           </div>
         </div>
 
-        <!-- STAGE 1: Quiz (main 브랜치의 거대한 텍스트 스타일 복구) -->
+        <!-- STAGE 1: Discovery Interview (인터랙티브 개편 [수정일: 2026-01-31]) -->
         <div v-if="currentStep === 1" class="grid grid-cols-1 lg:grid-cols-[1fr_1.35fr] gap-10 lg:gap-14 animate-fade-in-up items-start max-w-[1600px] mx-auto w-full flex-1 min-h-0 pb-10">
-          <!-- Info Card -->
+          <!-- Info Card (Coduck's Briefing) -->
           <div class="bg-[#0d1117] border border-white/10 p-12 lg:p-16 rounded-3xl flex flex-col relative overflow-hidden shadow-2xl">
             <div class="flex flex-col gap-8 mb-12">
               <div class="flex items-center gap-6">
                 <div class="p-4 bg-cyan-500/5 rounded-2xl border border-cyan-500/10">
-                  <Cpu class="text-cyan-400/50 w-10 h-10" />
+                  <MessageSquare class="text-cyan-400/50 w-10 h-10" />
                 </div>
                 <div class="space-y-1">
-                  <span class="text-cyan-500/30 font-mono text-[9px] tracking-[0.3em] uppercase block">Authorized_Protocol_v4.0</span>
+                  <span class="text-cyan-500/30 font-mono text-[9px] tracking-[0.3em] uppercase block">Discovery_Phase_v1.0</span>
                   <h2 class="text-5xl lg:text-7xl font-black text-white italic tracking-tighter uppercase leading-none">
                     Stage 1:<br/>
-                    <span class="text-cyan-400">오염된 기억</span>
+                    <span class="text-cyan-400">요구사항 인터뷰</span>
                   </h2>
                 </div>
               </div>
             </div>
 
-            <div class="space-y-12">
-              <p class="text-lg lg:text-[22px] text-[#8b949e] leading-relaxed font-bold">
-                Coduck의 메모리 뱅크가 손상되었습니다. 복구 프로세스를 시작하기 전에 가장 중요한 원칙을 확인해야 합니다.
-              </p>
-              
-              <div class="bg-[#090c10] p-10 lg:p-12 border border-cyan-500/40 rounded-3xl relative shadow-inner">
-                <h3 class="text-[#00f3ff] font-black text-2xl mb-6 flex items-center gap-3">
+            <div class="flex items-center gap-8 p-10 bg-cyan-500/5 rounded-3xl border border-cyan-500/20 mb-8 relative overflow-hidden group/brief">
+              <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rotate-45 translate-x-16 -translate-y-16 group-hover/brief:bg-cyan-500/20 transition-all"></div>
+              <div class="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border-2 border-cyan-400/40 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
+                <img :src="imageSrc" alt="Coduck" class="w-full h-full object-cover" />
+              </div>
+              <div class="relative flex-1">
+                 <h4 class="text-[10px] font-mono text-cyan-500 uppercase tracking-[0.3em] mb-2 font-black italic">Coduck_Briefing</h4>
+                 <p class="text-lg text-gray-200 font-bold leading-relaxed">
+                   "엔지니어님, 시스템 설계 전 저와 인터뷰를 통해 세부 규격을 확정하시죠. 저의 질문에 신중히 답해주세요!"
+                 </p>
+              </div>
+            </div>
+
+            <div class="space-y-8 mt-auto">
+              <div class="bg-[#090c10] p-8 lg:p-10 border border-cyan-500/40 rounded-3xl relative shadow-inner">
+                <h3 class="text-[#00f3ff] font-black text-2xl mb-4 flex items-center gap-3">
                   <div class="w-2.5 h-2.5 bg-cyan-400 rounded-full shadow-[0_0_10px_#00f3ff]"></div>
-                  핵심 개념: GIGO (Garbage In, Garbage Out)
+                  현재 진행 상황: {{ currentInterviewIdx + 1 }} / {{ currentQuest.interviewQuestions?.length || 1 }}
                 </h3>
-                <p class="text-white text-[22px] font-black leading-relaxed mb-6">
-                  "쓰레기가 들어가면 쓰레기가 나온다."
-                </p>
-                <p class="text-[#8b949e] text-[18px] leading-relaxed font-bold italic border-l-2 border-cyan-500/30 pl-6">
-                  모델이 아무리 뛰어나도, 학습 데이터의 품질이 낮으면 결과물도 엉망이 됩니다.
+                <p class="text-white text-[18px] font-bold leading-relaxed opacity-60">
+                  인터뷰를 통해 획득한 수치는 설계 단계에서 중요한 기준이 됩니다. 
                 </p>
               </div>
             </div>
           </div>
 
-          <!-- Quiz Card -->
-          <div class="bg-[#0d1117] border border-white/10 p-12 lg:p-16 rounded-3xl flex flex-col shadow-2xl">
-            <div class="flex flex-col gap-8 mb-12">
-              <div class="flex items-baseline gap-6 h-10">
-                <span class="text-cyan-500 font-black text-6xl italic leading-none">Q.</span>
+          <!-- Interview Card (Questions) -->
+          <div class="bg-[#0d1117] border border-white/10 p-12 lg:p-16 rounded-3xl flex flex-col shadow-2xl h-full">
+            <div v-if="currentInterviewQuestion" class="flex flex-col h-full gap-8">
+              <div class="flex flex-col gap-8">
+                <div class="flex items-baseline gap-6 h-10">
+                  <span class="text-cyan-500 font-black text-4xl italic leading-none uppercase">Question {{ currentInterviewIdx + 1 }}</span>
+                </div>
+                <h3 class="text-3xl lg:text-4xl font-black text-white leading-[1.2] min-h-[100px]">
+                  {{ currentInterviewQuestion.question }}
+                </h3>
               </div>
-              <h3 class="text-3xl lg:text-4xl font-black text-white leading-[1.2]">{{ currentQuest.quizTitle || '다음 중 올바른 정답을 고르세요.' }}</h3>
-            </div>
 
-            <div class="grid grid-cols-1 gap-6 flex-1">
-              <button v-for="(opt, idx) in currentQuest.quizOptions" :key="idx"
-                @click="handleStep1Submit(idx)"
-                class="w-full text-left p-8 lg:p-10 bg-[#161b22] border border-white/10 rounded-2xl hover:bg-[#1c2128] hover:border-cyan-500/60 transition-all group flex items-center shadow-md hover:shadow-cyan-500/10 relative overflow-hidden">
-                <div class="absolute inset-y-0 left-0 w-2.5 transition-all bg-transparent group-hover:bg-cyan-500"></div>
-                <span class="flex-1 font-bold text-[#c9d1d9] text-xl lg:text-[24px] group-hover:text-white transition-colors pl-6 lg:pl-10">
-                  {{ idx + 1 }}. {{ opt?.text || '옵션이 없습니다.' }}
-                </span>
-              </button>
+              <div class="grid grid-cols-1 gap-6 mt-8">
+                <button v-for="(opt, idx) in currentInterviewQuestion.options" :key="idx"
+                  @click="handleStep1Submit(opt)"
+                  class="w-full text-left p-8 lg:p-10 bg-[#161b22] border border-white/10 rounded-2xl hover:bg-[#1c2128] hover:border-cyan-500/60 transition-all group flex items-center shadow-md hover:shadow-cyan-500/10 relative overflow-hidden">
+                  <div class="absolute inset-y-0 left-0 w-2.5 transition-all bg-transparent group-hover:bg-cyan-500"></div>
+                  <span class="flex-1 font-bold text-[#c9d1d9] text-xl lg:text-[24px] group-hover:text-white transition-colors pl-6 lg:pl-10">
+                    {{ opt.text }}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <!-- Backup for old quiz format -->
+            <div v-else class="flex flex-col h-full gap-8">
+                <div class="flex flex-col gap-8 mb-12">
+                  <div class="flex items-baseline gap-6 h-10">
+                    <span class="text-cyan-500 font-black text-6xl italic leading-none">Q.</span>
+                  </div>
+                  <h3 class="text-3xl lg:text-4xl font-black text-white leading-[1.2]">{{ currentQuest.quizTitle || '정답을 고르세요.' }}</h3>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
+                  <button v-for="(opt, idx) in currentQuest.quizOptions" :key="idx"
+                    @click="handleStep1Submit(opt)"
+                    class="w-full text-left p-8 lg:p-10 bg-[#161b22] border border-white/10 rounded-2xl hover:bg-[#1c2128] hover:border-cyan-500/60 transition-all group flex items-center shadow-md">
+                    <span class="flex-1 font-bold text-[#c9d1d9] text-xl lg:text-[24px]">
+                      {{ idx + 1 }}. {{ opt?.text }}
+                    </span>
+                  </button>
+                </div>
             </div>
           </div>
         </div>
@@ -164,11 +192,22 @@
               </div>
               <div ref="chatContainer" class="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
                 <div v-for="(msg, idx) in chatMessages" :key="idx"
-                  class="flex flex-col" :class="msg.sender === 'User' ? 'items-end' : 'items-start'">
-                  <span class="text-[8px] text-gray-500 font-black mb-2 uppercase tracking-tighter">{{ msg.sender }}_ID</span>
-                  <div class="max-w-[90%] p-4 text-sm leading-relaxed hud-button-clip"
-                       :class="msg.sender === 'Coduck' ? 'bg-cyan-500/10 text-cyan-100 border border-cyan-500/20' : 'bg-white/5 text-white border border-white/10'">
-                    {{ msg.text }}
+                  class="flex gap-4 mb-6" :class="msg.sender === 'User' ? 'flex-row-reverse items-start' : 'flex-row items-start'">
+                  
+                  <!-- [수정일: 2026-01-31] 캐릭터 아바타 노출 로직 보강 -->
+                  <div v-if="msg.sender === 'Coduck'" class="w-12 h-12 shrink-0 rounded-xl overflow-hidden border-2 border-cyan-500/30 shadow-[0_0_15px_rgba(34,211,238,0.2)] bg-black/40">
+                    <img :src="imageSrc" alt="Coduck" class="w-full h-full object-cover" />
+                  </div>
+                  <div v-else class="w-12 h-12 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+                    <Terminal class="w-6 h-6 text-cyan-500/50" />
+                  </div>
+
+                  <div class="flex flex-col flex-1" :class="msg.sender === 'User' ? 'items-end' : 'items-start'">
+                    <span class="text-[9px] text-gray-500 font-black mb-1.5 uppercase tracking-widest">{{ msg.sender }}_ID</span>
+                    <div class="max-w-[100%] p-5 text-base leading-relaxed hud-button-clip shadow-xl"
+                         :class="msg.sender === 'Coduck' ? 'bg-cyan-500/15 text-cyan-50 text-[15px] border border-cyan-500/30' : 'bg-white/5 text-gray-200 border border-white/10'">
+                      {{ msg.text }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -338,7 +377,16 @@
               </div>
               <div v-else class="font-mono text-sm leading-relaxed" v-html="simulationOutput"></div>
               
-              <div class="absolute bottom-8 right-8 z-20">
+              <div class="absolute bottom-8 right-8 z-20 flex gap-4">
+                <!-- [수정일: 2026-01-31] 로직 수정하기 (Feedback Loop) 버튼 추가 -->
+                <button @click="goToStep(2)" 
+                  class="group relative h-12 transition-all active:scale-[0.98]"
+                >
+                  <div class="relative px-6 h-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-bold text-sm tracking-wide transition-all flex items-center justify-center rounded-sm border border-white/10">
+                    로직 수정하기 (Back to Design)
+                  </div>
+                </button>
+
                 <button @click="runSimulation" 
                   class="group relative h-12 transition-all active:scale-[0.98]"
                   :disabled="isSimulating"
@@ -402,6 +450,15 @@
                     </div>
                     <span class="flex-1 font-black text-lg lg:text-xl text-gray-400 group-hover:text-white transition-colors tracking-tight">{{ opt }}</span>
                   </div>
+                </button>
+              </div>
+
+              <!-- [수정일: 2026-01-31] 순환 구조(Feedback Loop) 구현: 실구현 결과에 따라 설계를 수정할 수 있도록 이전 단계로 돌아가는 버튼 추가 -->
+              <div class="mt-8 flex justify-center">
+                <button @click="goToStep(2)"
+                  class="px-8 py-4 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-black text-xs tracking-widest transition-all rounded-sm border border-white/10 uppercase italic"
+                >
+                  <span class="mr-2">←</span> 로직 수정하러 돌아가기 (Back to Design)
                 </button>
               </div>
             </div>
@@ -506,8 +563,22 @@
             
             <div class="bg-white/[0.03] p-8 border border-white/5 text-lg font-medium text-gray-400 mb-12 leading-relaxed" v-html="feedbackModal.details"></div>
             
-            <div class="flex justify-end">
-              <button @click="nextStep" class="group relative h-16 transition-all active:scale-[0.98]">
+            <div class="flex justify-end gap-4">
+              <!-- [수정일: 2026-01-31] 순환 구조(Feedback Loop) 반영: 실패 시에는 다음 단계로 넘어가지 않고 수정을 유도하거나 재시도함 -->
+              <template v-if="!feedbackModal.isSuccess">
+                <button @click="feedbackModal.visible = false" class="group relative h-16 transition-all active:scale-[0.98]">
+                  <div class="relative px-12 h-full bg-white/10 text-white font-black uppercase tracking-[0.2em] flex items-center gap-4 hud-button-clip hover:bg-white/20 transition-all">
+                    닫기 (Close)
+                  </div>
+                </button>
+                <button v-if="currentStep >= 3" @click="goToStep(2)" class="group relative h-16 transition-all active:scale-[0.98]">
+                  <div class="relative px-12 h-full bg-pink-600 text-white font-black uppercase tracking-[0.2em] flex items-center gap-4 hud-button-clip hover:bg-pink-500 transition-all">
+                    로직 수정하기 (Back to Design)
+                  </div>
+                </button>
+              </template>
+              
+              <button v-else @click="nextStep" class="group relative h-16 transition-all active:scale-[0.98]">
                 <div class="absolute -inset-1 bg-cyan-500/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-300"></div>
                 <div class="relative px-12 h-full bg-cyan-600 text-black font-black uppercase tracking-[0.2em] flex items-center gap-4 hud-button-clip hover:bg-cyan-400 hover:shadow-[0_0_20px_#00f3ff] transition-all">
                   {{ currentStep === 4 ? "GENERATE_REPORT" : "INITIALIZE_NEXT_PROTOCOL" }} 
@@ -518,13 +589,7 @@
           </div>
         </div>
 
-        <!-- Duck Component 복구 -->
-        <div v-if="currentStep !== 5" class="absolute bottom-10 right-10 z-20 pointer-events-auto">
-          <Duck class-name="shadow-neon hover:scale-110 transition-transform cursor-pointer" />
-        </div>
-        <div v-else class="fixed bottom-10 right-10 scale-125 z-50">
-          <Duck class-name="shadow-neon cursor-help animate-in zoom-in slide-in-from-right-20 delay-1500" />
-        </div>
+        <!-- [수정일: 2026-01-31] 하단 고정 오리 제거 (채팅 UI로 통합) -->
       </main>
     </div>
   </div>
@@ -545,6 +610,7 @@ import {
   ChevronRight,
   AlertTriangle,
   CheckCircle,
+  MessageSquare,
   X
 } from 'lucide-vue-next'
 import Duck from './components/Duck.vue'
@@ -572,6 +638,10 @@ const {
   simulationContainer,
   isSimulating,
   isEvaluating,
+  isAsking, // 추가
+  currentInterviewIdx,
+  currentInterviewQuestion,
+  interviewResults,
   step4Options,
   feedbackModal,
   editorOptions,
@@ -582,9 +652,11 @@ const {
   runSimulation,
   handleStep4Submit,
   nextStep,
+  goToStep,
   reloadApp,
   insertSnippet,
-  askCoduck
+  askCoduck,
+  imageSrc // [수정일: 2026-01-31] 추가
 } = usePseudoProblem(props, emit)
 </script>
 

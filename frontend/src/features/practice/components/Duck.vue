@@ -57,13 +57,13 @@ const props = defineProps({
 
 const gameStore = useGameStore()
 
-const imageSrc = '/image/unit_duck.png' // 기존 프로젝트의 이미지 경로 사용
+const imageSrc = '/assets/characters/coduck.png' // [2026-01-31] 픽사 감성 Coduck 이미지 적용
 
 const tooltipText = computed(() => {
   const unlockedCount = gameStore.currentUnitProgress.length
-  if (unlockedCount >= 6) return '팀장 오리 (CTO 진)'
-  else if (unlockedCount >= 3) return '주니어 오리 (사원)'
-  else return '신입 오리 (인턴)'
+  if (unlockedCount >= 6) return '수석 엔지니어 Coduck (CTO)'
+  else if (unlockedCount >= 3) return '시니어 엔지니어 Coduck (Senior)'
+  else return '주니어 엔지니어 Coduck (Junior)'
 })
 </script>
 
