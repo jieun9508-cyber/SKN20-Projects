@@ -1,54 +1,6 @@
 <template>
   <!-- [수정일: 2026-01-31] 전역 모달(z-index 1000)보다 위에 오도록 z-index를 z-[2000]으로 상향 조정 -->
   <div v-if="isOpen" class="fixed inset-0 z-[2000] flex items-center justify-center md:p-4 bg-black/60 backdrop-blur-sm animate-fade-in" @click.self="$emit('close')">
-    
-    <!-- [수정일: 2026-02-01] Step 0: Star Wars Synopsis Crawl (모달 상자가 아닌 전체 화면을 덮도록 설정) -->
-    <div v-if="currentStep === 0" class="fixed inset-0 z-[2100] flex flex-col items-center justify-center bg-black overflow-hidden select-none">
-      <!-- [수정일: 2026-02-01] 배경 동영상 도입 (coduck_wars.mp4) -->
-      <video 
-        class="absolute inset-0 w-full h-full object-cover z-0 opacity-40" 
-        autoplay 
-        muted 
-        loop 
-        playsinline
-      >
-        <source src="/assets/audio/coduck_wars.mp4" type="video/mp4">
-      </video>
-      
-      <!-- Perspective Container -->
-      <div class="relative w-full max-w-4xl h-full flex flex-col items-center text-center perspective-container">
-        <!-- Prelude Text (Blue Fade) -->
-        <div class="prelude-text animate-fade-out" :style="{ animationDelay: '1s' }">
-          {{ synopsisText.top }}
-        </div>
-
-        <!-- Logo Zoom Stage -->
-        <div class="intro-logo animate-logo-zoom" :style="{ animationDelay: '9s' }">
-          PROJECT:<br/>RE-BOOT
-        </div>
-
-        <!-- Crawling Content -->
-        <div class="crawl-container">
-          <div class="crawl-content animate-crawl" :style="{ animationDelay: '12s' }">
-            <h1 class="crawl-title">{{ synopsisText.bottom }}</h1>
-            <div class="crawl-body" v-html="synopsisText.main.join('<br/><br/>')"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Interaction UI -->
-      <div class="absolute bottom-12 right-12 z-[100] flex gap-6 items-center">
-        <div v-if="isPlayingBGM" class="flex items-center gap-3 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full animate-pulse">
-          <Volume2 class="w-4 h-4 text-cyan-400" />
-          <span class="text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase italic">Audio_Link_Synced</span>
-        </div>
-        <button @click="skipSynopsis" class="group relative px-10 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/20 transition-all active:scale-95 hud-button-clip overflow-hidden">
-            <span class="relative z-10 font-black text-xs tracking-[0.3em] uppercase italic">RE-BOOT_PROTOCOL (SKIP)</span>
-            <div class="absolute inset-x-0 bottom-0 h-[2px] bg-cyan-500 shadow-[0_0_10px_#00f3ff] scale-x-0 group-hover:scale-x-100 transition-transform origin-center"></div>
-        </button>
-      </div>
-    </div>
-
     <div class="bg-[#0a0e17] w-full max-w-[1700px] h-full md:h-[96vh] md:max-h-[1000px] md:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col relative animate-scale-in">
       
       <!-- Glow Decor (main 브랜치의 화려한 배경 효과 복구) -->
@@ -69,7 +21,7 @@
               <h1 class="font-black text-xl tracking-tight text-white uppercase italic leading-none">PROJECT: RE-BOOT</h1>
               <span class="px-1.5 py-0.5 bg-pink-500/20 border border-pink-500/30 text-[9px] font-bold text-pink-400 rounded">VER 2.1</span>
             </div>
-            <div class="text-[10px] font-bold text-cyan-400/40 uppercase tracking-widest">Architecture Restore Protocol</div>
+            <div class="text-[10px] font-bold text-cyan-400/40 uppercase tracking-widest">Data Cleaning Protocol</div>
           </div>
         </div>
 
@@ -107,6 +59,39 @@
 
       <!-- Main Content Area -->
       <main class="flex-1 p-4 md:p-8 lg:p-12 max-w-full mx-auto w-full relative flex flex-col min-h-0 overflow-y-auto custom-scrollbar z-10">
+        <!-- [수정일: 2026-02-01] Step 0: Star Wars Synopsis Crawl -->
+        <div v-if="currentStep === 0" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black overflow-hidden select-none">
+          <!-- Starfield Background -->
+          <div class="absolute inset-0 star-field"></div>
+          
+          <!-- Perspective Container -->
+          <div class="relative w-full max-w-4xl h-full flex flex-col items-center text-center perspective-container">
+            <!-- Prelude Text (Blue Fade) -->
+            <div class="prelude-text animate-fade-out" :style="{ animationDelay: '1s' }">
+              {{ synopsisText.prelude }}
+            </div>
+
+            <!-- Crawling Content -->
+            <div class="crawl-container">
+              <div class="crawl-content animate-crawl">
+                <h1 class="crawl-title">{{ synopsisText.title }}</h1>
+                <div class="crawl-body" v-html="synopsisText.content.replace(/\n/g, '<br/>')"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interaction UI -->
+          <div class="absolute bottom-12 right-12 z-[100] flex gap-6 items-center">
+            <div v-if="isPlayingBGM" class="flex items-center gap-3 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full animate-pulse">
+              <Volume2 class="w-4 h-4 text-cyan-400" />
+              <span class="text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase italic">Audio_Link_Synced</span>
+            </div>
+            <button @click="skipSynopsis" class="group relative px-10 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/20 transition-all active:scale-95 hud-button-clip overflow-hidden">
+                <span class="relative z-10 font-black text-xs tracking-[0.3em] uppercase italic">Initialize_Protocol_X</span>
+                <div class="absolute inset-x-0 bottom-0 h-[2px] bg-cyan-500 shadow-[0_0_10px_#00f3ff] scale-x-0 group-hover:scale-x-100 transition-transform origin-center"></div>
+            </button>
+          </div>
+        </div>
 
         <!-- Progress Bar -->
         <div v-if="currentStep >= 1 && currentStep <= 4" class="max-w-4xl mx-auto w-full mb-16 px-6 shrink-0">
@@ -800,111 +785,5 @@ const {
 
 .shadow-neon {
   filter: drop-shadow(0 0 15px rgba(0, 243, 255, 0.4));
-}
-
-/* [수정일: 2026-02-01] Star Wars Cinematic Intro Effects */
-.perspective-container {
-  perspective: 300px;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, transparent, black 30%, black 80%, transparent);
-}
-
-.prelude-text {
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: serif;
-  font-size: 32px;
-  font-weight: 400;
-  color: #4bd5ee;
-  opacity: 0;
-  white-space: nowrap;
-}
-
-@keyframes fadeOut {
-  0% { opacity: 0; }
-  10%, 80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-.animate-fade-out {
-  animation: fadeOut 8s ease-in-out forwards;
-}
-
-.crawl-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.crawl-content {
-  position: absolute;
-  top: 100%;
-  width: 100%;
-  transform-origin: 50% 100%;
-  transform: rotateX(35deg);
-  opacity: 1;
-}
-
-.crawl-title {
-  font-size: 72px;
-  font-weight: 900;
-  color: #feda4a;
-  text-align: center;
-  margin-bottom: 60px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-family: 'Inter', sans-serif;
-}
-
-.crawl-body {
-  font-size: 28px;
-  font-weight: 700;
-  color: #feda4a;
-  text-align: justify;
-  line-height: 1.6;
-  padding: 0 15%;
-  font-family: 'Inter', sans-serif;
-}
-
-@keyframes crawl {
-  0% { top: 120%; }
-  100% { top: -3000px; }
-}
-
-.animate-crawl {
-  animation: crawl 60s linear forwards;
-}
-
-/* Logo Zoom Effect */
-.intro-logo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(10);
-  font-size: 120px;
-  font-weight: 900;
-  color: #feda4a;
-  text-align: center;
-  opacity: 0;
-  white-space: nowrap;
-  letter-spacing: -0.05em;
-  line-height: 0.8;
-  filter: drop-shadow(0 0 20px rgba(254, 218, 74, 0.5));
-}
-
-@keyframes logo-zoom {
-  0% { transform: translate(-50%, -50%) scale(8); opacity: 0; }
-  1% { opacity: 1; }
-  90% { transform: translate(-50%, -50%) scale(0.01); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-}
-
-.animate-logo-zoom {
-  animation: logo-zoom 8s cubic-bezier(0.12, 0, 0.39, 0) forwards;
-}
-
-.animate-crawl {
-  animation: crawl 45s linear 10s forwards;
 }
 </style>
