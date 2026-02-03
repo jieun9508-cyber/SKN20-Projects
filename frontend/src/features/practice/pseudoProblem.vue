@@ -99,9 +99,13 @@
     </nav>
 
     <!-- Phase 사이드바 (왼쪽 고정) -->
-    <div v-if="currentStep > 0" class="fixed left-0 top-16 bottom-0 w-24 border-r border-[#A3FF47]/10 flex flex-col items-center py-10 gap-8 bg-black/90 z-10 shrink-0">
+    <!-- Phase 사이드바 (왼쪽 고정: 평소에는 숨김, 마우스 오버 시 확장) -->
+    <div v-if="currentStep > 0" class="fixed left-0 top-16 bottom-0 w-3 hover:w-24 border-r border-[#A3FF47]/10 flex flex-col items-center py-10 gap-8 bg-black/90 z-20 shrink-0 transition-all duration-300 overflow-hidden group">
+      <!-- 힌트 바 (평소에 보이는 부분) -->
+      <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#A3FF47]/20 group-hover:bg-[#A3FF47] transition-colors"></div>
+      
       <div v-for="i in 4" :key="i"
-        class="w-20 h-20 rounded-sm flex flex-col items-center justify-center transition-all duration-500"
+        class="w-20 h-20 rounded-sm flex flex-col items-center justify-center transition-all duration-500 shrink-0 opacity-0 group-hover:opacity-100 translate-x-[-20px] group-hover:translate-x-0"
         :class="currentStep === i ? 'bg-[#A3FF47] text-black shadow-[0_0_30px_#A3FF47]' : 'border border-[#A3FF47]/30 text-[#A3FF47]/40 bg-black/80'"
       >
         <span class="text-[9px] font-black leading-none mb-1 opacity-60">PHASE</span>
@@ -110,8 +114,8 @@
     </div>
 
     <!-- 메인 터미널 영역 -->
-    <!-- [2026-02-02] 해상도에 따라 사이드바 여백 조절 -->
-    <main class="flex-1 flex overflow-hidden relative" :class="currentStep > 0 ? 'ml-24 lg:ml-24' : ''">
+    <!-- [2026-02-02] 해상도에 따라 사이드바 여백 조절 (사이드바 숨김으로 인한 여백 축소) -->
+    <main class="flex-1 flex overflow-hidden relative" :class="currentStep > 0 ? 'ml-4' : ''">
       <div class="flex-1 flex flex-col min-w-0 relative">
         <!-- 상단 미션 브리핑 바 -->
         <div class="border-b border-[#A3FF47]/10 flex flex-col md:grid md:grid-cols-2 bg-[#A3FF47]/5 shrink-0">
@@ -205,27 +209,17 @@
           <!-- [2026-02-03] 사이드바 공간 확보를 위해 xl 브레이크포인트 사용 -->
           <div v-else-if="currentStep === 2" class="flex-1 grid grid-cols-1 xl:grid-cols-2 bg-black overflow-hidden relative">
             <!-- [2026-02-02] Phase 1과 구성을 완전히 통일 (p-8, items-center, justify-center) -->
-<<<<<<< HEAD
-            <div class="p-0 flex flex-col border-b xl:border-b-0 border-[#A3FF47]/10 h-[500px] xl:h-full overflow-hidden shrink-0">
-              <!-- 상단: Mission Objective (Scrollable) -->
-              <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 space-y-6">
-                <div class="w-full max-w-[600px] mx-auto lg:translate-x-12 space-y-6 md:space-y-8 flex flex-col items-center">
-                  <div class="flex items-center justify-center gap-3">
-                    <div class="h-5 w-1 bg-[#A3FF47]"></div>
-                    <h3 class="text-xs font-black tracking-[0.5em] uppercase text-[#A3FF47]/50">Mission Objective</h3>
-=======
-            <div class="p-0 flex flex-col border-b lg:border-b-0 border-[#A3FF47]/10 h-[500px] lg:h-full overflow-hidden shrink-0 lg:pl-36">
+            <div class="p-0 flex flex-col border-b lg:border-b-0 border-[#A3FF47]/10 h-[500px] lg:h-full overflow-hidden shrink-0">
               <!-- 상단: Mission Objective (Compact Left-Aligned) -->
               <div class="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col justify-start space-y-6">
                 <div class="w-full max-w-[750px] space-y-4 md:space-y-6 flex flex-col items-start">
                   <div class="flex items-center gap-2">
                     <div class="h-4 w-1 bg-[#A3FF47]"></div>
                     <h3 class="text-[9px] font-black tracking-[0.4em] uppercase text-[#A3FF47]/50">Mission Objective</h3>
->>>>>>> e25189dbcdec085ce075d12a775dc4465d758dac
                   </div>
-                  <p class="text-base md:text-lg font-black italic terminal-glow border-l-2 border-[#A3FF47] pl-4 leading-snug text-[#A3FF47] whitespace-pre-wrap">{{ currentQuest.missionObjective }}</p>
+                  <p class="text-sm md:text-base font-black italic terminal-glow border-l-2 border-[#A3FF47] pl-4 leading-snug text-[#A3FF47] whitespace-pre-wrap">{{ currentQuest.missionObjective }}</p>
                   <div class="p-4 md:p-5 bg-[#A3FF47]/5 border-l-4 border-[#A3FF47]/30 text-[10px] md:text-xs leading-relaxed italic text-slate-300 space-y-3 text-left w-full">
-                    <p class="text-xs md:text-sm whitespace-pre-wrap">"Coduck의 기본 기능을 활성화하기 위해, 데이터 리스트를 순회하며 유효한 패킷(정상 데이터)만
+                    <p class="text-[10px] md:text-xs whitespace-pre-wrap">"Coduck의 기본 기능을 활성화하기 위해, 데이터 리스트를 순회하며 유효한 패킷(정상 데이터)만
 필터링하는 아키텍처 논리를 설계하십시오."</p>
                     <div class="pt-3 border-t border-[#A3FF47]/20 flex justify-start">
                       <p class="text-[8px] md:text-[9px] font-black text-[#A3FF47] not-italic uppercase tracking-widest flex items-center gap-2">
@@ -236,15 +230,9 @@
                 </div>
               </div>
 
-<<<<<<< HEAD
-              <!-- 하단: [수정일: 2026-02-03] AI Architecture Consultant HUD (왼쪽으로 이동 & 고정 높이) -->
-              <div class="h-[350px] xl:h-2/5 flex flex-col bg-black/60 border-t border-[#A3FF47]/10 relative shrink-0">
-                <div class="h-10 border-b border-[#A3FF47]/20 flex items-center px-4 justify-between bg-[#A3FF47]/5">
-=======
               <!-- 하단: [수정일: 2026-02-03] AI Architecture Consultant HUD (영격 극대화 & 오프셋 최적화) -->
               <div class="h-[500px] lg:h-[70%] flex flex-col bg-black/60 border-t border-[#A3FF47]/10 relative shrink-0">
                 <div class="h-12 border-b border-[#A3FF47]/20 flex items-center px-4 justify-between bg-[#A3FF47]/5 w-full max-w-[650px]">
->>>>>>> e25189dbcdec085ce075d12a775dc4465d758dac
                   <div class="flex items-center gap-2">
                     <Brain class="w-3.5 h-3.5 text-[#A3FF47] animate-pulse" />
                     <span class="text-[9px] font-black uppercase tracking-widest text-[#A3FF47]">AI Architecture Consultant</span>
@@ -265,7 +253,7 @@
                   >
                     <span class="text-[8px] font-black opacity-30 uppercase tracking-tighter">{{ msg.sender }}</span>
                     <div :class="[
-                      'max-w-[85%] px-3 py-2 text-[11px] font-bold leading-relaxed',
+                      'max-w-[85%] px-3 py-2 text-[10px] font-bold leading-relaxed',
                       msg.sender === 'User' 
                         ? 'bg-[#A3FF47]/10 text-[#A3FF47] border-r-2 border-[#A3FF47]' 
                         : 'bg-white/5 text-slate-300 border-l-2 border-white/20'
@@ -483,22 +471,7 @@
 
             <div class="h-px bg-gradient-to-r from-transparent via-[#A3FF47]/20 to-transparent"></div>
 
-            <!-- [수정일: 2026-02-03] 우측 패널에 고정된 아키텍처 설계도 (UX 개선) -->
-            <div v-if="currentStep >= 3" class="space-y-4 animate-fade-in-right">
-               <div class="flex items-center justify-between">
-                <h3 class="text-[12px] font-black text-[#A3FF47] uppercase tracking-[0.4em] italic drop-shadow-[0_0_5px_rgba(163,255,71,0.8)]">BLUEPRINT</h3>
-                <div class="flex gap-1">
-                   <div class="w-1.5 h-1.5 bg-[#A3FF47] rounded-full animate-ping"></div>
-                   <div class="w-1.5 h-1.5 bg-[#A3FF47] rounded-full"></div>
-                </div>
-               </div>
-               <div class="p-4 bg-[#A3FF47]/5 border-2 border-[#A3FF47]/10 rounded-sm font-mono text-[10px] text-[#A3FF47]/70 italic flex flex-col gap-2 max-h-60 overflow-y-auto custom-scrollbar">
-                  <div v-for="(line, i) in pseudoChecklist" :key="i" class="flex gap-2 items-start">
-                     <div class="w-2 h-2 border border-[#A3FF47]/30 mt-0.5 flex-shrink-0"></div>
-                     <span class="leading-relaxed">{{ line }}</span>
-                  </div>
-               </div>
-            </div>
+
 
             <div class="space-y-6" :class="{'animate-shake': isDamaged}">
               <h3 class="text-[10px] font-black opacity-30 uppercase tracking-[0.4em] italic">Navi-Duck Analysis</h3>
