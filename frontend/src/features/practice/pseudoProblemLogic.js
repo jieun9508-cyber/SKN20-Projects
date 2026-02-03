@@ -192,6 +192,10 @@ export function usePseudoProblem(props, emit) {
 
 
     const skipSynopsis = () => {
+        if (synopsisTimer) {
+            clearTimeout(synopsisTimer)
+            synopsisTimer = null
+        }
         if (synopsisAudio.value) {
             synopsisAudio.value.pause()
             synopsisAudio.value.currentTime = 0
@@ -875,9 +879,15 @@ except Exception as e:
         if (newStep === 0) {
             setTimeout(initAudio, 500);
         }
-        if (newStep !== 0 && synopsisAudio.value) {
-            synopsisAudio.value.pause()
-            isPlayingBGM.value = false
+        if (newStep !== 0) {
+            if (synopsisTimer) {
+                clearTimeout(synopsisTimer)
+                synopsisTimer = null
+            }
+            if (synopsisAudio.value) {
+                synopsisAudio.value.pause()
+                isPlayingBGM.value = false
+            }
         }
         if (newStep >= 2 && newStep <= 4) {
             const objective = currentQuest.value.missionObjective;
