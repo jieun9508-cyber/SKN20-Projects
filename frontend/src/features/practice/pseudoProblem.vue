@@ -173,7 +173,7 @@
 
             <div id="tutorial-target-workspace" class="bg-black/40 p-6 md:p-10 lg:px-14 flex flex-col items-start justify-center gap-8 md:gap-12 border-l-0 xl:border-l border-[#A3FF47]/10 relative overflow-hidden">
               <!-- [2026-02-02] 문제(질문) 폰트 확대 및 최상단 배치 (반응형 폰트 적용) -->
-              <div class="w-full space-y-4">
+              <div id="tutorial-target-question" class="w-full space-y-4">
                 <div class="flex items-center gap-3 opacity-50">
                    <div class="w-1.5 h-1.5 bg-[#A3FF47]"></div>
                    <span class="text-[9px] font-black uppercase tracking-[0.4em]">INQUIRY_PROTOCOL_v2.0</span>
@@ -184,7 +184,7 @@
               </div>
 
               <!-- 2026-02-02: 문제(답변 버튼) 간의 가독성 유지 -->
-              <div class="w-full max-w-[500px] flex flex-col gap-8">
+              <div id="tutorial-target-options" class="w-full max-w-[500px] flex flex-col gap-8">
               <button
                 v-for="(opt, i) in currentQuest.interviewQuestions[currentInterviewIdx]?.options"
                 :key="i"
@@ -229,6 +229,19 @@
                       <p class="text-[10px] md:text-[12px] font-black text-[#A3FF47] not-italic uppercase tracking-widest flex items-center gap-2">
                          <MessageSquare class="w-3 h-3" /> System_Directive: 의사코드 작성
                       </p>
+                    </div>
+                  </div>
+
+                  <div v-if="cards && cards.length > 0" class="w-full space-y-4 animate-fade-in-up">
+                    <div class="flex items-center gap-2">
+                       <div class="h-4 w-1 bg-cyan-400 shadow-[0_0_15px_#22d3ee]"></div>
+                       <h3 class="text-[9px] font-black tracking-[0.4em] uppercase text-cyan-400">Architecture Blueprint</h3>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div v-for="card in cards" :key="card.id" class="p-4 border-l-4 bg-white/5 flex items-center gap-4 transition-all hover:bg-white/10" :class="card.color">
+                             <div class="text-xl">{{ card.icon }}</div>
+                             <div class="text-xs md:text-sm font-bold text-slate-300">{{ card.text }}</div>
+                        </div>
                     </div>
                   </div>
 
@@ -486,9 +499,9 @@
                 <div 
                   v-for="(item, i) in recoveredArtifacts" 
                   :key="i" 
-                  @click="currentStep === 3 && insertSnippet(item.code)"
+                  @click="(currentStep === 3 || tutorialState.isActive) && insertSnippet(item.code)"
                   class="aspect-square rounded-sm border-2 border-[#A3FF47]/20 flex flex-col items-center justify-center bg-black/40 overflow-hidden relative transition-all duration-300"
-                  :class="(currentStep === 3 || tutorialState.isActive) ? 'brightness-100 grayscale-0 shadow-inner' : 'opacity-40 grayscale cursor-not-allowed'"
+                  :class="(currentStep === 3 || tutorialState.isActive) ? 'brightness-100 grayscale-0 shadow-inner cursor-pointer' : 'opacity-40 grayscale cursor-not-allowed'"
                 >
                   <component :is="icons[item.icon] || icons.Database" class="text-[#A3FF47] w-6 h-6 mb-2 transition-transform" :class="{'group-hover:scale-110': currentStep === 3}" />
                   <span class="text-[8px] font-black uppercase tracking-tighter text-[#A3FF47] text-center px-1">{{ item.label }}</span>
@@ -763,7 +776,8 @@ const {
   tutorialState,
   tutorialSteps,
   nextTutorialStep,
-  skipTutorial
+  skipTutorial,
+  cards
 } = usePseudoProblem(props, emit)
 
 // [수정일: 2026-02-03] 튜토리얼 하이라이트 위치 계산 로직
