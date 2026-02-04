@@ -1830,3 +1830,171 @@ onUnmounted(() => {
 
 
 <style scoped src="./BugHunt.css"></style>
+
+<style scoped>
+/* 수정일: 2026-02-03 */
+/* 수정내용: 머지 충돌 해결 및 레이아웃 스타일 적용 */
+
+/* Force Compact Header */
+:deep(.header.compact) {
+  padding: 10px 20px !important;
+  min-height: 60px;
+}
+
+.progressive-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* 1:2 Split */
+  gap: 1rem; /* Reduced gap */
+  height: calc(100vh - 90px) !important; /* Adjusted for smaller header */
+  padding: 0.5rem 1.5rem 1.5rem 1.5rem; /* Reduced top padding */
+  box-sizing: border-box;
+}
+
+.left-panel-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.left-panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 10, 15, 0.85); /* Dark unified body background */
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.panel-box.scenario-box {
+  height: 35%; /* Fixed reduced height */
+  flex: none; /* Do not grow */
+  background: transparent;
+  border: none;
+  padding: 1.5rem;
+  overflow-y: auto;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+}
+
+.panel-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--neon-cyan);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scenario-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #e0f7fa;
+  white-space: pre-wrap;
+}
+
+.clue-panel {
+  flex: 1; /* Take all remaining space (Expanded Log Window) */
+  min-height: 200px;
+  background: rgba(0, 0, 0, 0.4); /* Slightly darker/transparent */
+  border-top: 1px solid rgba(0, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.clue-header {
+  padding: 0.6rem 1rem; /* Compact header */
+  background: rgba(0, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: bold;
+}
+
+.clue-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.clue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  padding: 0.8rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  animation: slideIn 0.3s ease-out;
+  border-left: 3px solid transparent;
+}
+
+.clue-badge {
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  background: #333;
+  width: fit-content;
+  letter-spacing: 0.5px;
+}
+
+.clue-text {
+  flex: 1;
+  line-height: 1.6;
+  color: #e0e0e0;
+  white-space: pre-wrap;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.85rem;
+}
+
+/* ERROR 타입 특별 스타일 */
+.clue-item:has(.clue-badge:contains('ERROR')) {
+  background: rgba(244, 67, 54, 0.08);
+  border-left-color: #f44336;
+  padding: 1rem;
+}
+
+.clue-item:has(.clue-badge:contains('ERROR')) .clue-text {
+  color: #ffcdd2;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.8rem;
+  border-radius: 4px;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+/* Clue Types */
+.clue-item:has(.clue-badge:contains('INFO')) .clue-badge { background: #2196f3; color: white; }
+.clue-item:has(.clue-badge:contains('INFO')) { border-left-color: #2196f3; }
+
+.clue-item:has(.clue-badge:contains('WARN')) .clue-badge { background: #ff9800; color: black; }
+.clue-item:has(.clue-badge:contains('WARN')) { border-left-color: #ff9800; }
+
+.clue-item:has(.clue-badge:contains('ERROR')) .clue-badge { background: #f44336; color: white; }
+
+.clue-item:has(.clue-badge:contains('SUCCESS')) .clue-badge { background: #4caf50; color: white; }
+.clue-item:has(.clue-badge:contains('SUCCESS')) { border-left-color: #4caf50; }
+
+.clue-item:has(.clue-badge:contains('HINT')) .clue-badge { background: #9c27b0; color: white; }
+.clue-item:has(.clue-badge:contains('HINT')) { border-left-color: #9c27b0; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Ensure right panel frame matches style */
+.full-code-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+</style>
