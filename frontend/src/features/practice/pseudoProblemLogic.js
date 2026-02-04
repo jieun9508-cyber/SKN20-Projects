@@ -464,12 +464,14 @@ export function usePseudoProblem(props, emit) {
             currentDuckImage.value = currentQuest.value.character?.image
             integrity.value = Math.min(integrity.value + 15, 100)
 
+
             // [수정일: 2026-02-04] 실전 스테이지(ID:2 이상)인 경우 정답 옵션의 설계 지침을 저장
             if (currentQuest.value.id > 1 && option.requirementToken) {
                 if (!activeRequirements.value.includes(option.requirementToken)) {
                     activeRequirements.value.push(option.requirementToken)
                 }
             }
+
 
             // Step 1 개별 문제 정답 시에는 HP 회복 없음 (단계 완료 시 일괄 지급)
 
@@ -983,6 +985,7 @@ except Exception as e:
         isAsking.value = false
         isSimulating.value = false
         integrity.value = 0
+
         systemHP.value = 0 // [수정일: 2026-02-03] HP 초기화 0%
         currentDuckImage.value = currentQuest.value.character?.image
 

@@ -211,6 +211,7 @@
             <!-- [2026-02-02] Phase 1과 구성을 완전히 통일 (p-8, items-center, justify-center) -->
             <!-- [수정일: 2026-02-04] 왼쪽 영역 비중 확대 (60%) -->
             <div class="p-0 flex flex-col border-b lg:border-b-0 border-[#A3FF47]/10 h-[500px] lg:h-full overflow-hidden shrink-0 xl:col-span-6">
+
               <!-- 상단: Mission Objective (Compact Left-Aligned) -->
               <!-- 상단: Mission Objective (높이 30% 배정 및 스크롤 허용) -->
               <div class="basis-[40%] lg:basis-[30%] grow shrink min-h-0 overflow-y-auto custom-scrollbar p-4 flex flex-col items-center justify-start space-y-6">
@@ -222,6 +223,7 @@
                   <p class="text-base md:text-xl font-black italic terminal-glow border-l-4 border-[#A3FF47] px-6 py-2 leading-relaxed text-[#A3FF47] whitespace-pre-wrap">{{ currentQuest.missionObjective }}</p>
                   <div class="p-6 md:p-8 bg-[#A3FF47]/5 border-l-4 border-[#A3FF47]/30 text-sm md:text-base leading-relaxed italic text-slate-300 space-y-4 text-left w-full">
                     <p class="text-sm md:text-base whitespace-pre-wrap">"Coduck의 기본 기능을 활성화하기 위해, 데이터 리스트를 순회하며 유효한 패킷(정상 데이터)만
+
 필터링하는 아키텍처 논리를 설계하십시오."</p>
                     <div class="pt-4 border-t border-[#A3FF47]/20 flex justify-start">
                       <p class="text-[10px] md:text-[12px] font-black text-[#A3FF47] not-italic uppercase tracking-widest flex items-center gap-2">
@@ -251,7 +253,6 @@
                 </div>
               </div>
 
-              <!-- 하단: [수정일: 2026-02-03] AI Architecture Consultant HUD (영격 극대화 & 오프셋 최적화) -->
               <!-- 하단: [수정일: 2026-02-04] AI HUD (높이 70%Basis 고정하여 절대 확장 방지) -->
               <div class="basis-[60%] lg:basis-[70%] max-h-[60%] lg:max-h-[70%] flex flex-col items-center bg-black/60 border-t border-[#A3FF47]/10 relative shrink-0 overflow-hidden">
                 <div class="h-12 border-b border-[#A3FF47]/20 flex items-center px-4 justify-between bg-[#A3FF47]/5 w-full max-w-[850px] shrink-0">
@@ -276,6 +277,7 @@
                     <span class="text-[10px] font-black opacity-30 uppercase tracking-tighter">{{ msg.sender }}</span>
                     <div :class="[
                       'max-w-[90%] px-4 py-3 text-[13px] md:text-[14px] font-bold leading-relaxed',
+
                       msg.sender === 'User' 
                         ? 'bg-[#A3FF47]/10 text-[#A3FF47] border-r-2 border-[#A3FF47]' 
                         : 'bg-white/5 text-slate-100 border-l-2 border-white/20'
