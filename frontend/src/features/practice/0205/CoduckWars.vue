@@ -1,265 +1,384 @@
-
 <template>
   <div class="coduck-wars-container">
-    <!-- Header -->
-    <header class="header">
-      <div class="brand">
-        <span class="chapter-text">CHAPTER 1: 튜토리얼 존</span>
-        <h1 class="logo-text">CODUCK WARS</h1>
+    <!-- BACKGROUND WATERMARK -->
+    <div class="bg-watermark">시스템 오류</div>
+    <div class="scan-line"></div>
+
+    <!-- HEADER -->
+    <header class="war-room-header">
+      <div class="chapter-info">
+        <span class="chapter-title">CHAPTER 1: 각성 (튜토리얼 존)</span>
+        <span class="sub-info">프로토콜: AI 사고법 입문 [BOOT_PROTOCOL]</span>
       </div>
-      <div class="stats-bar">
-        <div class="stat-item">
-          <span class="label">프로토콜: AI 사고법 입문</span>
-          <span class="value">{{ gameState.score }} PTS</span>
+      <div class="integrity-monitor">
+        <span class="integrity-label">정화 무결성</span>
+        <div class="hp-bar-bg">
+             <div class="hp-bar-fill" :style="{ width: gameState.playerHP + '%' }"></div>
         </div>
-        <div class="stat-item health-bar">
-          <span class="label">정화 무결성</span>
-          <div class="hp-track">
-            <div class="hp-fill" :style="{ width: gameState.playerHP + '%' }"></div>
-          </div>
-        </div>
+        <span class="integrity-val">{{ gameState.playerHP }}%</span>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="battle-ground">
+    <!-- MAIN VIEWPORT -->
+    <main class="viewport">
       
-      <!-- Center: Evaluation Report (Phase: EVALUATION) -->
-      <transition name="fade-slide">
-        <div v-if="gameState.phase === 'EVALUATION'" class="evaluation-view">
-          <!-- Background Watermark -->
-          <div class="watermark-bg">
-            <span v-if="evaluationResult.finalScore >= 80" class="success-mark">SYSTEM RESTORED</span>
-            <span v-else class="fail-mark">시스템 오류</span>
-          </div>
-
-          <!-- Report Card -->
-          <div class="report-card">
-            <div class="report-header">
-              <h2>MISSION EVALUATION REPORT</h2>
-              <div class="date-stamp">{{ new Date().toLocaleString() }}</div>
-            </div>
-
-            <!-- Top Section: Score & Tier -->
-            <div class="score-section">
-              <div class="score-circle-container">
-                <svg viewBox="0 0 36 36" class="circular-chart">
-                  <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path class="circle" :stroke-dasharray="evaluationResult.finalScore + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <text x="18" y="20.35" class="percentage">{{ evaluationResult.finalScore }}</text>
-                </svg>
-                <div class="score-label">SYNC RATE</div>
-              </div>
-              
-              <div class="tier-badge">
-                <div class="tier-label">ENGINEER CLASS</div>
-                <div class="tier-value" :class="evaluationResult.scoreTier.toLowerCase().replace(' ', '-')">
-                  {{ evaluationResult.scoreTier }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Analysis Box -->
-            <div class="analysis-box">
-              <div class="box-icon">
-                <div class="coduck-avatar-small"></div>
-              </div>
-              <div class="box-content">
-                <h3>CODUCK'S ANALYSIS</h3>
-                <p>{{ evaluationResult.aiAnalysis }}</p>
-              </div>
-            </div>
-
-            <!-- Detailed Breakdown Accordion -->
-            <div class="breakdown-list">
-              <div v-for="(detail, index) in evaluationResult.details" :key="index" class="breakdown-item">
-                <div class="item-header">
-                  <span class="item-title">{{ detail.category }}</span>
-                  <div class="item-score-bar">
-                    <div class="item-score-fill" :style="{ width: detail.score + '%' }"></div>
-                  </div>
-                  <span class="item-points">{{ detail.score }}</span>
-                </div>
-                <div class="item-body">
-                  <p class="comment">{{ detail.comment }}</p>
-                  <ul class="improvements">
-                    <li v-for="(imp, i) in detail.improvements" :key="i">▹ {{ imp }}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bottom Actions -->
-            <div class="report-actions">
-              <button class="btn-retry" @click="restartMission">
-                <span class="icon">↺</span> 재시도
-              </button>
-              <button class="btn-next-report" @click="exitToHub">징검다리로 돌아가기</button>
-            </div>
-          </div>
+      <!-- PHASE: DIAGNOSTIC 1 & 2 (Shared Layout) -->
+      <section v-if="gameState.phase.startsWith('DIAGNOSTIC')" class="combat-grid">
+         <!-- LEFT: Entity Card -->
+        <div class="panel entity-card">
+           <div class="entity-header">
+              <span class="entity-label">개체명: 코덕</span>
+              <span class="entity-status">⚠ 불안정</span>
+           </div>
+           <div class="visual-frame">
+              <img src="/assets/characters/coduck_sad.png" class="coduck-portrait" />
+              <div class="scan-overlay"></div>
+              <div class="disconnect-tag">! 연결 끊김 !</div>
+           </div>
+           <div class="dialogue-box">
+              <span class="speaker">Coduck</span>
+              <p class="dialogue-text">"{{ gameState.coduckMessage }}"</p>
+           </div>
         </div>
-      </transition>
 
-      <!-- Center: Battle Interface (All other phases) -->
-      <transition name="fade">
-        <div class="center-stage" v-if="gameState.phase !== 'EVALUATION' && gameState.phase !== 'CAMPAIGN_END'">
+        <!-- RIGHT: Decision Engine -->
+        <div class="panel decision-panel">
+          <!-- Background Decor -->
+          <div class="grid-overlay"></div>
           
-          <!-- Enemy (Anomaly) Visualization -->
-          <div class="enemy-container">
-            <div class="hologram-effect">
-              <div class="glitch-layer"></div>
-              <div class="enemy-avatar">
-                <div class="anomaly-scanlines"></div>
-                <div class="anomaly-core"></div>
+          <div class="panel-top-bar">
+             <div class="system-status-text">_ 진단 프로토콜 활성화</div>
+             <div class="crypto-hash">AUTH: 0x9f4a...2b1</div>
+          </div>
+          
+          <div class="question-zone">
+             <div class="decorative-corner top-left"></div>
+             <div class="decorative-corner bottom-right"></div>
+             <h1 class="big-question">
+                {{ currentDiagnosticQuestion.question }}
+             </h1>
+          </div>
+
+          <div class="options-list">
+             <button 
+               v-for="(opt, idx) in currentDiagnosticQuestion.options" 
+               :key="idx"
+               class="option-card"
+               @click="handleDiagnosticSubmit(idx)"
+             >
+                <div class="opt-index">0{{ idx + 1 }}</div>
+                <div class="opt-content">
+                    <div class="opt-main">{{ opt.text }}</div>
+                    <div class="opt-desc" v-if="opt.bullets && opt.bullets.length > 0">
+                        {{ opt.bullets[0] }}
+                    </div>
+                </div>
+                <div class="opt-arrow">→</div>
+             </button>
+          </div>
+
+           <!-- Expanded Footer: System Log -->
+          <div class="tactical-console">
+             <div class="console-header">/// 시스템 이벤트 로그 ///</div>
+             <div class="console-body">
+                <div class="log-line"><span class="t-time">10:42:01</span> <span class="t-warn">[경고]</span> 7번 구역에서 인지 부조화 감지됨.</div>
+                <div class="log-line"><span class="t-time">10:42:05</span> <span class="t-info">[정보]</span> 아키텍트의 개입을 대기 중...</div>
+                <div class="log-line active-line"><span class="t-time">10:42:09</span> <span class="t-ready">>> 의사결정 입력 대기 중_</span><span class="cursor-blink">|</span></div>
+             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASE: LOGIC DESIGN (Phase 3) - REFINED LAYOUT -->
+      <section v-if="gameState.phase === 'PSEUDO_WRITE'" class="combat-grid">
+          <!-- LEFT: Standard Entity Card (Reusing Phase 1/2 Size) -->
+          <div class="panel entity-card">
+             <div class="entity-header">
+                <span class="entity-label">목표: 전략 수립</span>
+                <span class="entity-status">입력 대기 중</span>
+             </div>
+             
+             <!-- 1. Visual Frame (Same size as Phase 1/2) -->
+             <div class="visual-frame">
+                <img src="/assets/characters/coduck_sad.png" class="coduck-portrait" />
+                <div class="scan-overlay"></div>
+                <div class="disconnect-tag">! 연결 끊김 !</div>
+             </div>
+
+             <!-- 2. Hint Bubble (Appears below character if idle) -->
+             <transition name="fade-slide">
+                <div v-if="gameState.showHint" class="coduck-speech-bubble">
+                    <div class="bubble-arrow"></div>
+                    <div class="hint-content">
+                        <span class="h-icon">💡</span>
+                        <p class="h-text">
+                            "아키텍트님...<br>
+                            <span class="h-highlight">기준 정의 → 생성 시점 → 적용 순서</span><br>
+                            이 순서로 생각을 정리해보세요!"
+                        </p>
+                    </div>
+                </div>
+             </transition>
+
+             <!-- 3. Mission Box (The 'Problem' below the visual) -->
+             <div class="mission-problem-box">
+                <h3 class="mp-title">미션 목표: 전략 구현</h3>
+                <div class="mp-content">
+                    <div class="selected-strat-tag">
+                        {{ gameState.selectedStrategyLabel || "전략이 선택되지 않았습니다." }}
+                    </div>
+                    <p class="mp-desc">
+                        위 전략을 수행하기 위한 논리적 설계 과정을<br>
+                        오른쪽 에디터에 단계별로 서술하십시오.
+                    </p>
+                </div>
+             </div>
+          </div>
+          
+          <!-- RIGHT: Decision Panel with Monaco-Style Editor -->
+          <div class="panel decision-panel">
+             <div class="panel-header-row">
+                 <span class="p-title-small">로직 시퀀스 에디터</span>
+                 <span class="p-sub-small">자연어 처리 모듈</span>
+             </div>
+
+             <div class="monaco-wrapper">
+                <!-- Fake Line Numbers -->
+                <div class="line-numbers">
+                    <span v-for="n in 15" :key="n">{{ n }}</span>
+                </div>
+                <!-- Textarea styled as Code Editor -->
+                <textarea 
+                    :value="gameState.phase3Reasoning"
+                    @input="handlePseudoInput"
+                    class="monaco-textarea"
+                    placeholder="// 여기에 사고 과정을 단계별로 작성하세요...
+// 1. 기준 정의: ...
+// 2. 생성 시점: ...
+// 3. 적용 순서: ..."
+                    spellcheck="false"
+                ></textarea>
+             </div>
+
+             <div class="editor-action-bar">
+                <button class="btn-execute-large" @click="submitPseudo">
+                    <span class="btn-text">로직 확정</span>
+                    <span class="btn-icon">→</span>
+                </button>
+             </div>
+          </div>
+      </section>
+
+      <!-- PHASE: IMPLEMENTATION BLUEPRINT (Phase 4) -->
+      <section v-if="gameState.phase === 'PYTHON_FILL'" class="combat-grid">
+         <!-- LEFT: Entity Card -->
+         <div class="panel entity-card">
+              <div class="entity-header">
+                  <span class="entity-label">개체명: 코덕</span>
+                  <span class="entity-status">모니터링 중</span>
               </div>
+              <div class="visual-frame">
+                  <img src="/assets/characters/coduck_sad.png" class="coduck-portrait" />
+                  <div class="scan-overlay"></div>
+                  <div class="disconnect-tag">! 동기화됨 !</div>
+              </div>
+              <div class="dialogue-box">
+                  <span class="speaker">Coduck</span>
+                  <p class="dialogue-text">"{{ gameState.coduckMessage }}"</p>
+              </div>
+         </div>
+
+         <!-- RIGHT: Implementation Panel -->
+         <div class="panel implementation-panel">
+            <div class="panel-header-row">
+                <span class="p-title">구현 (IMPLEMENTATION)</span>
+                <span class="p-sub">참조: 3단계 로직</span>
             </div>
-            <div class="enemy-meta">
-              <span class="threat-level">THREAT LEVEL: HIGH</span>
-              <h2 class="target-name">{{ enemyThreat.name }}</h2>
-              <p class="target-desc">{{ enemyThreat.description }}</p>
+            
+            <div class="split-view">
+                <!-- Column 1: Commented Logic (Guide) -->
+                <div class="logic-viewer">
+                    <div class="viewer-header">/// 로직 추적 ///</div>
+                    <div class="commented-content">
+                        <div v-for="(line, i) in commentedLogicLines" :key="i" class="code-line comment-style">{{ line }}</div>
+                    </div>
+                </div>
+
+                <!-- Column 2: Code Editor -->
+                <div class="code-editor-area">
+                    <textarea 
+                        class="code-editor-monaco-style" 
+                        v-model="gameState.userCode" 
+                        spellcheck="false"
+                        placeholder="코드를 작성하거나 모듈을 드래그하세요..."
+                    ></textarea>
+                </div>
+
+                <!-- Column 3: Snippets (Draggable Modules) -->
+                <div class="modules-sidebar">
+                    <div class="phase-header-green-small">모듈 (MODULES)</div>
+                    <div class="snippet-list-scroll">
+                        <div 
+                            v-for="(snip, idx) in pythonSnippets" 
+                            :key="idx" 
+                            class="snippet-block" 
+                            draggable="true"
+                            @dragstart="handleDragStart($event, snip.code)"
+                            @click="insertSnippet(snip.code)"
+                        >
+                            <span class="s-icon">::</span>
+                            <span class="s-label">{{ snip.label }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
 
-          <!-- Interaction Zone -->
-          <div class="interaction-zone">
-            <!-- Phase 1 & 2: Diagnostic Choice -->
-             <div v-if="['DIAGNOSTIC_1', 'DIAGNOSTIC_2'].includes(gameState.phase)" class="choice-grid">
-               <template v-if="gameState.phase === 'DIAGNOSTIC_1'">
-                  <div class="question-card">
-                    <h3>{{ diagnosticQuestion1.question }}</h3>
-                  </div>
-                  <button 
-                    v-for="(opt, idx) in diagnosticQuestion1.options" 
-                    :key="idx" 
-                    class="option-card"
-                    @click="submitDiagnostic1(idx)"
-                  >
-                    <span class="opt-text">{{ opt.text }}</span>
-                    <ul class="opt-bullets">
-                      <li v-for="(b, bIdx) in opt.bullets" :key="bIdx">{{ b }}</li>
-                    </ul>
-                  </button>
-               </template>
-               <template v-else>
-                  <div class="question-card">
-                    <h3>{{ diagnosticQuestion2.question }}</h3>
-                  </div>
-                  <button 
-                    v-for="(opt, idx) in diagnosticQuestion2.options" 
-                    :key="idx" 
-                    class="option-card"
-                    @click="submitDiagnostic2(idx)"
-                  >
-                    <span class="opt-text">{{ opt.text }}</span>
-                    <ul class="opt-bullets">
-                      <li v-for="(b, bIdx) in opt.bullets" :key="bIdx">{{ b }}</li>
-                    </ul>
-                  </button>
-               </template>
-             </div>
-
-             <!-- Phase 3: Pseudo Write -->
-             <div v-if="gameState.phase === 'PSEUDO_WRITE'" class="pseudo-editor">
-               <div class="editor-header">
-                 <span>STRATEGY LOG (Step-by-Step)</span>
-               </div>
-               <textarea 
-                  class="terminal-input" 
-                  placeholder="시스템을 복구할 논리적 단계를 서술하십시오... (예: 1. 데이터 로드 -> 2. 결측치 확인...)"
-                  :value="gameState.phase3Reasoning"
-                  @input="handlePseudoInput"
-               ></textarea>
-               <div class="editor-footer">
-                  <div class="hint-box" :class="{ visible: gameState.showHint }">
-                    <span class="hint-icon">💡</span>
-                    <span class="hint-text">힌트: 데이터의 기준(Scale)을 정할 때, 미래의 데이터(Test)를 미리 보면 안 됩니다.</span>
-                  </div>
-                  <button class="btn-primary" @click="submitPseudo">전송 (TRANSMIT)</button>
-               </div>
-             </div>
-
-             <!-- Phase 4: Python Fill -->
-             <div v-if="gameState.phase === 'PYTHON_FILL'" class="code-implementation">
-               <div class="ide-container">
-                 <div class="file-tab">restoration_script.py</div>
-                 <vue-monaco-editor
-                    v-model:value="gameState.userCode"
-                    theme="vs-dark"
-                    language="python"
-                    :options="{ 
-                      minimap: { enabled: false }, 
-                      fontSize: 14, 
-                      lineNumbers: 'on',
-                      roundedSelection: false,
-                      scrollBeyondLastLine: false,
-                      readOnly: false,
-                      automaticLayout: true
-                    }"
-                    class="monaco-editor-instance"
-                 />
-                 
-               </div>
-               <div class="snippet-sidebar">
-                 <h4>AVAILABLE MODULES</h4>
-                 <div class="snippet-list">
-                   <button 
-                      v-for="(snip, idx) in pythonSnippets" 
-                      :key="idx" 
-                      class="snippet-btn"
-                      @click="insertSnippet(snip.code)"
-                   >
-                     <span class="code-preview">{{ snip.code }}</span>
-                     <span class="code-label">{{ snip.label }}</span>
-                   </button>
+            <!-- Bottom Action Bar -->
+            <div class="action-bar-bottom">
+                 <div class="error-console" v-if="gameState.feedbackMessage">
+                      <span class="bad-signal">시스템 경고 >></span> {{ gameState.feedbackMessage }}
                  </div>
-                 <button class="btn-compile" @click="submitPythonFill">
-                   <span>⚡ COMPILE & DEPLOY</span>
-                 </button>
-               </div>
-             </div>
+                 <div v-else style="flex:1"></div>
 
-             <!-- Phase 5: Deep Quiz -->
-             <div v-if="gameState.phase === 'DEEP_QUIZ'" class="quiz-interface">
-               <div class="quiz-question">
-                 <h3>{{ deepQuizQuestion.question }}</h3>
-               </div>
-               <div class="quiz-options">
-                 <button 
-                    v-for="(opt, idx) in deepQuizQuestion.options" 
-                    :key="idx"
-                    class="quiz-btn"
-                    @click="submitDeepQuiz(idx)"
-                 >
-                   {{ opt.text }}
-                 </button>
-               </div>
-             </div>
+                 <div class="btn-group">
+                      <button class="btn-reset" @click="initPhase4Scaffolding">초기화</button>
+                      <button class="btn-execute" @click="submitPythonFill">코드 배포</button>
+                 </div>
+            </div>
+         </div>
+      </section>
 
-          </div>
-        </div>
-      </transition>
+      <!-- PHASE: DEEP DIVE (Phase 5) -->
+      <section v-if="gameState.phase === 'DEEP_QUIZ'" class="combat-grid centered-layout">
+         <div class="panel center-panel">
+           <div class="phase-header-gold">최종 검증</div>
+           <div class="panel-content centered-content">
+             <h1 class="big-question-center">
+                {{ deepQuizQuestion.question }}
+             </h1>
+             
+             <div class="options-list options-wide">
+                <button 
+                  v-for="(opt, idx) in deepQuizQuestion.options" 
+                  :key="idx"
+                  class="option-card gold-hover"
+                  @click="submitDeepQuiz(idx)"
+                >
+                   <div class="opt-index gold-idx">0{{ idx + 1 }}</div>
+                   <div class="opt-content">
+                        <div class="opt-main">{{ opt.text }}</div>
+                   </div>
+                </button>
+             </div>
+           </div>
+         </div>
+      </section>
       
-      <!-- Feedback Toast -->
-      <transition name="pop">
-        <div v-if="gameState.feedbackMessage && gameState.phase !== 'EVALUATION'" class="feedback-toast" :class="{ error: gameState.feedbackMessage.includes('오류') || gameState.feedbackMessage.includes('불일치') }">
-          <span class="toast-icon">{{ gameState.feedbackMessage.includes('오류') ? '⚠️' : '✅' }}</span>
-          <span class="toast-msg">{{ gameState.feedbackMessage }}</span>
-        </div>
-      </transition>
+      <!-- PHASE: EVALUATION (Refined with 2nd/3rd Reference Style) -->
+      <section v-if="gameState.phase === 'EVALUATION'" class="panel evaluation-view">
+         <div class="report-card">
+            <!-- Header Stamp -->
+            <div class="report-header">
+                <span class="report-title">시스템 복구 리포트</span>
+                <div class="stamp-box" :class="{ 'stamp-success': evaluationResult.finalScore >= 50, 'stamp-fail': evaluationResult.finalScore < 50 }">
+                    {{ evaluationResult.verdict }}
+                </div>
+            </div>
+
+            <div class="report-meta">
+                <span>날짜: 2026.02.05</span>
+                <span>담당 AI: CODUCK_AI</span>
+                <span>미션: 데이터 파이프라인 복구</span>
+            </div>
+
+            <!-- Score Circle -->
+            <div class="score-section">
+                <div class="score-circle">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg"
+                            d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path class="circle"
+                            :stroke-dasharray="evaluationResult.finalScore + ', 100'"
+                            d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <text x="18" y="20.35" class="percentage">{{ evaluationResult.finalScore }}</text>
+                    </svg>
+                </div>
+                <div class="score-label">아키텍트 등급: {{ evaluationResult.scoreTier }}</div>
+            </div>
+
+            <!-- Evaluation Areas (Accordion) -->
+            <div class="evaluation-areas">
+                <div class="area-header">평가 영역 (클릭하여 상세 보기)</div>
+                <div class="area-list">
+                    <div 
+                        v-for="(detail, idx) in evaluationResult.details" 
+                        :key="idx" 
+                        class="area-item"
+                        :class="{ 'area-expanded': activeDetail === idx }"
+                        @click="toggleDetail(idx)"
+                    >
+                        <div class="area-summary">
+                            <span class="area-name">{{ detail.category }}</span>
+                            <span class="area-score">{{ detail.score }} / 100</span>
+                            <span class="area-arrow">▼</span>
+                        </div>
+                        <div class="area-detail-content" v-if="activeDetail === idx">
+                             <div class="detail-row">
+                                 <span class="detail-label">분석 결과</span>
+                                 <p class="detail-text">"{{ detail.comment }}"</p>
+                             </div>
+                             <div class="detail-row">
+                                 <span class="detail-label">개선 제안</span>
+                                 <ul class="detail-list">
+                                     <li v-for="(imp, i) in detail.improvements" :key="i">- {{ imp }}</li>
+                                 </ul>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Box (Bottom) -->
+            <div class="analysis-box">
+                <div class="coduck-avatar-small">
+                    <img src="/assets/characters/coduck_sad.png" />
+                </div>
+                <div class="analysis-text-wrapper">
+                    <p class="ai-comment">"{{ evaluationResult.aiAnalysis }}"</p>
+                    <p class="senior-tip">조언: {{ evaluationResult.seniorAdvice }}</p>
+                </div>
+            </div>
+
+            <button class="btn-next-report" @click="exitToHub">징검다리로 돌아가기</button>
+         </div>
+      </section>
+
+      <!-- PHASE: DEFEAT -->
+      <section v-if="gameState.phase === 'DEFEAT'" class="panel defeat-view">
+            <h1 class="glitch-text">시스템 실패</h1>
+            <p>치명적인 무결성 손실</p>
+            <button class="btn-retry" @click="restartMission">시스템 재부팅</button>
+      </section>
+
+       <!-- PHASE: CAMPAIGN END -->
+      <section v-if="gameState.phase === 'CAMPAIGN_END'" class="panel victory-view">
+            <h1 class="gold-text">모든 섹터 확보됨</h1>
+            <p>최종 점수: {{ gameState.score }}</p>
+      </section>
 
     </main>
-
-    <!-- Chat Overlay: Coduck -->
-    <div class="coduck-comms">
-      <div class="comms-avatar">
-        <div class="avatar-img"></div>
-        <div class="signal-ring"></div>
-      </div>
-      <div class="comms-box">
-        <div class="comms-header">CODUCK.AI [CONNECTED]</div>
-        <div class="comms-text type-writer">{{ gameState.coduckMessage }}</div>
-      </div>
+    
+    <!-- FEEDBACK TOAST -->
+    <div v-if="gameState.feedbackMessage && gameState.phase !== 'PYTHON_FILL' && gameState.phase !== 'EVALUATION'" class="feedback-toast">
+      <span class="toast-icon">!</span> {{ gameState.feedbackMessage }}
     </div>
+
   </div>
 </template>
 
@@ -268,8 +387,6 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
 import { useCoduckWars } from './CoduckWarsLogic.js';
-// Monaco Editor for Python
-import { Editor as VueMonacoEditor } from '@guolao/vue-monaco-editor';
 
 const router = useRouter();
 const gameStore = useGameStore();
@@ -278,12 +395,10 @@ const {
     gameState, 
     diagnosticQuestion1, 
     diagnosticQuestion2, 
-    deepQuizQuestion, 
+    deepQuizQuestion,
     pythonSnippets,
     evaluationResult,
-    // Actions
-    startGame, 
-    submitDiagnostic1, 
+    submitDiagnostic1,
     submitDiagnostic2,
     submitPseudo,
     submitPythonFill,
@@ -291,14 +406,35 @@ const {
     insertSnippet,
     nextMission,
     restartMission,
-    handlePseudoInput,
-    enemyThreat
+    initPhase4Scaffolding,
+    handlePseudoInput
 } = useCoduckWars();
 
-// Start game on mount
-startGame();
+// Helper to switch questions based on diagnostic phase
+const currentDiagnosticQuestion = computed(() => {
+    if (gameState.phase === 'DIAGNOSTIC_1') return diagnosticQuestion1.value;
+    if (gameState.phase === 'DIAGNOSTIC_2') return diagnosticQuestion2.value;
+    return { question: "", options: [] };
+});
 
-const emit = defineEmits(['close', 'complete']);
+const handleDiagnosticSubmit = (idx) => {
+    if (gameState.phase === 'DIAGNOSTIC_1') submitDiagnostic1(idx);
+    else submitDiagnostic2(idx);
+};
+
+// --- NEW HELPER FOR PHASE 4 ---
+const commentedLogicLines = computed(() => {
+    if (!gameState.phase3Reasoning) return ["# No logic trace found."];
+    // Split by newlines and add Python comment hash
+    return gameState.phase3Reasoning.split('\n').map(line => `# ${line}`);
+});
+
+const handleDragStart = (evt, code) => {
+    if (evt.dataTransfer) {
+        evt.dataTransfer.setData('text/plain', code);
+        evt.dataTransfer.effectAllowed = 'copy';
+    }
+};
 
 const exitToHub = () => {
     // Stage cleared logic
@@ -311,749 +447,671 @@ const exitToHub = () => {
     emit('close');
 };
 
+// Evaluation Detail Toggle
+const activeDetail = ref(null);
+const toggleDetail = (idx) => {
+    activeDetail.value = activeDetail.value === idx ? null : idx;
+};
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
+/* GLOBAL CONTAINER */
 .coduck-wars-container {
-  width: 100%;
+  width: 100vw;
   height: 100vh;
-  background: #000508;
-  color: #e0f2fe;
-  font-family: 'Share Tech Mono', monospace;
+  background-color: #050505; /* Pitch Black */
+  color: #E5E7EB;
+  font-family: 'Inter', sans-serif;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
 
-/* --- Header --- */
-.header {
-  height: 60px;
-  background: rgba(2, 6, 23, 0.95);
-  border-bottom: 1px solid #0ea5e9;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
-  z-index: 50;
-  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.2);
-}
-
-.brand {
-  display: flex;
-  flex-direction: column;
-}
-
-.chapter-text {
-  font-size: 0.7rem;
-  color: #0ea5e9;
-  letter-spacing: 0.2em;
-}
-
-.logo-text {
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 900;
-  font-size: 1.5rem;
-  background: linear-gradient(90deg, #fff, #38bdf8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-  letter-spacing: 0.1em;
-}
-
-.stats-bar {
-  display: flex;
-  gap: 2rem;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.stat-item.health-bar {
-    width: 200px;
-}
-
-.hp-track {
-    width: 100%;
-    height: 8px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    margin-top: 4px;
-}
-
-.hp-fill {
-    height: 100%;
-    background: #0ea5e9;
-    box-shadow: 0 0 10px #0ea5e9;
-    transition: width 0.3s ease;
-}
-
-.label {
-    font-size: 0.7rem;
-    color: #64748b;
-}
-
-.value {
-    font-size: 1.2rem;
-    color: #38bdf8;
-    font-weight: bold;
-}
-
-/* --- Main Battle Ground --- */
-.battle-ground {
-    flex: 1;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: radial-gradient(circle at center, #0c4a6e22 0%, #000000 70%);
-}
-
-/* --- Enemy Hologram --- */
-.enemy-container {
+/* BACKGROUND WATERMARK */
+.bg-watermark {
     position: absolute;
-    top: 5%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    font-size: 15rem; /* Huge */
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.03); /* Subtle */
+    white-space: nowrap;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+}
+.scan-line {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 5px;
+  background: rgba(74, 222, 128, 0.05);
+  animation: scan 4s linear infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+@keyframes scan {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+
+/* HEADER - TERMINAL STYLE */
+.war-room-header {
+  height: 80px; /* Slightly taller */
+  background: transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Center vertically */
+  padding: 0 40px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  z-index: 100;
+  position: relative;
+}
+.chapter-info { display: flex; flex-direction: column; }
+.chapter-title {
+    color: #4ade80; /* Neon Green */
+    font-weight: 900;
+    font-size: 1.4rem;
+    font-style: italic;
+    letter-spacing: 1px;
+}
+.sub-info {
+    color: #6b7280;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+.integrity-monitor {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    z-index: 10;
+    gap: 20px; /* Wider gap */
+    font-family: 'JetBrains Mono', monospace;
 }
-
-.hologram-effect {
-    width: 200px;
-    height: 200px;
-    position: relative;
-    margin-bottom: 1rem;
+.integrity-label { color: #4ade80; font-size: 0.9rem; font-weight: bold; }
+.hp-bar-bg {
+    width: 250px; /* Wider bar */
+    height: 10px;
+    background: #1f2937;
+    border-radius: 4px;
+    overflow: hidden;
 }
+.hp-bar-fill { height: 100%; background: #4ade80; transition: width 0.3s; }
+.integrity-val { color: #fff; font-weight: bold; font-size: 1.1rem; }
 
-.enemy-avatar {
+/* LAYOUT GRID */
+.viewport { flex: 1; position: relative; z-index: 50; padding: 0; display: flex; }
+.combat-grid {
+    display: flex;
     width: 100%;
     height: 100%;
-    background: rgba(220, 38, 38, 0.1);
-    border: 1px solid #ef4444;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 0 30px rgba(220, 38, 38, 0.2);
-    animation: pulse 4s infinite;
 }
 
-.anomaly-core {
-    width: 60%;
-    height: 60%;
-    background: #ef4444;
-    border-radius: 50%;
-    filter: blur(20px);
-    opacity: 0.6;
-}
-
-.enemy-meta {
-    text-align: center;
-    background: rgba(0,0,0,0.7);
-    padding: 1rem;
-    border: 1px solid #7f1d1d;
-    border-radius: 8px;
-}
-
-.threat-level {
-    color: #ef4444;
-    font-size: 0.8rem;
-    font-weight: bold;
-    animation: blink 2s infinite;
-}
-
-.target-name {
-    margin: 5px 0;
-    font-family: 'Orbitron';
-    color: #fff;
-    font-size: 1.5rem;
-}
-
-.target-desc {
-    color: #9ca3af;
-    font-size: 0.9rem;
-    max-width: 300px;
-}
-
-/* --- Interaction Zone --- */
-.interaction-zone {
-    width: 80%;
-    max-width: 1000px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 2rem;
-    z-index: 20;
-    margin-top: 250px; /* Space for hologram */
-    box-shadow: 0 10px 50px rgba(0,0,0,0.8);
-    backdrop-filter: blur(10px);
-}
-
-/* Choice Grid (Diagnostics) */
-.choice-grid {
+/* LEFT PANEL - ENTITY CARD */
+.entity-card {
+    width: 500px; /* Wider Left Panel */
+    background: #0a0a0a;
+    border-right: 1px solid #333;
+    padding: 50px;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+}
+.entity-header {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    color: #fbbf24; /* Amber Warning */
+    margin-bottom: 30px;
+    border-bottom: 2px solid #fbbf24;
+    padding-bottom: 10px;
+}
+.visual-frame {
+    position: relative;
+    border: 2px solid #333;
+    flex: 1; /* Fill vertical space */
+    max-height: 500px;
+    background: #000;
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+.coduck-portrait { width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) sepia(20%) hue-rotate(50deg) saturate(300%) contrast(1.2); opacity: 0.9; }
+.scan-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.2),
+        rgba(0, 0, 0, 0.2) 2px,
+        transparent 2px,
+        transparent 4px
+    );
+    pointer-events: none;
+}
+.disconnect-tag {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #ef4444; /* Red */
+    color: #000;
+    font-weight: 900;
+    padding: 10px;
+    text-align: center;
+    font-size: 1rem;
+    letter-spacing: 2px;
+}
+.dialogue-box {
+    background: #111;
+    border: 1px solid #333;
+    padding: 25px;
+    border-left: 4px solid #3b82f6; /* Blue Accent */
+}
+.speaker { color: #3b82f6; font-size: 0.9rem; font-weight: bold; display: block; margin-bottom: 10px; text-transform: uppercase; }
+.dialogue-text { color: #e5e7eb; font-style: italic; line-height: 1.6; font-size: 1.1rem; }
+
+
+/* RIGHT PANEL - DECISION ENGINE */
+.decision-panel {
+    flex: 1;
+    padding: 60px 100px; /* Big padding */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center Vertically */
+    background: rgba(10, 10, 10, 0.3); /* Slight tint */
+}
+.system-status-text {
+    color: #6b7280;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+}
+.big-question {
+    font-size: 3.5rem; /* Massive Font */
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1.2;
+    color: #fff;
+    margin-bottom: 60px;
+    text-shadow: 0 0 50px rgba(0,0,0,0.8); /* Shadow for readability */
 }
 
-.question-card h3 {
-    text-align: center;
-    color: #e2e8f0;
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
+/* Stretched Options to Fill Space */
+.options-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 30px; /* Big Gap */
+    width: 100%; 
 }
 
 .option-card {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid #334155;
-    padding: 1.5rem;
-    text-align: left;
+    background: rgba(20, 20, 20, 0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: stretch;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 140px; /* Taller Cards */
+    text-align: left;
+    padding: 0;
+    position: relative;
+    z-index: 60;
+    pointer-events: auto;
+    overflow: hidden;
 }
-
 .option-card:hover {
-    background: rgba(56, 189, 248, 0.1);
-    border-color: #38bdf8;
-    transform: translateX(10px);
+    background: rgba(74, 222, 128, 0.05);
+    border-color: #4ade80;
+    transform: translateX(10px); /* Slide effect */
 }
-
-.opt-text {
-    display: block;
-    font-size: 1.2rem;
-    color: #38bdf8;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
+.opt-index {
+    width: 100px;
+    background: #1f2937; /* Default Dark Grey */
+    color: #9ca3af;
+    font-weight: 900;
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
 }
-
-.opt-bullets {
-    margin: 0;
-    padding-left: 1.2rem;
-    color: #94a3b8;
-    font-size: 0.9rem;
+.option-card:hover .opt-index {
+    background: #4ade80; /* Neon Green on Hover */
+    color: #000;
 }
+.opt-content {
+    flex: 1;
+    padding: 0 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.opt-main { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.5px; }
+.opt-desc { color: #9ca3af; font-size: 1rem; font-family: 'JetBrains Mono', monospace; }
+.opt-arrow {
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #4ade80;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    transform: translateX(-20px);
+}
+.option-card:hover .opt-arrow { opacity: 1; transform: translateX(0); }
 
-/* Pseudo Editor */
-.editor-header {
-    background: #0f172a;
-    padding: 0.5rem 1rem;
+.terminal-footer { margin-top: auto; font-family: 'JetBrains Mono', monospace; color: #4b5563; font-size: 0.9rem; padding-top: 40px; }
+
+
+/* PHASE 3 REVISED CSS */
+.mission-problem-box {
+    margin-top: 20px;
+    background: #111;
+    border: 1px solid #333;
+    border-left: 4px solid #4ade80;
+    padding: 20px;
+}
+.mp-title { color: #6b7280; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; }
+.selected-strat-tag { 
+    color: #4ade80; 
+    font-weight: 900; 
+    font-size: 1.4rem; /* Larger font for visibility */
+    margin-bottom: 15px; 
+    line-height: 1.3;
     border-bottom: 1px solid #333;
-    color: #64748b;
-    font-size: 0.8rem;
+    padding-bottom: 15px;
 }
+.mp-desc { color: #d1d5db; font-size: 1rem; line-height: 1.6; }
 
-.terminal-input {
-    width: 100%;
-    height: 150px;
-    background: #020617;
+/* HINT BUBBLE */
+.coduck-speech-bubble {
+    margin-top: 15px;
+    background: #050505; /* Dark background */
+    border: 2px solid #4ade80; /* Neon Green Border */
+    color: #fff; /* High contrast text */
+    padding: 20px;
+    border-radius: 8px;
+    position: relative;
+    font-weight: bold;
+    animation: fadeIn 0.5s;
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.15); /* Green Glow */
+}
+.coduck-speech-bubble::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 40px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #4ade80;
+}
+.coduck-speech-bubble::after {
+    content: '';
+    position: absolute;
+    top: -9px;
+    left: 40px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #050505;
+}
+.hint-content { display: flex; align-items: flex-start; gap: 10px; }
+.h-icon { font-size: 1.5rem; }
+.h-text { font-size: 1rem; line-height: 1.4; }
+.h-highlight { color: #4ade80; font-weight: 900; } /* Text Highlight instead of background */
+
+/* MONACO STYLE EDITOR WRAPPER */
+.monaco-wrapper {
+    flex: 1;
+    background: #1e1e1e; /* VS Code Logic Background */
+    border: 1px solid #333;
+    display: flex;
+    position: relative;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.line-numbers {
+    width: 50px; /* Slightly wider */
+    background: #1e1e1e;
+    border-right: 1px solid #333;
+    color: #858585;
+    text-align: right;
+    padding: 20px 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    user-select: none;
+    display: flex; /* Flex column for vertical numbers */
+    flex-direction: column;
+}
+.monaco-textarea {
+    flex: 1;
+    background: transparent;
     border: none;
-    color: #22d3ee;
-    padding: 1rem;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 1.1rem;
+    color: #d4d4d4;
+    padding: 20px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
     resize: none;
     outline: none;
+    white-space: pre;
 }
 
-.editor-footer {
+.editor-action-bar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-}
-
-.hint-box {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #451a03;
-    color: #fbbf24;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.5s;
-}
-
-.hint-box.visible {
-    opacity: 1;
-}
-
-/* Python Fill */
-.code-implementation {
-    display: flex;
-    height: 400px;
-    border: 1px solid #334155;
-}
-
-.ide-container {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-}
-
-.file-tab {
-    background: #1e293b;
-    padding: 0.5rem 1rem;
-    color: #94a3b8;
-    font-size: 0.8rem;
-}
-
-.monaco-editor-instance {
-    flex: 1;
-}
-
-.snippet-sidebar {
-    flex: 1;
-    background: #0f172a;
-    border-left: 1px solid #334155;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.snippet-sidebar h4 {
-    margin: 0 0 1rem 0;
-    color: #64748b;
-    font-size: 0.9rem;
-}
-
-.snippet-btn {
-    background: #1e293b;
-    border: 1px solid #334155;
-    padding: 0.8rem;
-    text-align: left;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-}
-
-.snippet-btn:hover {
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-}
-
-.code-preview {
-    font-family: 'Consolas', monospace;
-    color: #a5f3fc;
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-}
-
-.code-label {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.btn-compile {
-    margin-top: auto;
-    padding: 1rem;
-    background: #16a34a;
-    color: white;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
-    font-family: 'Orbitron';
-}
-
-.btn-compile:hover {
-    background: #15803d;
-}
-
-/* Quiz */
-.quiz-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 2rem;
-}
-
-.quiz-btn {
-    padding: 2rem;
-    background: #1e293b;
-    border: 1px solid #475569;
-    color: #e2e8f0;
-    font-size: 1.1rem;
-    cursor: pointer;
-}
-
-.quiz-btn:hover {
-    background: #334155;
-    border-color: #94a3b8;
+    justify-content: flex-end;
 }
 
 
-/* --- Feedback & Comms --- */
-.feedback-toast {
-  position: absolute;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(22, 163, 74, 0.9);
-  padding: 1rem 2rem;
-  border-radius: 50px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-}
+/* PHASE 4, 5, etc preserved */
+.code-panel { flex:2; background:#000; display:flex; flex-direction:column; padding:30px; border-right:1px solid #333; }
+.code-editor-monaco-style { flex:1; background:#080808; color:#d4d4d4; border:none; padding:20px; font-family:'JetBrains Mono'; font-size:14px; resize:none; outline:none; z-index:60; position:relative; }
+.error-console { background:#300; color:#f88; padding:10px; font-family:'JetBrains Mono'; margin-top:10px; }
+.snippet-panel { width:350px; background:#111; padding:30px; display:flex; flex-direction:column; }
+.snippet-list { flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto; margin-bottom:20px; }
+.snippet-btn { background:#222; border:1px solid #333; color:#eee; padding:15px; text-align:left; cursor:pointer; display:flex; align-items:center; gap:10px; z-index:60; position:relative; }
+.snippet-btn:hover { border-color:#4ade80; color:#4ade80; }
+.command-box { display:flex; flex-direction:column; gap:10px; }
+.btn-reset { background:transparent; border:1px solid #666; color:#666; padding:10px; cursor:pointer; z-index:60; position:relative; }
 
-.feedback-toast.error {
-    background: rgba(220, 38, 38, 0.9);
-}
+/* PHASE 5 & RESULT */
+.centered-layout { justify-content:center; align-items:center; height:100vh; }
+.center-panel { width:100%; max-width:1000px; text-align:center; } /* Wider */
+.big-question-center { font-size:3rem; font-weight:900; margin-bottom:60px; color:#fff; }
+.gold-hover:hover { background:rgba(251, 191, 36, 0.1); border-color:#fbbf24; }
+.gold-idx { background:#fbbf24; color: black; }
+.phase-header-gold { color:#fbbf24; font-weight:900; font-size:1.4rem; margin-bottom:40px; text-align:center; display:block;}
+.options-wide { gap: 20px; display:flex; flex-direction:column; } /* Ensure gap */
 
-.toast-msg {
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
 
-.coduck-comms {
+.evaluation-view { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    width: 100%;
+    height: 100%;
     position: absolute;
-    bottom: 2rem;
-    left: 2rem;
-    display: flex;
-    align-items: flex-end;
-    gap: 1rem;
-    z-index: 50;
+    top: 0;
+    left: 0;
+    background: rgba(0,0,0,0.85); 
+    z-index: 80; 
+    backdrop-filter: blur(10px);
+    overflow-y: auto; /* Enable vertical scrolling */
 }
-
-.comms-avatar {
-    width: 60px;
-    height: 60px;
-    background: #000;
-    border: 2px solid #0ea5e9;
-    border-radius: 50%;
+.report-card { 
+    width: 650px; 
+    background: #080808; 
+    border: 1px solid #333; 
+    border-radius: 12px;
+    padding: 40px; 
+    text-align: center; 
+    box-shadow: 0 0 50px rgba(0,0,0,0.8);
     position: relative;
     overflow: hidden;
 }
-
-.avatar-img {
-    width: 100%;
-    height: 100%;
-    background-image: url('/image/coduck_face.png');
-    background-size: cover;
-}
-
-.comms-box {
-    background: rgba(2, 6, 23, 0.9);
-    border: 1px solid #0ea5e9;
-    padding: 1rem;
-    border-radius: 12px 12px 12px 0;
-    width: 300px;
-}
-
-.comms-header {
-    color: #38bdf8;
-    font-size: 0.7rem;
-    margin-bottom: 0.5rem;
-}
-
-.comms-text {
-    color: #e0f2fe;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-/* --- EVALUATION VIEW --- */
-.evaluation-view {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #000;
-    z-index: 1000;
+/* Report Header */
+.report-header {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow-y: auto; /* Enable scrolling if needed */
-}
-
-.watermark-bg {
-    position: absolute;
-    font-family: 'Orbitron';
-    font-size: 10vw;
-    font-weight: 900;
-    color: rgba(255, 255, 255, 0.03);
-    z-index: 0;
-    transform: rotate(-15deg);
-    pointer-events: none;
-}
-
-.report-card {
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
     position: relative;
-    z-index: 10;
-    width: 90%;
-    max-width: 600px;
-    background: #0c0a09;
-    border: 1px solid #333;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+}
+.report-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 2rem;
+    letter-spacing: 2px;
+    color: #fff;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.stamp-box {
+    border: 3px solid;
+    padding: 5px 15px;
+    font-weight: 900;
+    font-size: 1rem;
+    text-transform: uppercase;
+    transform: rotate(-10deg);
+    opacity: 0.8;
+}
+.stamp-success { color: #4ade80; border-color: #4ade80; box-shadow: 0 0 10px #4ade80; }
+.stamp-fail { color: #ef4444; border-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+.report-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #666;
     display: flex;
     flex-direction: column;
-    padding: 0;
-    margin: 2rem 0; /* Margin for scroll */
+    gap: 5px;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #222;
+    padding-bottom: 20px;
 }
 
-.report-header {
-    background: #1c1917;
-    padding: 1rem 2rem;
-    border-bottom: 2px solid #0ea5e9;
+/* Score Circle */
+.score-section { margin-bottom: 40px; }
+.score-circle {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 15px;
+    position: relative;
+}
+.circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 100%; }
+.circle-bg { fill: none; stroke: #222; stroke-width: 2.5; }
+.circle { fill: none; stroke-width: 2.5; stroke-linecap: round; animation: progress 1s ease-out forwards; stroke: #4ade80; }
+.percentage { fill: #fff; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.8em; text-anchor: middle; dominant-baseline: middle; }
+.score-label { font-weight: bold; color: #4ade80; font-size: 1.1rem; }
+
+@keyframes progress { 0% { stroke-dasharray: 0 100; } }
+
+/* Accordion */
+.evaluation-areas { text-align: left; margin-bottom: 30px; }
+.area-header { color: #888; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 10px; font-weight: bold; text-align: center; }
+.area-list { display: flex; flex-direction: column; gap: 10px; }
+.area-item {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+.area-item:hover { border-color: #4ade80; }
+.area-expanded { border-color: #4ade80; background: #1a1a1a; }
+
+.area-summary {
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+.area-name { font-weight: bold; font-size: 1rem; color: #ddd; }
+.area-score { font-family: 'JetBrains Mono'; color: #4ade80; font-weight: bold; }
+.area-arrow { font-size: 0.8rem; color: #555; transition: transform 0.3s; }
+.area-expanded .area-arrow { transform: rotate(180deg); }
 
-.report-header h2 {
-    color: #0ea5e9;
-    margin: 0;
-    font-family: 'Orbitron';
-    font-size: 1.2rem;
+.area-detail-content {
+    background: #0f1510; /* Very dark green hint */
+    border-top: 1px solid #333;
+    padding: 20px;
+    font-size: 0.9rem;
+    animation: slideDown 0.3s ease-out;
 }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-.date-stamp {
-    color: #57534e;
-    font-size: 0.8rem;
-}
-
-/* Score Section */
-.score-section {
-    padding: 2rem;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    border-bottom: 1px dashed #333;
-}
-
-.score-circle-container {
-    width: 120px;
-    height: 120px;
-    position: relative;
-}
-
-.circular-chart {
-    display: block;
-    margin: 0 auto;
-    max-width: 100%;
-    max-height: 100%;
-}
-
-.circle-bg {
-    fill: none;
-    stroke: #292524;
-    stroke-width: 2.5;
-}
-
-.circle {
-    fill: none;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke: #0ea5e9;
-    animation: progress 1s ease-out forwards;
-}
-
-.percentage {
-    fill: #fff;
-    font-family: 'Orbitron';
-    font-weight: bold;
-    font-size: 0.5em; /* Scaled SVG font size */
-    text-anchor: middle;
-}
-
-.score-label {
-    text-align: center;
-    font-size: 0.7rem;
-    color: #78716c;
-    margin-top: 0.5rem;
-}
-
-.tier-badge {
-    text-align: center;
-}
-
-.tier-label {
-    font-size: 0.8rem;
-    color: #a8a29e;
-    margin-bottom: 0.5rem;
-}
-
-.tier-value {
-    font-family: 'Orbitron';
-    font-size: 1.5rem;
-    font-weight: 900;
-    padding: 0.5rem 1rem;
-    border: 1px solid #444;
-    border-radius: 4px;
-    color: #fff;
-}
-.tier-value.senior-architect { color: #f59e0b; border-color: #f59e0b; }
-.tier-value.junior-architect { color: #38bdf8; border-color: #38bdf8; }
+.detail-row { margin-bottom: 15px; }
+.detail-row:last-child { margin-bottom: 0; }
+.detail-label { display: block; font-size: 0.75rem; color: #4ade80; margin-bottom: 5px; font-weight: bold; letter-spacing: 1px; }
+.detail-text { color: #ccc; line-height: 1.5; }
+.detail-list { list-style: none; padding: 0; margin: 0; color: #aaa; }
 
 /* Analysis Box */
 .analysis-box {
-    margin: 1.5rem;
-    background: #1c1917;
-    border-left: 4px solid #0ea5e9;
-    padding: 1.5rem;
+    background: rgba(74, 222, 128, 0.05);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    border-radius: 8px;
+    padding: 20px;
     display: flex;
-    gap: 1rem;
+    align-items: flex-start;
+    gap: 15px;
+    text-align: left;
+    margin-bottom: 25px;
 }
-
-.box-icon {
-    flex-shrink: 0;
-}
-
-.coduck-avatar-small {
-    width: 40px;
-    height: 40px;
-    background: #000;
-    border-radius: 50%;
-    border: 1px solid #555;
-    background-image: url('/image/coduck_face.png');
-    background-size: cover;
-}
-
-.box-content h3 {
-    margin: 0 0 0.5rem 0;
-    color: #0ea5e9;
-    font-size: 0.9rem;
-}
-
-.box-content p {
-    margin: 0;
-    color: #d6d3d1;
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-/* Breakdown List */
-.breakdown-list {
-    padding: 0 1.5rem 1.5rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.breakdown-item {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid #292524;
-    padding: 1rem;
-}
-
-.item-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.8rem;
-}
-
-.item-title {
-    width: 100px;
-    font-size: 0.9rem;
-    color: #a8a29e;
-    font-weight: bold;
-}
-
-.item-score-bar {
-    flex: 1;
-    height: 6px;
-    background: #292524;
-    border-radius: 3px;
-}
-
-.item-score-fill {
-    height: 100%;
-    background: #0ea5e9;
-    border-radius: 3px;
-}
-
-.item-points {
-    font-family: 'Share Tech Mono';
-    color: #fff;
-}
-
-.item-body {
-    padding-left: 116px; /* Align with text */
-}
-
-.comment {
-    color: #d6d3d1;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.improvements {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    color: #78716c;
-    font-size: 0.85rem;
-}
-
-.report-actions {
-    padding: 1.5rem;
-    border-top: 1px solid #292524;
-    display: flex;
-    gap: 1rem;
-}
-
-.btn-retry, .btn-next-report {
-    flex: 1;
-    padding: 1rem;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    font-family: 'Orbitron';
-    text-transform: uppercase;
-    transition: all 0.2s;
-}
-
-.btn-retry {
-    background: #292524;
-    color: #a8a29e;
-}
-.btn-retry:hover { background: #44403c; }
+.coduck-avatar-small img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #4ade80; object-fit: cover; }
+.analysis-text-wrapper { flex: 1; }
+.ai-comment { font-style: italic; color: #fff; margin-bottom: 8px; font-size: 0.95rem; }
+.senior-tip { font-family: 'JetBrains Mono'; font-size: 0.8rem; color: #4ade80; }
 
 .btn-next-report {
-    background: #0ea5e9;
+    width: 100%;
+    padding: 18px;
+    font-weight: 900;
+    background: #4ade80;
     color: #000;
-}
-.btn-next-report:hover { background: #38bdf8; }
-
-
-/* Transitions */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-.pop-enter-active { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.pop-leave-active { transition: opacity 0.3s; opacity: 0; }
-
-@keyframes popIn {
-    from { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
-    to { opacity: 1; transform: translate(-50%, 0) scale(1); }
-}
-
-.btn-primary {
-    background: #0ea5e9;
-    color: white;
-    padding: 0.8rem 1.5rem;
     border: none;
-    border-radius: 4px;
-    font-weight: bold;
+    border-radius: 6px;
+    font-size: 1rem;
     cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
-.btn-primary:hover { background: #0284c7; }
+.btn-next-report:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+}
 
-/* Animations */
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-@keyframes progress { from { stroke-dasharray: 0, 100; } }
+/* FEEDBACK */
+.feedback-toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #4ade80;
+    border: 2px solid #4ade80;
+    padding: 15px 40px;
+    font-weight: 900;
+    z-index: 200;
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+}
+
+/* --- PYTHON FILL REVISED STYLES --- */
+.implementation-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(10, 10, 10, 0.5);
+    padding: 30px;
+    overflow: hidden;
+}
+.split-view {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+
+/* Logic Viewer (Left Col) */
+.logic-viewer {
+    width: 250px;
+    background: #0d0d0d;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+}
+.viewer-header {
+    background: #222;
+    color: #999;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 8px 12px;
+    letter-spacing: 1px;
+}
+.commented-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #6a9955; /* Comment Green */
+    white-space: pre-wrap;
+}
+
+/* Code Editor (Middle Col) */
+.code-editor-area {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modules Sidebar (Right Col) */
+.modules-sidebar {
+    width: 220px;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+.phase-header-green-small {
+    color: #4ade80;
+    font-weight: 900;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #333;
+}
+.snippet-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.snippet-block {
+    background: #1f1f1f;
+    color: #cecece;
+    padding: 12px;
+    border-radius: 4px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    border: 1px solid #333;
+    transition: all 0.2s;
+}
+.snippet-block:hover {
+    border-color: #4ade80;
+    background: #2a2a2a;
+    transform: translateX(-2px);
+}
+.snippet-block:active {
+    cursor: grabbing;
+}
+.s-icon { color: #555; font-weight: bold; }
+
+/* Bottom Action Bar */
+.action-bar-bottom {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.btn-group { display: flex; gap: 10px; }
 
 </style>
