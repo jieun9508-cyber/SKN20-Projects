@@ -9,7 +9,7 @@ services:
     environment:
       - POSTGRES_DB=mygym
       - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
       - "5433:5432"
 
@@ -20,14 +20,20 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    env_file:
+      - ./.env # 2026-01-26 수정: 루트 .env 사용 명시
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DB_NAME=mygym
-      - DB_USER=myuser
-      - DB_PASSWORD=mypassword
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mygym
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      # [원복] 로컬 DB 의존성 복구
     depends_on:
       - db
 
@@ -41,6 +47,14 @@ services:
       - "5173:5173"
     stdin_open: true
     tty: true
+    env_file:
+      - .env
+    shm_size: '4gb'
+    privileged: true
+    environment:
+      - VITE_API_Target=http://backend:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
 
 volumes:
   postgres_data:

@@ -1,13 +1,13 @@
 <!-- 
 수정일: 2026-01-23
 수정내용: AI 엔지니어들을 위한 'Architecture Playground' 테마의 랜딩 페이지 구현.
-          sports_gym.mp4 배경, 운동하는 오리 GIF 및 플로팅 애니메이션 적용.
+          game_duck.mp4 배경, 운동하는 오리 GIF 및 플로팅 애니메이션 적용.
 -->
 <template>
-  <div class="landing-container">
+  <div class="landing-container" ref="landingContainer" @scroll="handleScroll">
     <!-- [Hero Section] -->
     <header class="hero-playground-premium">
-      <video id="hero-video" src="/image/sports_gym.mp4" autoplay muted loop playsinline></video>
+      <video id="hero-video" src="/image/game_duck.mp4" autoplay muted loop playsinline></video>
       <div class="hero-overlay-refined"></div>
       <div class="hero-scanline"></div>
       
@@ -17,19 +17,19 @@
           OPEN BETA v1.2
         </div>
         <h1 class="playground-title-v2">
-          <span class="text-glow-premium">Architecture</span><br>
+          <span class="text-glow-premium">AI-Engineer</span><br>
           <span class="text-neon-ultimate">Playground!</span>
         </h1>
         <p class="playground-subtitle-v2">
-          단순한 실습을 넘어선 **압도적 아키텍처 경험.**<br>
-          이제 오리들과 함께 당신의 한계를 돌파하세요. 🦆✨
+          단순한 실습을 넘어선 압도적 AI 엔지니어링 경험.<br>
+          이제 오리들과 함께 당신의 한계를 돌파하세요.
         </p>
         
         <div class="hero-action-group-v2">
           <button @click="$emit('go-to-playground')" class="btn-play-premium">
             <div class="btn-glow-layer"></div>
             <span class="btn-text">입장하기!</span>
-            <i data-lucide="arrow-right" class="btn-arrow"></i>
+            <ArrowRight class="btn-arrow" />
           </button>
           <button @click="scrollToLeaderboard" class="btn-social-v2">
             전당 확인
@@ -43,14 +43,44 @@
     </header>
 
     <!-- [Navigation Bar - Glassmorphism] -->
-    <nav class="navbar-v2">
-      <div class="logo-playground">AI-GYM</div>
+    <nav class="navbar-v2" :class="{ 'is-hidden': isScrolled }">
+      <div class="logo-playground">
+        <Dumbbell class="logo-icon" />
+        <span class="logo-text">Engineer-Gym</span>
+      </div>
       <div class="nav-links-v2">
-        <a href="#chapters">Stages</a>
-        <a href="#leaderboard">Hall of Fame</a>
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
+          <LayoutGrid class="nav-icon" />
+          <span class="nav-label">Stages</span>
+        </a>
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
+          <Trophy class="nav-icon" />
+          <span class="nav-label">Hall of Fame</span>
+        </a>
         <div class="protein-status">
-          <i data-lucide="milk" class="icon-protein"></i>
-          <span>{{ userProteinShakes }}</span>
+          <Milk class="icon-protein" />
+          <span class="protein-count">{{ userProteinShakes }}</span>
+        </div>
+        <slot name="auth-buttons"></slot>
+      </div>
+    </nav>
+
+    <nav class="navbar-v2 bookmark-mode" :class="{ 'is-visible': isScrolled }">
+      <div class="logo-playground">
+        <Dumbbell class="logo-icon" />
+      </div>
+      <div class="nav-links-v2">
+        <a href="#chapters" class="nav-item" @click.prevent="scrollToSection('chapters')">
+          <LayoutGrid class="nav-icon" />
+          <span class="nav-label">Stages</span>
+        </a>
+        <a href="#leaderboard" class="nav-item" @click.prevent="scrollToSection('leaderboard')">
+          <Trophy class="nav-icon" />
+          <span class="nav-label">Hall of Fame</span>
+        </a>
+        <div class="protein-status">
+          <Milk class="icon-protein" />
+          <span class="protein-count">{{ userProteinShakes }}</span>
         </div>
         <slot name="auth-buttons"></slot>
       </div>
@@ -61,40 +91,85 @@
       <div class="background-grid-pattern"></div>
       <div class="section-header">
         <h2 class="title-with-mascot">
-          Engineer's Gym 🎮 
+          Engineer's Gym <Dumbbell class="title-icon-gym" />
         </h2>
         <p>원하는 훈련 기구를 선택하고 당신의 실력을 증명하세요!</p>
       </div>
 
-      <div class="playground-grid">
-        <div v-for="(chapter, idx) in chapters" :key="chapter.id" 
-             class="gym-card-premium" 
-             :class="'card-color-' + (idx % 5)"
-             @click="$emit('open-unit', chapter)">
-          <div class="card-inner-v2">
-            <div class="card-image-wrap-v2">
-              <div class="energy-rings">
-                <span class="ring-1"></span>
-                <span class="ring-2"></span>
-                <span class="ring-3"></span>
+      <div class="playground-slider-container">
+        <button class="slider-nav prev" @click="prevSlide">
+          <ChevronLeft />
+        </button>
+
+        <div
+          class="slider-wrapper"
+          :class="{ dragging: isDragging }"
+          @pointerdown="onDragStart"
+          @pointermove="onDragMove"
+          @pointerup="onDragEnd"
+          @pointerleave="onDragEnd"
+        >
+          <div class="slider-track" :style="trackStyle">
+            <div v-for="(chapter, idx) in chapters" :key="chapter.id" 
+                 class="gym-card-premium" 
+                 :style="{ '--unit-color': chapter.color }"
+                 :class="[
+                   'card-color-' + (idx % 5),
+                   { 'active': idx === currentIdx, 
+                     'prev': idx === getPrevIdx, 
+                     'next': idx === getNextIdx,
+                     'hidden': !isIndexVisible(idx)
+                   }
+                 ]">
+              <div class="card-inner-v2">
+                <div class="card-image-wrap-v2">
+                  <div class="energy-rings">
+                    <span class="ring-1"></span>
+                    <span class="ring-2"></span>
+                    <span class="ring-3"></span>
+                  </div>
+                  <img :src="chapter.image" :alt="chapter.name" class="premium-icon">
+                  <div class="card-aura-premium"></div>
+                </div>
+                <div class="card-text-v2">
+                  <!-- [2026-01-25] 유닛 정보 영역: DB(PracticeUnit) 필드 연동 -->
+                  <div class="unit-badge-row">
+                    <!-- 1. 유닛 번호 표시 (최소 2자리 숫자로 포맷팅, 예: UNIT 01) -->
+                    <span class="unit-tag-v2">
+                      <component :is="chapter.icon" style="width: 14px; height: 14px; margin-right: 4px;" />
+                      UNIT {{ String(chapter.unit_number).padStart(2, '0') }}
+                    </span>
+                    <!-- 2. 권장 레벨 표시 (예: LV.10) -->
+                    <span class="level-indicator">LV.{{ chapter.level }}</span>
+                  </div>
+                  <!-- 3. 유닛 제목 및 부제목(설명) 표시 -->
+                  <h3>{{ chapter.name }}</h3>
+                  <p>{{ chapter.description }}</p>
+                  
+                  <div class="card-footer-v2">
+                    <!-- 4. 참여 인원 데이터 표시 (예: 85+ Training) -->
+                    <span class="engineer-count">
+                      <Users style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" /> 
+                      {{ chapter.participant_count }}+ Training
+                    </span>
+                    <button class="btn-enter-mini" @click="handleCardClick(chapter, idx)">START</button>
+                  </div>
+                </div>
               </div>
-              <img :src="chapter.image" :alt="chapter.name" class="premium-icon">
-              <div class="card-aura-premium"></div>
-            </div>
-            <div class="card-text-v2">
-              <div class="unit-badge-row">
-                <span class="unit-tag-v2">UNIT 0{{ idx + 1 }}</span>
-                <span class="level-indicator">LV.{{ (idx + 1) * 10 }}</span>
-              </div>
-              <h3>{{ chapter.name }}</h3>
-              <p>{{ chapter.description }}</p>
-              <div class="card-footer-v2">
-                <span class="engineer-count"><i data-lucide="users"></i> 80+ Training</span>
-                <button class="btn-enter-mini">START</button>
-              </div>
+              <div class="card-border-glow"></div>
             </div>
           </div>
-          <div class="card-border-glow"></div>
+        </div>
+
+        <button class="slider-nav next" @click="nextSlide">
+          <ChevronRight />
+        </button>
+
+        <!-- Pagination Dots -->
+        <div class="slider-pagination">
+          <span v-for="(_, idx) in chapters" :key="'dot-'+idx"
+                class="dot" :class="{ 'active': idx === currentIdx }"
+                @click="goToSlide(idx)"></span>
         </div>
       </div>
     </section>
@@ -123,12 +198,12 @@
             <div class="col-rank">
               <div class="rank-box">
                 <span class="rank-num">#{{ index + 1 }}</span>
-                <i v-if="index === 0" data-lucide="crown" class="crown-icon"></i>
+                <Crown v-if="index === 0" class="crown-icon" />
               </div>
             </div>
             <div class="col-user">
               <div class="user-avatar-mini">
-                <img src="/image/unit_duck.png" alt="avatar">
+                <img src="/assets/characters/coduck.png" alt="avatar">
               </div>
               <span class="username-premium">{{ user.username }}</span>
             </div>
@@ -138,7 +213,7 @@
             </div>
             <div class="col-shakes">
               <div class="shake-badge-v2">
-                <i data-lucide="milk" class="milk-icon-v2"></i>
+                <Milk class="milk-icon-v2" />
                 <span>{{ user.shakes.toLocaleString() }}</span>
               </div>
             </div>
@@ -148,31 +223,222 @@
     </section>
 
     <footer class="playground-footer">
-      <p>&copy; 2026 ARCH-GYM. Crafted with ❤️ by Antigravity AI.</p>
+      <p>&copy; 2026 ARCH-GYM. Crafted with ❤️ by Final 5 Team</p>
     </footer>
+
+    <!-- [2026-01-24] 최상단 복귀용 프리미엄 Home 버튼 추가 -->
+    <transition name="home-pop">
+      <button v-if="isScrolled" @click="scrollToTop" class="btn-floating-home" aria-label="Scroll to top">
+        <Home class="home-icon" />
+        <div class="home-glow"></div>
+      </button>
+    </transition>
   </div>
 </template>
 
 <script>
+import { 
+  Dumbbell, 
+  LayoutGrid, 
+  Trophy, 
+  Milk, 
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Crown,
+  Home
+} from 'lucide-vue-next';
+
 export default {
   name: 'LandingView',
+  components: {
+    Dumbbell,
+    LayoutGrid,
+    Trophy,
+    Milk,
+    ArrowRight,
+    ChevronLeft,
+    ChevronRight,
+    Users,
+    Crown,
+    Home
+  },
   props: {
     isLoggedIn: Boolean,
     userProteinShakes: Number,
     chapters: Array,
     leaderboard: Array
   },
+  data() {
+    return {
+      currentIdx: 0,
+      isScrolled: false,
+      scrollTicking: false,
+      hoverTimer: null,
+      isDragging: false,
+      dragMoved: false,
+      dragStartX: 0,
+      dragThreshold: 120
+    };
+  },
+  computed: {
+    // 1. 이전 카드 인덱스 계산 (방어 로직 포함)
+    getPrevIdx() {
+      if (!this.chapters || this.chapters.length === 0) return 0;
+      return (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
+    },
+    // 2. 다음 카드 인덱스 계산 (방어 로직 포함)
+    getNextIdx() {
+      if (!this.chapters || this.chapters.length === 0) return 0;
+      return (this.currentIdx + 1) % this.chapters.length;
+    },
+    trackStyle() {
+      // 슬라이더 트랙 커스텀 스타일 (필요 시 확장)
+      return {};
+    }
+  },
   methods: {
+    /**
+     * [아이콘 새로고침]
+     * - Lucide 라이브러리를 사용하여 DOM 내의 data-lucide 아이콘들을 렌더링합니다.
+     */
+    refreshIcons() {
+      this.$nextTick(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+    },
+    /**
+     * [스크롤 이벤트 핸들러]
+     * - 일정 높이 이상 스크롤 시 상단 바의 디자인을 변경(isScrolled)합니다.
+     */
+    handleScroll() {
+      if (this.scrollTicking) return;
+      this.scrollTicking = true;
+      requestAnimationFrame(() => {
+        const container = this.$refs.landingContainer;
+        if (container) {
+          this.isScrolled = container.scrollTop > 100;
+        }
+        this.scrollTicking = false;
+      });
+    },
+    scrollToSection(sectionId) {
+      const container = this.$refs.landingContainer;
+      const section = document.getElementById(sectionId);
+      if (!container || !section) return;
+      container.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
+    },
     scrollToLeaderboard() {
-      document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' });
+      this.scrollToSection('leaderboard');
+    },
+    /**
+     * [최상단 복귀]
+     * - 버튼 클릭 시 히어로 영역으로 부드럽게 스크롤합니다.
+     */
+    scrollToTop() {
+      const container = this.$refs.landingContainer;
+      if (container) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    },
+    nextSlide() {
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx + 1) % this.chapters.length;
+      }
+    },
+    prevSlide() {
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx - 1 + this.chapters.length) % this.chapters.length;
+      }
+    },
+    goToSlide(idx) {
+      this.currentIdx = idx;
+    },
+    /**
+     * [카드가 화면에 보이는지 여부]
+     * - 현재 인덱스와 인접한 카드만 보여주어 3D 넘김 효과를 구현합니다.
+     */
+    isIndexVisible(idx) {
+      if (!this.chapters || this.chapters.length === 0) return false;
+      const diff = Math.abs(idx - this.currentIdx);
+      return diff <= 1 || diff === this.chapters.length - 1;
+    },
+    /**
+     * [카드 호버 핸들러]
+     * - 마우스가 근처 카드에 상주할 때만 전환되도록 지연(250ms)을 둡니다.
+     * - 빠른 마우스 이동으로 인한 오작동을 방지합니다.
+     */
+    handleCardHover(idx) {
+      if (this.currentIdx === idx) return;
+      
+      clearTimeout(this.hoverTimer);
+      this.hoverTimer = setTimeout(() => {
+        this.currentIdx = idx;
+      }, 250); // 0.25초 이상 머물렀을 때만 전환
+    },
+    /**
+     * [호버 타이머 초기화]
+     * - 마우스가 카드를 벗어나면 전환 예약을 취소합니다.
+     */
+    clearHoverTimer() {
+      clearTimeout(this.hoverTimer);
+    },
+    onDragStart(event) {
+      if (event.button !== 0) return;
+      if (event.target.closest('button') || event.target.closest('a')) return;
+      this.isDragging = true;
+      this.dragMoved = false;
+      this.dragStartX = event.clientX;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    onDragMove(event) {
+      if (!this.isDragging) return;
+      const deltaX = event.clientX - this.dragStartX;
+      if (Math.abs(deltaX) < this.dragThreshold) return;
+      this.dragMoved = true;
+      const direction = deltaX > 0 ? -1 : 1;
+      if (this.chapters.length > 0) {
+        this.currentIdx = (this.currentIdx + direction + this.chapters.length) % this.chapters.length;
+      }
+      this.dragStartX = event.clientX;
+    },
+    onDragEnd(event) {
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    },
+    /**
+     * [카드 클릭 핸들러]
+     * - 이미 선택된 카드 클릭 시 상세 팝업을 열고, 아니면 해당 카드를 중앙으로 이동시킵니다.
+     */
+    handleCardClick(chapter, idx) {
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return;
+      }
+      if (idx === this.currentIdx) {
+        this.$emit('open-unit', chapter);
+      } else {
+        this.currentIdx = idx;
+      }
     }
   },
   mounted() {
-    if (window.lucide) window.lucide.createIcons();
+    this.$nextTick(() => {
+      this.refreshIcons();
+    });
+    window.addEventListener('scroll', this.handleScroll);
+  },
+  unmounted() {
+    window.removeEventListener('scroll', this.handleScroll);
+    clearTimeout(this.hoverTimer);
   },
   updated() {
     this.$nextTick(() => {
-      if (window.lucide) window.lucide.createIcons();
+      this.refreshIcons();
     });
   }
 }
@@ -184,6 +450,10 @@ export default {
   color: #fff;
   font-family: 'Outfit', sans-serif;
   overflow-x: hidden;
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
 }
 
 /* [Hero Playground Premium] */
@@ -196,6 +466,8 @@ export default {
   text-align: center;
   overflow: hidden;
   background-color: #0c0e14;
+  scroll-snap-align: start;
+  will-change: transform;
 }
 
 .hero-overlay-refined {
@@ -420,25 +692,251 @@ export default {
   position: fixed;
   top: 1.5rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+  opacity: 1;
   width: 90%;
   max-width: 1200px;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(20px);
-  padding: 1rem 2rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.2rem 2.5rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
   z-index: 1000;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              top 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              right 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              left 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              padding 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              border-radius 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  will-change: transform, top, left, right, width, padding, border-radius;
+}
+
+.navbar-v2.is-hidden {
+  transform: translate3d(-50%, -120%, 0);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .logo-playground {
-  font-weight: 900;
-  font-size: 1.5rem;
-  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: #b6ff40;
+  transition: all 0.5s;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 0 10px rgba(182, 255, 64, 0.5));
+}
+
+.logo-text {
+  font-weight: 950;
+  font-size: 1.6rem;
+  letter-spacing: 2px;
+}
+
+.nav-links-v2 {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #94a3b8;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+}
+
+.nav-item:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  display: flex; /* 상단 바에서도 아이콘 표시 */
+}
+
+/* [Bookmark Mode - 사이드바 형태] */
+.navbar-v2.bookmark-mode {
+  top: 50%;
+  right: 1.5rem;
+  left: auto;
+  transform: translate3d(120%, -50%, 0);
+  opacity: 0;
+  pointer-events: none;
+  width: 75px;
+  height: auto;
+  max-height: 85vh;
+  flex-direction: column;
+  padding: 2.5rem 0;
+  border-radius: 40px;
+  background: rgba(15, 23, 42, 0.92);
+  gap: 2.5rem;
+  border: 1px solid rgba(182, 255, 64, 0.15);
+  box-shadow: -15px 0 45px rgba(0, 0, 0, 0.6);
+  overflow: visible !important; /* 사이드 라벨 노출을 위해 visible로 변경 */
+  display: flex;
+  align-items: center;
+}
+
+.navbar-v2.bookmark-mode.is-visible {
+  transform: translate3d(0, -50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.navbar-v2.bookmark-mode .logo-playground {
+  flex-direction: column;
+}
+
+.navbar-v2.bookmark-mode .logo-text {
+  display: none;
+}
+
+.navbar-v2.bookmark-mode .logo-icon {
+  width: 35px;
+  height: 35px;
+}
+
+.navbar-v2.bookmark-mode .nav-links-v2 {
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.navbar-v2.bookmark-mode .nav-item {
+  padding: 0;
+  width: 50px;
+  height: 50px;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.navbar-v2.bookmark-mode .nav-label {
+  position: absolute;
+  right: 110%;
+  opacity: 0;
+  pointer-events: none;
+  background: #b6ff40;
+  color: #000;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: all 0.3s;
+  transform: translateX(10px);
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(182, 255, 64, 0.3);
+}
+
+.navbar-v2.bookmark-mode .nav-label::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: #b6ff40;
+}
+
+.navbar-v2.bookmark-mode .nav-item:hover .nav-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.navbar-v2.bookmark-mode .nav-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.navbar-v2.bookmark-mode .protein-status {
+  flex-direction: column;
+  padding: 0.8rem 0;
+  width: 50px;
+  height: auto;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.navbar-v2.bookmark-mode .protein-count {
+  font-size: 0.75rem;
+}
+
+/* [Bookmark Mode - Auth Buttons & Profile Slot Fix] */
+.navbar-v2.bookmark-mode :deep(.user-profile-v2) {
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+  width: 100% !important;
+  align-items: center !important;
+}
+
+.navbar-v2.bookmark-mode :deep(.user-info-v2) {
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  gap: 2px !important;
+}
+
+.navbar-v2.bookmark-mode :deep(.user-name-v2) {
+  font-size: 0.75rem !important;
+  max-width: 60px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.navbar-v2.bookmark-mode :deep(.user-rank-v2) {
+  font-size: 0.6rem !important;
+  letter-spacing: 0 !important;
+}
+
+.navbar-v2.bookmark-mode :deep(.btn-logout-v2),
+.navbar-v2.bookmark-mode :deep(.btn-login-ref),
+.navbar-v2.bookmark-mode :deep(.btn-signup-ref) {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 0.65rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
+}
+
+.navbar-v2.bookmark-mode :deep(.btn-logout-v2) {
+  color: #ff4b4b !important;
+  border-color: rgba(255, 75, 75, 0.3) !important;
+}
+
+/* 슬롯 내 모든 자식 요소 마진 초기화 및 중앙 정렬 */
+.navbar-v2.bookmark-mode :deep(*) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .nav-links-v2 {
@@ -468,15 +966,33 @@ export default {
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(56, 189, 248, 0.2);
+  transition: all 0.3s;
+}
+
+.icon-protein {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
+  filter: drop-shadow(0 0 5px rgba(56, 187, 248, 0.6));
+  flex-shrink: 0;
+  display: inline-block;
+  color: #38bdf8;
 }
 
 /* [Premium Playground Section] */
 .playground-section-premium {
   position: relative;
-  padding: 10rem 2rem;
+  height: 100vh;
+  padding: 0 2rem;
   max-width: 1400px;
   margin: 0 auto;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  scroll-snap-align: start;
+  will-change: transform;
 }
 
 .background-grid-pattern {
@@ -515,33 +1031,155 @@ export default {
   gap: 20px;
 }
 
-.playground-grid {
+.playground-slider-container {
   position: relative;
   z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 3rem;
-  perspective: 1000px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  perspective: 2000px;
+  min-height: 600px;
+  padding: 2rem 0;
+}
+
+.slider-wrapper {
+  flex: 1;
+  max-width: 1200px;
+  overflow: visible;
+  position: relative;
+  cursor: grab;
+}
+
+.slider-wrapper.dragging {
+  cursor: grabbing;
+}
+
+.slider-track {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  height: 500px;
+  transform-style: preserve-3d;
 }
 
 .gym-card-premium {
-  position: relative;
+  position: absolute;
+  width: 400px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
   border-radius: 32px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
   cursor: pointer;
   transform-style: preserve-3d;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  user-select: none;
 }
 
-.gym-card-premium:hover {
-  transform: translateY(-20px) rotateX(10deg) rotateY(-5deg);
+.gym-card-premium.active {
+  transform: translateZ(0) scale(1.02);
+  opacity: 1;
+  z-index: 10;
+  pointer-events: auto;
+  visibility: visible;
+  border-color: var(--unit-color, rgba(182, 255, 64, 0.5));
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(182, 255, 64, 0.4);
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    0 0 50px rgba(182, 255, 64, 0.1);
+    0 30px 60px rgba(0, 0, 0, 0.6),
+    0 0 80px var(--unit-color, rgba(182, 255, 64, 0.15));
+}
+
+.gym-card-premium.prev {
+  transform: translateX(-350px) translateZ(0) rotateY(45deg) scale(0.85);
+  opacity: 0.4;
+  z-index: 5;
+  pointer-events: none;
+  visibility: visible;
+}
+
+.gym-card-premium.next {
+  transform: translateX(350px) translateZ(0) rotateY(-45deg) scale(0.85);
+  opacity: 0.4;
+  z-index: 5;
+  pointer-events: none;
+  visibility: visible;
+}
+
+.gym-card-premium.hidden {
+  display: none;
+}
+
+/* Nav Buttons */
+.slider-nav {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: 20;
+  backdrop-filter: blur(5px);
+}
+
+.slider-nav:hover {
+  background: #b6ff40;
+  color: #000;
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 30px rgba(182, 255, 64, 0.4);
+  border-color: #b6ff40;
+}
+
+.playground-slider-container:hover .slider-nav {
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Pagination */
+.slider-pagination {
+  position: absolute;
+  bottom: -4rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.slider-pagination .dot {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.slider-pagination .dot.active {
+  background: var(--unit-color, #b6ff40);
+  transform: scale(1.5);
+  box-shadow: 0 0 10px var(--unit-color, #b6ff40);
+}
+
+@media (max-width: 768px) {
+  .gym-card-premium {
+    width: 300px;
+  }
+  .gym-card-premium.prev {
+    transform: translateX(-150px) translateZ(-100px) rotateY(30deg) scale(0.7);
+  }
+  .gym-card-premium.next {
+    transform: translateX(150px) translateZ(-100px) rotateY(-30deg) scale(0.7);
+  }
+  .slider-nav {
+    display: none;
+  }
 }
 
 .card-inner-v2 {
@@ -597,6 +1235,8 @@ export default {
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: 6px solid #1a1a1a;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .gym-card-premium:hover .card-image-wrap-v2 {
@@ -687,6 +1327,8 @@ export default {
   align-items: center;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 5;
 }
 
 .engineer-count {
@@ -701,17 +1343,28 @@ export default {
   background: #fff;
   color: #000;
   border: none;
-  padding: 8px 20px;
-  border-radius: 8px;
-  font-weight: 900;
-  font-size: 0.8rem;
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-weight: 950;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+  transform: translateZ(0);
 }
 
 .gym-card-premium:hover .btn-enter-mini {
   background: #b6ff40;
-  transform: scale(1.1);
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 10px 25px rgba(182, 255, 64, 0.4);
+}
+
+.btn-enter-mini:active {
+  transform: scale(0.95);
 }
 
 .card-border-glow {
@@ -736,9 +1389,15 @@ export default {
 /* [Leaderboard Premium] */
 .lb-section-premium {
   position: relative;
-  padding: 12rem 2rem;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
   background: #06070a;
   overflow: hidden;
+  scroll-snap-align: start;
+  will-change: transform;
 }
 
 .lb-energy-pulse {
@@ -933,5 +1592,64 @@ export default {
   padding: 4rem;
   color: #475569;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* [2026-01-24] 플로팅 Home 버튼용 프리미엄 테마 스타일 정의 */
+.btn-floating-home {
+  position: fixed;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  width: 64px;
+  height: 64px;
+  background: rgba(182, 255, 64, 0.12);
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(182, 255, 64, 0.6);
+  border-radius: 50%;
+  color: #b6ff40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2000;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(182, 255, 64, 0.2);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-floating-home:hover {
+  transform: translateY(-8px) scale(1.1);
+  background: #b6ff40;
+  color: #0c0e14;
+  box-shadow: 0 15px 40px rgba(182, 255, 64, 0.5);
+  border-color: #b6ff40;
+}
+
+.home-icon {
+  width: 30px;
+  height: 30px;
+  position: relative;
+  z-index: 2;
+}
+
+.home-glow {
+  position: absolute;
+  inset: -5px;
+  background: radial-gradient(circle, rgba(182, 255, 64, 0.4) 0%, transparent 75%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.btn-floating-home:hover .home-glow {
+  opacity: 1;
+}
+
+/* Home Button Animations */
+.home-pop-enter-active, .home-pop-leave-active {
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.home-pop-enter-from, .home-pop-leave-to {
+  opacity: 0;
+  transform: translateY(30px) scale(0.5);
 }
 </style>

@@ -1,83 +1,90 @@
-<!-- 
-수정일: 2026-01-20
-수정내용: 'Coding Gym' 테마 적용 및 인덱스 페이지(index copy.html) 디자인 포팅
+<!--
+수정일: 2026-01-31
+수정내용: 
+1. 캐릭터 브랜딩 전면 교체: 'Lion' 명칭을 'Coduck'으로 변경하고 픽사 스타일 캐릭터 이미지 적용.
+2. 유닛 2/3 로딩 문제 해결: displayProblems 계산 시 매번 최신 데이터를 매핑하도록 수정하여 캐시 및 캐스팅 이슈 해결.
+3. 유닛 매칭 유연화: 유닛 제목 비교 시 대소문자 및 공백을 무시하도록 정규화 로직 도입.
 -->
 <template>
   <div id="app" v-cloak>
-    <!-- [라우터 뷰 - Practice 페이지 (메인 레이아웃 없이 단독 표시)] -->
-    <router-view v-if="isPracticePage"></router-view>
-
-    <!-- [메인 페이지] -->
-    <template v-if="!isPracticePage">
-      <LandingView 
-        :isLoggedIn="isLoggedIn"
-        :userProteinShakes="userProteinShakes"
-        :chapters="chapters"
-        :leaderboard="leaderboard"
-        @go-to-playground="handleGoToPlayground"
-        @open-unit="openUnitPopup"
-      >
-        <template #auth-buttons>
-          <template v-if="!isLoggedIn">
-            <button class="btn-login-ref" @click="handleLogin">Login</button>
-            <button class="btn-signup-ref" @click="handleSignUp">Sign Up</button>
-          </template>
-          <div v-else class="user-profile-v2">
-            <div class="user-info-v2">
-              <span class="user-name-v2">{{ sessionNickname }}</span>
-              <span class="user-rank-v2">ENGINEER</span>
-            </div>
-            <button class="btn-logout-v2" @click="handleLogout">Logout</button>
-          </div>
+    <!-- [메인 페이지 배경 (맵)] -->
+    <LandingView
+      v-if="!isPracticePage"
+      :isLoggedIn="auth.isLoggedIn"
+      :userProteinShakes="auth.userProteinShakes"
+      :chapters="game.chapters"
+      :leaderboard="leaderboard"
+      @go-to-playground="handleGoToPlayground"
+      @open-unit="openUnitPopup"
+    >
+      <template #auth-buttons>
+        <template v-if="!auth.isLoggedIn">
+          <button class="btn-login-ref" @click="ui.openLogin">Login</button>
+          <button class="btn-signup-ref" @click="ui.openSignUp">Sign Up</button>
         </template>
-      </LandingView>
+        <div v-else class="user-profile-v2">
+          <div class="user-info-v2">
+            <span class="user-name-v2">{{ auth.sessionNickname }}</span>
+            <span class="user-rank-v2">ENGINEER</span>
+          </div>
+          <button class="btn-logout-v2" @click="auth.logout">Logout</button>
+        </div>
+      </template>
+    </LandingView>
 
-    <!-- [유닛 상세 팝업 모달] -->
-    <transition name="fade">
-      <div v-if="isUnitModalOpen" class="modal-overlay" @click.self="isUnitModalOpen = false">
-        <div class="unit-detail-modal">
-          <header class="unit-modal-header-v3">
-            <div class="title-section-v3">
-              <div class="unit-label-v3">
-                {{ activeUnit?.name === 'Debug Practice' ? 'DEBUG GYM' : 'UNIT ' + (chapters.indexOf(activeUnit) + 1) }}
+    <!-- [라우터 뷰 - Practice 페이지 (HUD 오버레이 스타일)] -->
+    <router-view v-if="isPracticePage" @close="handlePracticeClose"></router-view>
+
+      <!-- [유닛 상세 팝업 모달] -->
+      <transition name="fade">
+        <div v-if="ui.isUnitModalOpen" class="modal-overlay" @click.self="ui.isUnitModalOpen = false">
+          <div class="unit-detail-modal">
+            <header class="unit-modal-header-v3">
+              <div class="title-section-v3">
+                <div class="unit-label-v3">
+                  {{ game.activeUnit?.name === 'Debug Practice' ? 'DEBUG GYM' : 'UNIT ' + (game.chapters.indexOf(game.activeUnit) + 1) }}
+                </div>
+                <h2 class="unit-name-v3">
+                  <template v-if="game.activeUnit?.name === 'Debug Practice'">
+                    {{ game.currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
+                  </template>
+                  <template v-else-if="game.activeUnit?.name === 'Pseudo Practice'">
+                    <!-- [수정일: 2026-01-31] 유닛 1 모드 통합: AI Detective, Pseudo Forest 등의 개별 타이틀을 제거하고 통합 타이틀로 표시 -->
+                    💻 Pseudo Code Practice
+                  </template>
+                  <template v-else>
+                    {{ game.activeUnit?.unitTitle || (game.activeUnit?.problems && game.activeUnit.problems[0]?.title) || game.activeUnit?.name || 'Loading...' }}
+                  </template>
+                </h2>
               </div>
-              <h2 class="unit-name-v3">
-                <template v-if="activeUnit?.name === 'Debug Practice'">
-                  {{ currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
-                </template>
-                <template v-else>
-                  {{ activeUnit?.problems?.[0]?.title || activeUnit?.name }}
-                </template>
-              </h2>
-            </div>
-            <div style="display: flex; align-items: center;">
-              <button class="guidebook-btn-v3">
-                <i data-lucide="book-open"></i>
-                GUIDEBOOK
-              </button>
-              <button class="close-btn-v3" @click="isUnitModalOpen = false">&times;</button>
-            </div>
-          </header>
+              <div style="display: flex; align-items: center;">
+                <button class="guidebook-btn-v3" @click="handleGuidebookClick">
+                  <span class="btn-icon-wrapper"><i data-lucide="book-open"></i></span>
+                  GUIDEBOOK
+                </button>
+                <button class="close-btn-v3" @click="ui.isUnitModalOpen = false">&times;</button>
+              </div>
+            </header>
 
-          <div class="unit-modal-body-v3">
-            <div class="path-container-v3">
-              <svg class="path-svg-v3" viewBox="0 0 800 1000">
-                <path class="path-line-v3" d="M400,100 L560,250 L280,400 L520,550 L360,700 L400,850" fill="none"
-                  stroke="rgba(148, 163, 184, 0.2)" stroke-width="3" stroke-dasharray="10,5" />
-              </svg>
+            <div class="unit-modal-body-v3">
+              <div class="path-container-v3">
+                <svg class="path-svg-v3" viewBox="0 0 800 1500">
+                  <path class="path-line-v3" d="M400,100 L560,250 L280,400 L520,550 L360,700 L400,850 L480,1000 L320,1150 L560,1300 L400,1450" fill="none" stroke="rgba(148, 163, 184, 0.2)" stroke-width="3" stroke-dasharray="10,5" />
+                </svg>
 
-              <div v-for="(problem, pIdx) in displayProblems" :key="problem.id" class="node-platform-v3"
-                :class="['node-' + pIdx, { active: pIdx === 0 }]"
-                @click="selectProblem(problem, activeUnit); isUnitModalOpen = false">
+                <div v-for="(problem, pIdx) in displayProblems" :key="problem.id" class="node-platform-v3"
+                :class="['node-' + pIdx, {
+                  active: problem.questIndex === currentMaxIdx,
+                  unlocked: game.currentUnitProgress.includes(problem.questIndex)
+                }]"
+                @click="isUnlocked(problem.questIndex) && selectProblem(problem)">
 
-                <div class="platform-glow-v3" v-if="pIdx === 0"></div>
+                <div class="platform-glow-v3" v-if="problem.questIndex === currentMaxIdx"></div>
 
                 <div class="platform-circle-v3">
-                  <template v-if="pIdx === 0">
-                    <img src="/image/unit_duck.png" class="duck-on-node-v3">
-                    <div
-                      style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;">
-                    </div>
+                  <template v-if="game.currentUnitProgress.includes(problem.questIndex)">
+                    <img v-if="problem.questIndex === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
+                    <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
                   </template>
                   <template v-else>
                     <i data-lucide="lock" class="lock-icon-v3"></i>
@@ -85,7 +92,12 @@
                 </div>
 
                 <div class="node-label-premium">
-                  {{ problem.title }}
+                  <template v-if="game.activeUnit?.name === 'Debug Practice' && game.currentDebugMode === 'vibe-cleanup'">
+                    개발중..
+                  </template>
+                  <template v-else>
+                    {{ problem.displayNum || problem.title }} - {{ problem.title }}
+                  </template>
                 </div>
               </div>
 
@@ -99,547 +111,302 @@
             </div>
           </div>
 
-          <footer class="unit-stats-bar-v3">
-            <!-- Debug Practice일 때는 게임 모드 선택 버튼 -->
-            <template v-if="activeUnit?.name === 'Debug Practice'">
-              <button
-                class="game-mode-btn bug-hunt"
-                :class="{ 'active': currentDebugMode === 'bug-hunt' }"
-                @click="selectGameMode('bug-hunt')">
-                🐞 Bug Hunt
-              </button>
-              <button
-                class="game-mode-btn vibe-cleanup"
-                :class="{ 'active': currentDebugMode === 'vibe-cleanup' }"
-                @click="selectGameMode('vibe-cleanup')">
-                ✨ Vibe Code Clean Up
-              </button>
-            </template>
-            <!-- 다른 Practice는 기존대로 -->
-            <template v-else>
-              <div class="stat-pill-v3 active">
-                <i data-lucide="check-circle" style="width: 16px;"></i>
-                1개 활성화
-              </div>
-              <div class="stat-pill-v3 locked">
-                <i data-lucide="lock" style="width: 16px;"></i>
-                {{ (displayProblems.length || 1) + displayLabelsCount - 1 }}개 잠금
-              </div>
-            </template>
-          </footer>
-        </div>
-      </div>
-    </transition>
+            <footer class="unit-stats-bar-v3">
+              <!-- [수정일: 2026-01-31] Unit 1(Pseudo Practice) 전용 하단 모드 전환 버튼 제거 -->
+              <!-- 기존의 ai detective, pseudo forest 등 모드 전환 기능을 제거하고 통합된 연습 경험을 제공합니다. -->
 
-    <!-- [에이전트 실습 워크스페이스] -->
-    <transition name="fade">
-      <div v-if="isAgentModalOpen" class="modal-overlay">
-        <div class="workspace-container">
-            <header class="workspace-header">
-                <div class="header-left">
-                    <span class="badge bg-medium">{{ unitBadge }}</span>
-                    <h2 style="margin-top: 0.5rem;">{{ activeProblem?.title }}</h2>
-                </div>
-                <button class="btn-close" @click="isAgentModalOpen = false">&times;</button>
-            </header>
+              <!-- 기존 Debug Practice 모드 전환 버튼 -->
+              <template v-if="game.activeUnit?.name === 'Debug Practice'">
+                <button class="game-mode-btn bug-hunt" :class="{ 'active': game.currentDebugMode === 'bug-hunt' }" @click="selectGameMode('bug-hunt')">🐞 Bug Hunt</button>
+                <button class="game-mode-btn vibe-cleanup" :class="{ 'active': game.currentDebugMode === 'vibe-cleanup' }" @click="selectGameMode('vibe-cleanup')">✨ Vibe Code Clean Up</button>
+              </template>
 
-            <div class="workspace-body">
-                <!-- Left: Editor Section -->
-                <div class="editor-section">
-                    <div class="editor-top">
-                        <span class="editor-label">{{ editorLabel }}</span>
-                        <p class="card-desc">{{ activeProblem?.content }}</p>
-                    </div>
-                    <textarea v-model="editedPrompt" class="prompt-textarea"
-                        :placeholder="editorPlaceholder"></textarea>
-                </div>
-
-                <!-- Middle: Live Chat Playground -->
-                <div class="chat-playground">
-                    <div class="playground-header">
-                        <i data-lucide="message-square" style="width: 16px;"></i>
-                        <span>{{ playgroundTitle }}</span>
-                    </div>
-                    <div class="chat-messages" ref="chatScroll">
-                        <div v-if="chatHistory.length === 0" class="empty-chat">
-                            {{ emptyChatMessage }}
-                        </div>
-                        <div v-for="(chat, cIdx) in chatHistory" :key="cIdx"
-                            :class="['chat-bubble', chat.role]">
-                            <div class="bubble-content">{{ chat.content }}</div>
-                        </div>
-                        <div v-if="isTyping" class="chat-bubble assistant typing">
-                            <div class="dot-flashing"></div>
-                        </div>
-                    </div>
-                    <div class="chat-input-wrapper">
-                        <input type="text" v-model="userInput" @keyup.enter="sendLiveMessage"
-                            placeholder="에이전트에게 테스트 메시지 전송..." :disabled="isTyping">
-                        <button class="btn-send" @click="sendLiveMessage" :disabled="isTyping">
-                            <i data-lucide="send"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Right: Sidebar Section -->
-                <div class="sidebar-section">
-                    <div class="metric-card">
-                        <h4>Current Metrics</h4>
-                        <div class="chart-container-radar">
-                            <canvas id="performanceChart"></canvas>
-                        </div>
-                        <div class="metric-grid">
-                            <div class="metric-item">
-                                <span class="metric-value">{{ submissionResult ? submissionResult.accuracy + '%' : '--' }}</span>
-                                <span class="metric-label">Accuracy</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-value">{{ submissionResult ? submissionResult.hallucination_rate + '%' : '--' }}</span>
-                                <span class="metric-label">Hallucination</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <h4>Evaluation Criteria</h4>
-                        <ul style="font-size: 0.85rem; color: var(--text-muted); padding-left: 1rem;">
-                            <li>문서에 근거한 정확성</li>
-                            <li>불쾌하거나 사적인 질문 차단</li>
-                            <li>응답 지연 시간 (Latency)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <footer class="workspace-footer">
-                <button class="btn btn-secondary" @click="isAgentModalOpen = false">나중에 하기</button>
-                <button class="btn btn-primary" @click="submitAgent" :disabled="isSubmitting">
-                    {{ isSubmitting ? 'Evaluating...' : 'Test & Submit' }}
-                </button>
+              <!-- 일반 상태 표시 (진행도/잠금) -->
+              <template v-else>
+                <div class="stat-pill-v3 active"><i data-lucide="check-circle" style="width: 16px;"></i>{{ game.currentUnitProgress.length }}개 활성화</div>
+                <div class="stat-pill-v3 locked"><i data-lucide="lock" style="width: 16px;"></i>{{ displayProblems.length - game.currentUnitProgress.length }}개 잠금</div>
+              </template>
             </footer>
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition>
 
-    <!-- [평가 결과 리포트] -->
-    <transition name="fade">
-      <div v-if="isReportModalOpen" class="modal-overlay">
-        <div class="workspace-container report-container">
-            <header class="workspace-header">
-                <div class="header-left">
-                    <span class="badge bg-easy">EVALUATION COMPLETE</span>
-                    <h2 style="margin-top: 0.5rem;">🎯 에이전트 성능 평가 리포트</h2>
-                </div>
-                <button class="btn-close" @click="isReportModalOpen = false">&times;</button>
-            </header>
-
-            <div class="workspace-body report-body">
-                <div class="report-summary">
-                    <div class="summary-card">
-                        <span class="summary-label">최종 점수</span>
-                        <span class="summary-value">{{ submissionResult?.accuracy }}점</span>
-                    </div>
-                    <div class="summary-card">
-                        <span class="summary-label">환각 발생률</span>
-                        <span class="summary-value" :class="{'text-danger': submissionResult?.hallucination_rate > 10}">
-                            {{ submissionResult?.hallucination_rate }}%
-                        </span>
-                    </div>
-                    <div class="summary-card">
-                        <span class="summary-label">평단 지연 시간</span>
-                        <span class="summary-value">{{ submissionResult?.latency }}s</span>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <h4>✅ 주요 검증 결과 (Test Cases)</h4>
-                    <div class="test-case-list">
-                        <div v-for="test in activeProblem?.agent_info?.test_cases" :key="test.id" class="test-item">
-                            <div class="test-q"><strong>Q:</strong> {{ test.input_query }}</div>
-                            <div class="test-a"><strong>Expected:</strong> {{ test.expected_response }}</div>
-                            <div class="test-status status-pass">PASS</div>
-                        </div>
-                    </div>
-
-                    <div class="feedback-section">
-                        <h4>🤖 AI 코치 피드백</h4>
-                        <div class="coach-bubble">
-                            {{ submissionResult?.feedback_message || '평가 데이터를 분석 중입니다...' }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <footer class="workspace-footer">
-                <button class="btn btn-secondary" @click="isReportModalOpen = false; isAgentModalOpen = true;">다시 수정하기</button>
-                <button class="btn btn-primary" @click="isReportModalOpen = false">닫기</button>
-            </footer>
-        </div>
-      </div>
-    </transition>
-
-    <!-- [공지사항 모달] -->
-    <NoticeModal :isOpen="isNoticeOpen" @close="closeNotice" />
-
-    <!-- [로그인 모달] -->
-    <!-- [로그인 모달] -->
-    <LoginModal 
-        :isOpen="isLoginModalOpen" 
-        @close="isLoginModalOpen = false"
-        @login-success="onLoginSuccess"
-        @request-signup="onRequestSignupFromLogin"
-    />
-
-    <!-- [회원가입 모달] -->
-    <!-- [회원가입 모달] -->
-    <SignUpModal
-        :isOpen="isSignUpModalOpen"
-        @close="isSignUpModalOpen = false"
-        @signup-success="onSignUpSuccess"
-    />
-
-     <!-- [접근 제한 안내 모달] -->
-     <transition name="fade">
-        <div v-if="isAuthRequiredModalOpen" class="modal-overlay" @click.self="isAuthRequiredModalOpen = false">
-            <div class="auth-container playground-auth-card">
-                <div class="playground-header-icon">
-                    <i data-lucide="party-popper" class="bounce-icon"></i>
-                </div>
-                <header class="auth-header">
-                    <div class="auth-badge warning">STOP! ACCESS RESTRICTED</div>
-                    <h2 class="auth-title">놀이터 입장 전 확인! 🚧</h2>
-                    <p class="auth-subtitle">
-                        아키텍처 놀이터의 모든 시설을 이용하시려면<br>
-                        엔지니어 신원 확인(로그인)이 필요합니다.
-                    </p>
-                </header>
-
-                <div class="playground-perks">
-                    <div class="perk-item">
-                        <i data-lucide="check-circle" class="perk-icon"></i>
-                        <span>모든 훈련 스테이지 오픈</span>
-                    </div>
-                    <div class="perk-item">
-                        <i data-lucide="check-circle" class="perk-icon"></i>
-                        <span>단백질 쉐이크 보상 획득</span>
-                    </div>
-                    <div class="perk-item">
-                        <i data-lucide="check-circle" class="perk-icon"></i>
-                        <span>실시간 랭킹 시스템 반영</span>
-                    </div>
-                </div>
-
-                <footer class="auth-footer" style="flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
-                    <button class="btn btn-primary" @click="isAuthRequiredModalOpen = false; handleSignUp()"
-                        style="width: 100%; height: 55px; font-size: 1.1rem;">
-                        무료로 회원가입하고 입장하기
-                    </button>
-                    <button class="btn btn-secondary" @click="isAuthRequiredModalOpen = false; handleLogin()"
-                        style="width: 100%; border: none;">
-                        이미 계정이 있나요? 로그인
-                    </button>
-                    <button class="btn-text" @click="isAuthRequiredModalOpen = false"
-                        style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; margin-top: 0.5rem;">
-                        다음에 할게요
-                    </button>
-                </footer>
-            </div>
-        </div>
-
-     </transition>
-
-     <!-- [공사중 안내 모달] -->
-     <ConstructionModal 
-        :isOpen="isConstructionModalOpen" 
-        @close="isConstructionModalOpen = false" 
-     />
-
-    </template>
-
-    <!-- [Logic Mirror 실습 모달] - Global placement -->
-    <transition name="fade">
-       <LogicMirror 
-           v-if="isLogicMirrorOpen" 
-           @close="isLogicMirrorOpen = false" 
-       />
-    </transition>
+    <!-- [전역 모달 통합 컨테이너] -->
+    <GlobalModals />
   </div>
 </template>
 
-<script>
-// Import external stylesheet (or rely on global style.css if imported in main.js)
+<script setup>
+import { ref, computed, watch, onMounted, onUpdated, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { useGameStore } from '@/stores/game';
+import { useUiStore } from '@/stores/ui';
+
 import './style.css';
-import axios from 'axios'; // [수정일: 2026-01-22] axios 임포트 누락 수정 (Antigravity)
-import NoticeModal from './components/NoticeModal.vue';
-import LoginModal from './components/LoginModal.vue';
-import SignUpModal from './components/SignUpModal.vue';
-import ConstructionModal from './components/ConstructionModal.vue';
-import LogicMirror from './features/practice/support/unit1/logic-mirror/LogicMirror.vue';
 import LandingView from './features/home/LandingView.vue';
+import GlobalModals from './components/GlobalModals.vue';
+import progressiveData from './features/practice/progressive-problems.json';
 
-export default {
-    components: {
-        NoticeModal,
-        LoginModal,
-        SignUpModal,
-        ConstructionModal,
-        LogicMirror,
-        LandingView
-    },
-    data() {
-        return {
-            userProteinShakes: 420,
-            chapters: [],
-            leaderboard: [
-                { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
-                { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
-                { id: 3, username: 'VueNinja', solved: 38, shakes: 1850 },
-                { id: 4, username: 'AgentZero', solved: 35, shakes: 1600 },
-                { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
-            ],
-            isAgentModalOpen: false,
-            isReportModalOpen: false, 
-            activeProblem: null,
-            editedPrompt: '',
-            submissionResult: null,
-            chatHistory: [],
-            userInput: '',
-            isTyping: false,
-            isNoticeOpen: true,
-            isLoginModalOpen: false,
-            // loginEmail: '',  // Moved to LoginModal
-            // loginPassword: '', // Moved to LoginModal
-            isSignUpModalOpen: false,
-            // signupNickname: '', // Moved to SignUpModal
-            // signupEmail: '',
-            // signupPassword: '',
-            // Additional signup fields omitted for brevity but can be added back
-            isLoggedIn: false,
-            sessionNickname: '',
-            isUnitModalOpen: false,
-            activeUnit: null,
-            activeChapter: null,
-            showScrollHint: false,
-            isAuthRequiredModalOpen: false,
-            isConstructionModalOpen: false, // [수정일: 2026-01-21] 공사중 모달 상태 추가
-            isLogicMirrorOpen: false, // [수정일: 2026-01-22] Code Practice 모달 상태 추가
-            currentDebugMode: 'bug-hunt', // [수정일: 2026-01-22] Debug Practice 현재 모드 (bug-hunt | vibe-cleanup)
-            // Mermaid, Code, Debug, Pseudo state vars would go here...
-            mermaidCode: '',
-        }
-    },
-    methods: {
-        async fetchChapters() {
-             // Mock data since backend might not be ready with CORS
-             const colors = ['#58cc02', '#1cb0f6', '#ff9600', '#ce82ff', '#ff4b4b'];
-             const iconMap = {
-                'Code Practice': 'code',
-                'Debug Practice': 'bug',
-                'System Practice': 'layers',
-                'Ops Practice': 'zap',
-                'Agent Practice': 'bot',
-                'Pseudo Practice': 'gamepad-2'
-             };
-             
-             // Simulating fetch
-             this.chapters = [
-                 { id: 1, name: 'Code Practice', description: 'Strength Training', problems: [{id: 1, title: 'Algorithm 101'}], image: '/image/unit_code.png' },
-                 { id: 2, name: 'Debug Practice', description: 'Precision Training', problems: [{id: 2, title: 'Fix the Bug'}], image: '/image/unit_debug.png' },
-                 { id: 3, name: 'System Practice', description: 'Strategy Training', problems: [{id: 3, title: 'Design System'}], image: '/image/unit_system.png' },
-                 { id: 4, name: 'Ops Practice', description: 'Endurance Training', problems: [{id: 4, title: 'Server Down!'}], image: '/image/unit_ops.png' },
-                 { id: 5, name: 'Agent Practice', description: 'AI Training', problems: [{id: 5, title: 'Prompt Eng'}], image: '/image/unit_agent.png' },
-             ].map((ch, idx) => ({
-                    ...ch,
-                    color: colors[idx % colors.length],
-                    icon: iconMap[ch.name] || 'book'
-             }));
+// Stores
+const auth = useAuthStore();
+const game = useGameStore();
+const ui = useUiStore();
 
-             this.$nextTick(() => {
-                 if (window.lucide) window.lucide.createIcons();
-             });
-        },
-        closeNotice() {
-            this.isNoticeOpen = false;
-        },
-        labelsCount(unit) {
-            const currentCount = unit?.problems?.length || 0;
-            return Math.max(0, 6 - currentCount);
-        },
-        openUnitPopup(unit) {
-            if (!this.isLoggedIn) {
-                this.isAuthRequiredModalOpen = true;
-                return;
-            }
-            this.activeUnit = unit;
-            // Debug Practice일 경우 기본 모드를 Bug Hunt로 설정
-            if (unit?.name === 'Debug Practice') {
-                this.currentDebugMode = 'bug-hunt';
-            }
-            this.isUnitModalOpen = true;
-        },
-        selectProblem(problem, chapter) {
-            if (!this.isLoggedIn) {
-                this.isAuthRequiredModalOpen = true;
-                return;
-            }
-            this.activeProblem = problem;
-            this.activeChapter = chapter;
+// Router
+const route = useRoute();
+const router = useRouter();
 
-            // [수정일: 2026-01-23] Practice 페이지들은 라우터로 이동
-            console.log('selectProblem:', chapter?.name);
-            if (chapter?.name === 'Code Practice') {
-                this.$router.push('/practice/logic-mirror');
-            } else if (chapter?.name === 'System Practice') {
-                this.$router.push('/practice/system-architecture');
-            } else if (chapter?.name === 'Debug Practice') {
-                // currentDebugMode에 따라 다른 라우트로 이동
-                if (this.currentDebugMode === 'bug-hunt') {
-                    this.$router.push('/practice/bug-hunt');
-                } else if (this.currentDebugMode === 'vibe-cleanup') {
-                    this.$router.push('/practice/vibe-cleanup');
+// Local State
+const leaderboard = ref([
+  { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
+  { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
+  { id: 3, username: 'VueNinja', solved: 38, shakes: 1850 },
+  { id: 4, username: 'AgentZero', solved: 35, shakes: 1600 },
+  { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
+]);
+
+// [수정일: 2026-01-31] 미사용 상태 제거 (모드 통합으로 인해 불필요)
+// const detectiveLevel = ref('초급');
+
+// Computed
+const isPracticePage = computed(() => {
+  // PseudoCode는 페이지/모달 하이브리드로 동작 (isPracticePage에 포함하여 배경 제어)
+  const practiceRoutes = [
+    'PseudoCode',
+    'SystemArchitecturePractice', 
+    'BugHunt', 
+    'VibeCodeCleanUp', 
+    'OpsPractice'
+  ];
+  return practiceRoutes.includes(route?.name);
+});
+
+const displayProblems = computed(() => {
+  const activeUnit = game.activeUnit;
+  if (!activeUnit) return [];
+
+  // [수정일: 2026-01-31] 모든 유닛에 대해 최신 매핑 데이터 사용 (일부 유닛의 캐시 문제 해결)
+  const unitIndex = game.chapters.indexOf(activeUnit);
+  const problems = game.mapDetailsToProblems(activeUnit, unitIndex + 1);
+  const unitName = (activeUnit.name || '').toLowerCase().replace(/\s+/g, '');
+
+  if (unitName === 'debugpractice' && game.currentDebugMode !== 'bug-hunt') {
+    // Vibe 문제 세트가 있으면 우선 사용
+    const vibeProblems = activeUnit.vibeProblems || [];
+    return vibeProblems.length > 0 ? vibeProblems : problems;
+  }
+
+  return problems;
+});
+
+const displayLabelsCount = computed(() => {
+  const currentCount = displayProblems.value?.length || 0;
+  const targetCount = game.activeUnit?.name === 'Debug Practice' ? 7 : 10;
+  return Math.max(0, targetCount - currentCount);
+});
+
+const currentMaxIdx = computed(() => {
+  const progress = game.currentUnitProgress;
+  const displayedIndices = displayProblems.value.map(p => p.questIndex);
+  if (displayedIndices.length === 0) return 0;
+
+  // [수정일: 2026-01-28] 현재 화면에 표시된 문제들 중 '해금된 마지막' 문제를 선택하여 오리 위치 고정
+  // 이렇게 하면 항상 해금된 노드에 오리가 앉게 되어 즉시 클릭(선택)이 가능해집니다.
+  const unlockedIndices = displayedIndices.filter(idx => progress.includes(idx));
+  
+  if (unlockedIndices.length > 0) {
+    return Math.max(...unlockedIndices);
+  }
+  
+  // 만약 현재 난이도에서 아무것도 해금되지 않았다면(이론상 불가) 첫 번째 노드 반환
+  return displayedIndices[0];
+});
+
+// [수정일: 2026-01-28] 라우트 감시: 연습 페이지에서 홈으로 돌아올 때 유닛 상세 모달 자동 재개
+watch(() => route.name, (newNav, oldNav) => {
+  const practiceRoutes = ['PseudoCode', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice' /*, 'AiDetective', 'PseudoForest', 'PseudoCompany', 'PseudoEmergency' */];
+  // 연습 페이지에서 홈('/')으로 돌아오는 경우
+  if (newNav === 'Home' && practiceRoutes.includes(oldNav)) {
+    if (game.activeUnit) {
+      ui.isUnitModalOpen = true;
+      nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+    }
+  }
+});
+
+// Methods
+function syncDebugProgress() {
+    try {
+        const data = localStorage.getItem('bugHuntGameData');
+        if (data) {
+            const parsed = JSON.parse(data);
+            const completed = parsed.completedProblems || [];
+            // progressive-problems.json을 가져와서 미션 완료 여부 확인
+            const progress = [0]; // 캠페인 1은 기본 해금
+            
+            progressiveData.progressiveProblems.forEach((m, idx) => {
+                // 미션의 마지막 단계(step 3)가 완료되었는지 확인
+                const missionCompleted = completed.includes(`progressive_${m.id}_step3`);
+                if (missionCompleted) {
+                    progress.push(idx + 1);
                 }
-            } else if (chapter?.name === 'Ops Practice') {
-                this.$router.push('/practice/ops-practice');
-            } else if (chapter?.name === 'Agent Practice') {
-                this.isAgentModalOpen = true;
-                this.$nextTick(() => {
-                    if (window.lucide) window.lucide.createIcons();
-                    // Chart init would go here
-                });
-            } else {
-                 this.isConstructionModalOpen = true;
-            }
-        },
-        selectGameMode(mode) {
-            this.currentDebugMode = mode;
-            if (this.activeUnit?.name === 'Debug Practice') {
-                const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(this.$route.name);
-                if (isDebugRoute) {
-                    const nextPath = mode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup';
-                    this.$router.push(nextPath);
-                }
-            }
-            this.$nextTick(() => {
-                if (window.lucide) window.lucide.createIcons();
             });
-        },
-        handleLogin() { this.isLoginModalOpen = true; },
-        onLoginSuccess(email) {
-            this.isLoggedIn = true;
-            this.isLoginModalOpen = false;
-            this.sessionNickname = email.split('@')[0] || 'Engineer';
-        },
-        onRequestSignupFromLogin() {
-            this.isLoginModalOpen = false;
-            this.handleSignUp();
-        },
-        handleSignUp() { this.isSignUpModalOpen = true; },
-        onSignUpSuccess(nickname) {
-            this.isSignUpModalOpen = false;
-            // Success modal logic omitted
-            this.isLoggedIn = true;
-            this.sessionNickname = nickname || 'NewUser';
-        },
-        // [수정일: 2026-01-21] 로그인 성공 핸들러
-        onLoginSuccess(user) {
-            this.isLoggedIn = true;
-            this.sessionNickname = user.nickname || user.username;
-            this.isLoginModalOpen = false;
-        },
-
-        // [수정일: 2026-01-21] 로그아웃 API 연동
-        async handleLogout() {
-            try {
-                await axios.post('/api/core/auth/logout/');
-                this.isLoggedIn = false;
-                this.sessionNickname = '';
-                alert('Logged out successfully.');
-            } catch (error) {
-                console.error('Logout failed:', error);
-                // 그래도 클라이언트 로그아웃은 처리
-                this.isLoggedIn = false;
-                this.sessionNickname = '';
-            }
-        },
-
-        // [수정일: 2026-01-21] 세션 체크 (새로고침 시 로그인 유지)
-        async checkSession() {
-            try {
-                const response = await axios.get('/api/core/auth/me/');
-                if (response.data.isAuthenticated) {
-                    this.isLoggedIn = true;
-                    this.sessionNickname = response.data.user.nickname || response.data.user.username;
-                }
-            } catch (error) {
-                this.isLoggedIn = false;
-            }
-        },
-
-        handleGoToPlayground() {
-            if (this.isLoggedIn) {
-                document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                this.isAuthRequiredModalOpen = true;
-            }
-        },
-        async sendLiveMessage() {
-            if (!this.userInput.trim()) return;
-            this.chatHistory.push({ role: 'user', content: this.userInput });
-            this.userInput = '';
-            this.isTyping = true;
-            setTimeout(() => {
-                this.chatHistory.push({ role: 'assistant', content: 'This is a simulated AI response.' });
-                this.isTyping = false;
-            }, 1000);
-        },
-        submitAgent() {
-            this.isSubmitting = true;
-            setTimeout(() => {
-                this.submissionResult = { accuracy: 88, hallucination_rate: 12, latency: 0.8 };
-                this.isSubmitting = false;
-                this.isAgentModalOpen = false;
-                this.isReportModalOpen = true;
-            }, 1500);
+            
+            game.unitProgress['Debug Practice'] = Array.from(new Set(progress)).sort((a, b) => a - b);
         }
-    },
-    computed: {
-        isPracticePage() {
-            const practiceRoutes = ['LogicMirror', 'LogicMirrorTest', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice'];
-            console.log('[DEBUG] Current route:', this.$route);
-            console.log('[DEBUG] Route name:', this.$route?.name);
-            console.log('[DEBUG] Is practice page?', practiceRoutes.includes(this.$route?.name));
-            return practiceRoutes.includes(this.$route?.name);
-        },
-        displayProblems() {
-            if (this.activeUnit?.name === 'Debug Practice') {
-                const title = this.currentDebugMode === 'bug-hunt' ? 'Bug Hunt' : 'Vibe Code Clean Up';
-                return [{ id: this.currentDebugMode, title }];
-            }
-            return this.activeUnit?.problems || [];
-        },
-        displayLabelsCount() {
-            const currentCount = this.displayProblems?.length || 0;
-            return Math.max(0, 6 - currentCount);
-        },
-        unitBadge() { return this.activeChapter?.name || 'Practice'; },
-        editorLabel() { return 'SYSTEM PROMPT EDITOR'; },
-        editorPlaceholder() { return 'Enter your system prompt here...'; },
-        playgroundTitle() { return 'LIVE CHAT PLAYGROUND'; },
-        emptyChatMessage() { return 'Start testing your prompt!'; }
-    },
-    mounted() {
-        this.checkSession(); // 앱 로드 시 세션 확인
-        this.fetchChapters();
-        this.$nextTick(() => {
-            if (window.lucide) window.lucide.createIcons();
-        });
-    },
-    // 2026-01-20: 모달/팝업(v-if) 렌더링 시 Lucide 아이콘이 표시되지 않는 문제 해결 (DOM 업데이트 후 아이콘 리로드)
-    updated() {
-        this.$nextTick(() => {
-            if (window.lucide) window.lucide.createIcons();
-        });
+    } catch (e) {
+        console.warn('Failed to sync debug progress:', e);
     }
 }
+
+function isUnlocked(pIdx) {
+  return game.currentUnitProgress.includes(pIdx);
+}
+
+function openUnitPopup(unit) {
+  if (!auth.isLoggedIn) {
+    ui.isAuthRequiredModalOpen = true;
+    return;
+  }
+  game.setActiveUnit(unit);
+  if (unit?.name === 'Debug Practice') {
+    syncDebugProgress(); // 팝업 열 때 진행도 동기화
+    game.currentDebugMode = 'bug-hunt';
+  }
+  ui.isUnitModalOpen = true;
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
+
+function selectProblem(problem) {
+  if (!auth.isLoggedIn) {
+    ui.isAuthRequiredModalOpen = true;
+    return;
+  }
+
+  game.activeProblem = problem;
+  game.activeChapter = game.activeUnit;
+  ui.isUnitModalOpen = false;
+
+  const rawName = game.activeUnit?.name || '';
+  const chapterName = rawName.toLowerCase().replace(/\s+/g, '');
+
+  if (chapterName === 'pseudopractice') {
+    game.selectedQuestIndex = problem.questIndex || 0;
+    // [수정일: 2026-01-31] 모든 Unit 1 문제는 HUD 스타일의 통합 연습 화면(pseudoProblem.vue)으로 연결됩니다.
+    router.push('/practice/pseudo-code');
+  } else if (chapterName === 'systempractice') {
+    game.selectedSystemProblemIndex = problem.problemIndex || 0;
+    router.push({ path: '/practice/system-architecture', query: { problem: problem.problemIndex || 0 } });
+  } else if (chapterName === 'debugpractice') {
+    if (game.currentDebugMode === 'bug-hunt') {
+      // p1, p2, p3 미션으로 바로 이동
+      router.push({
+        path: '/practice/bug-hunt',
+        query: { missionId: problem.id, mapMode: 'true' }
+      });
+    } else {
+      // Vibe Code Clean Up
+      router.push('/practice/vibe-cleanup');
+    }
+  } else if (chapterName === 'opspractice') {
+    router.push('/practice/ops-practice');
+  } else if (chapterName === 'Agent Practice') {
+    ui.isAgentModalOpen = true;
+    nextTick(() => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  } else {
+    ui.isConstructionModalOpen = true;
+  }
+}
+
+function handlePracticeClose() {
+    // [2026-01-27] 실습 페이지에서 'X' 또는 닫기 이벤트 발생 시 처리
+    ui.isPseudoCodeOpen = false;
+    router.push('/');
+    // 닫은 후 유닛 선택 팝업을 다시 보여주어 연속성 유지
+    ui.isUnitModalOpen = true;
+}
+
+// [수정일: 2026-01-31] 미사용 메서드 제거 (모드 전환 기능 제거)
+// function selectUnit1Mode(mode) { ... }
+
+function selectGameMode(mode) {
+  game.currentDebugMode = mode;
+
+  // Bug Hunt 모드로 전환 시 진행도 동기화
+  if (mode === 'bug-hunt') {
+    syncDebugProgress();
+  }
+
+  if (game.activeUnit?.name === 'Debug Practice') {
+    const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(route.name);
+    if (isDebugRoute) {
+      const nextPath = mode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup';
+      router.push(nextPath);
+    }
+  }
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
+
+function handleGoToPlayground() {
+  if (auth.isLoggedIn) {
+    document.getElementById('chapters')?.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    ui.isAuthRequiredModalOpen = true;
+  }
+}
+
+function handleGuidebookClick() {
+  ui.isGuidebookOpen = true;
+}
+
+// Lifecycle
+onMounted(() => {
+  auth.checkSession();
+  game.initGame();
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+});
+
+// [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
+// [2026-01-27] 데이터 로드 완료 시 라우트에 따른 activeUnit 자동 복구
+watch(() => game.chapters, (newChapters) => {
+    if (newChapters.length > 0 && route.name === 'PseudoCode' && !game.activeUnit) {
+        const pseudoUnit = newChapters.find(c => c.name === 'Pseudo Practice');
+        if (pseudoUnit) game.activeUnit = pseudoUnit;
+    }
+}, { deep: true });
+
+// [2026-01-24] 라우트 설정을 감시하여 Unit 1 모달 강제 제어 (필요 시 URL 직접 접근 대응)
+watch(() => route.name, (newName) => {
+    // 1. URL이 변경될 때마다 모달 상태를 동기화합니다.
+    // [수정일: 2026-01-31] 비활성 라우트 체크 간소화
+    if (newName === 'PseudoCode') {
+        ui.isPseudoCodeOpen = true; // 관련 라우트 접속 시 상태 활성화
+        
+        // [2026-01-27] 직접 URL 접근이나 새로고침 시 activeUnit이 상실되는 문제 해결
+        if (game.chapters.length > 0 && !game.activeUnit) {
+            const pseudoUnit = game.chapters.find(c => c.name === 'Pseudo Practice');
+            if (pseudoUnit) game.activeUnit = pseudoUnit;
+        }
+    } else if (!isPracticePage.value) {
+        // 2. 다른 일반 페이지(Landing 드)로 이동 시 모든 실습 모달을 명시적으로 닫습니다.
+        ui.isPseudoCodeOpen = false;
+    }
+}, { immediate: true });
+
+onUpdated(() => {
+  nextTick(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+});
 </script>
 
 <style scoped>

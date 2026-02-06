@@ -1,4 +1,8 @@
 <!-- 
+수정일: 2026-01-24
+수정내용: 클라이언트 기반 파이썬 실행을 위한 Pyodide CDN 스크립트 추가
+-->
+<!-- 
 수정일: 2026-01-21
 수정내용: Vue SPA 진입점 설정 (Vite 표준 설정)
 -->
@@ -13,6 +17,8 @@
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <!-- [수정일: 2026-01-29] [수정내용: BugHunt 페이지를 위한 추가 폰트 로드] -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
   <style>
     /* Square Enix / Mario Style Global Overrides */
@@ -82,6 +88,7 @@
       /* Classic Mario Sky Blue */
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
 </head>
 
 <body>

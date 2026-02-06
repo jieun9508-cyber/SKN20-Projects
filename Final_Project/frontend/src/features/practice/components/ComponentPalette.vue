@@ -1,6 +1,10 @@
 <template>
-  <div class="palette">
-    <h2>⚡ Components</h2>
+  <div class="palette" :class="{ 'hint-mode': isHintActive }">
+    <!-- 힌트 안내 메시지 -->
+    <!-- <div v-if="isHintActive && requiredTypes.length > 0" class="hint-guide">
+      <span class="hint-guide-icon">💡</span>
+      <span>필수 컴포넌트가 강조됩니다!</span>
+    </div> -->
 
     <!-- 그룹 A. 진입 및 연산 (Compute & Entry) -->
     <div class="component-group">
@@ -9,10 +13,11 @@
         v-for="comp in computeComponents"
         :key="comp.type"
         class="component"
-        :class="comp.type"
+        :class="[comp.type, { 'required-hint': isHintActive && isRequired(comp.type), 'dimmed': isHintActive && !isRequired(comp.type) }]"
         draggable="true"
         @dragstart="onDragStart($event, comp.type, comp.label)"
       >
+        <span v-if="isHintActive && isRequired(comp.type)" class="required-badge">필수</span>
         {{ comp.label }}
       </div>
     </div>
@@ -24,10 +29,11 @@
         v-for="comp in storageComponents"
         :key="comp.type"
         class="component"
-        :class="comp.type"
+        :class="[comp.type, { 'required-hint': isHintActive && isRequired(comp.type), 'dimmed': isHintActive && !isRequired(comp.type) }]"
         draggable="true"
         @dragstart="onDragStart($event, comp.type, comp.label)"
       >
+        <span v-if="isHintActive && isRequired(comp.type)" class="required-badge">필수</span>
         {{ comp.label }}
       </div>
     </div>
@@ -39,10 +45,11 @@
         v-for="comp in messagingComponents"
         :key="comp.type"
         class="component"
-        :class="comp.type"
+        :class="[comp.type, { 'required-hint': isHintActive && isRequired(comp.type), 'dimmed': isHintActive && !isRequired(comp.type) }]"
         draggable="true"
         @dragstart="onDragStart($event, comp.type, comp.label)"
       >
+        <span v-if="isHintActive && isRequired(comp.type)" class="required-badge">필수</span>
         {{ comp.label }}
       </div>
     </div>
@@ -54,10 +61,11 @@
         v-for="comp in observabilityComponents"
         :key="comp.type"
         class="component"
-        :class="comp.type"
+        :class="[comp.type, { 'required-hint': isHintActive && isRequired(comp.type), 'dimmed': isHintActive && !isRequired(comp.type) }]"
         draggable="true"
         @dragstart="onDragStart($event, comp.type, comp.label)"
       >
+        <span v-if="isHintActive && isRequired(comp.type)" class="required-badge">필수</span>
         {{ comp.label }}
       </div>
     </div>
@@ -67,25 +75,35 @@
 <script>
 export default {
   name: 'ComponentPalette',
+  props: {
+    requiredTypes: {
+      type: Array,
+      default: () => []
+    },
+    isHintActive: {
+      type: Boolean,
+      default: false
+    }
+  },
   emits: ['drag-start'],
   data() {
     return {
       computeComponents: [
-        { type: 'user', label: '👤 User/Client' },
+        { type: 'user', label: '👤 Client' },
         { type: 'loadbalancer', label: '⚖️ Load Balancer' },
         { type: 'gateway', label: '🚪 API Gateway' },
-        { type: 'server', label: '🖥️ Compute Service' }
+        { type: 'server', label: '🖥️ Server' }
       ],
       storageComponents: [
-        { type: 'rdbms', label: '🗃️ Relational DB' },
-        { type: 'nosql', label: '📊 NoSQL DB' },
-        { type: 'cache', label: '⚡ In-Memory Cache' },
+        { type: 'rdbms', label: '🗃️ RDBMS' },
+        { type: 'nosql', label: '📊 NoSQL' },
+        { type: 'cache', label: '⚡ Cache (Redis)' },
         { type: 'search', label: '🔍 Search Engine' },
         { type: 'storage', label: '📦 Object Storage' }
       ],
       messagingComponents: [
-        { type: 'broker', label: '📬 Message Broker' },
-        { type: 'eventbus', label: '📡 Event Bus' }
+        { type: 'broker', label: '📬 Message Queue' },
+        { type: 'eventbus', label: '📡 Pub/Sub' }
       ],
       observabilityComponents: [
         { type: 'monitoring', label: '📈 Monitoring' },
@@ -99,83 +117,178 @@ export default {
       event.dataTransfer.setData('componentType', type);
       event.dataTransfer.setData('componentText', text);
       this.$emit('drag-start', { type, text });
+    },
+    isRequired(type) {
+      return this.requiredTypes.includes(type);
     }
   }
 };
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
 .palette {
-  background: rgba(17, 24, 39, 0.98);
-  padding: 20px;
+  --space-deep: #0a0a1a;
+  --nebula-purple: #6b5ce7;
+  --nebula-blue: #4fc3f7;
+  --nebula-pink: #f06292;
+  --text-primary: #e8eaed;
+  --text-secondary: rgba(232, 234, 237, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  background: transparent;
+  padding: 8px;
   overflow-y: auto;
-  border-right: 1px solid rgba(100, 181, 246, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 스크롤바 커스텀 */
+.palette::-webkit-scrollbar {
+  width: 6px;
+}
+
+.palette::-webkit-scrollbar-track {
+  background: var(--space-deep);
+}
+
+.palette::-webkit-scrollbar-thumb {
+  background: rgba(107, 92, 231, 0.4);
+  border-radius: 10px;
 }
 
 .palette h2 {
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.3em;
-  color: #00ff9d;
-  margin: 0 0 20px 0;
-  text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--nebula-blue);
+  margin: 0 0 8px 0;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: 2px;
 }
 
+/* Hint Guide - Compact */
+.hint-guide {
+  background: rgba(79, 195, 247, 0.1);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--nebula-blue);
+  font-family: 'Rajdhani', sans-serif;
+  animation: hint-fade-in 0.3s ease;
+}
+
+.hint-guide span:last-child {
+  display: none;
+}
+
+@keyframes hint-fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Component Groups - Compact */
 .component-group {
-  margin-bottom: 20px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  border: 1px solid rgba(100, 181, 246, 0.2);
+  margin-bottom: 8px;
 }
 
 .component-group h3 {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.85em;
-  color: #64b5f6;
-  margin: 0 0 10px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(100, 181, 246, 0.3);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 6px 0;
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--glass-bg);
+  border-left: 2px solid var(--nebula-purple);
+  border-radius: 0 6px 6px 0;
+  letter-spacing: 2px;
 }
 
+/* Tool Items - Space Mission Style */
 .component {
-  padding: 12px 15px;
-  margin-bottom: 8px;
-  border-radius: 8px;
+  height: 50px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 6px;
   cursor: grab;
-  font-size: 0.9em;
+  font-size: 0.9rem;
   font-weight: 600;
+  font-family: 'Rajdhani', sans-serif;
   transition: all 0.3s ease;
-  border: 2px solid transparent;
+  position: relative;
+  user-select: none;
+  backdrop-filter: blur(5px);
+}
+
+.component::before {
+  display: none;
 }
 
 .component:active {
   cursor: grabbing;
+  transform: scale(0.96);
 }
 
 .component:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  border-color: var(--nebula-purple);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(107, 92, 231, 0.3);
+  background: rgba(107, 92, 231, 0.1);
 }
 
-/* Compute & Entry */
-.component.user { background: linear-gradient(135deg, #ff4785, #ff1744); color: #fff; }
-.component.loadbalancer { background: linear-gradient(135deg, #26c6da, #00acc1); color: #0a0e27; }
-.component.gateway { background: linear-gradient(135deg, #64b5f6, #2196f3); color: #fff; }
-.component.server { background: linear-gradient(135deg, #ab47bc, #8e24aa); color: #fff; }
+/* Required component hint styles */
+.component.required-hint {
+  border-color: var(--nebula-blue) !important;
+  background: rgba(79, 195, 247, 0.1);
+  animation: required-glow 1.5s ease-in-out infinite;
+}
 
-/* Storage & Search */
-.component.rdbms { background: linear-gradient(135deg, #00ff9d, #00e676); color: #0a0e27; }
-.component.nosql { background: linear-gradient(135deg, #4db6ac, #26a69a); color: #0a0e27; }
-.component.cache { background: linear-gradient(135deg, #ffc107, #ffa000); color: #0a0e27; }
-.component.search { background: linear-gradient(135deg, #7c4dff, #651fff); color: #fff; }
-.component.storage { background: linear-gradient(135deg, #ff7043, #f4511e); color: #fff; }
+@keyframes required-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(79, 195, 247, 0.6);
+  }
+}
 
-/* Messaging */
-.component.broker { background: linear-gradient(135deg, #ff8a65, #ff5722); color: #fff; }
-.component.eventbus { background: linear-gradient(135deg, #ba68c8, #ab47bc); color: #fff; }
+.required-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #6b5ce7, #4fc3f7);
+  color: white;
+  font-size: 0.5rem;
+  padding: 3px 8px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  border-radius: 20px;
+  z-index: 1;
+  letter-spacing: 1px;
+}
 
-/* Observability */
-.component.monitoring { background: linear-gradient(135deg, #66bb6a, #43a047); color: #fff; }
-.component.logging { background: linear-gradient(135deg, #78909c, #607d8b); color: #fff; }
-.component.cicd { background: linear-gradient(135deg, #42a5f5, #1e88e5); color: #fff; }
+/* Dimmed styles for non-required components */
+.component.dimmed {
+  opacity: 0.3;
+  filter: grayscale(30%);
+}
 </style>
