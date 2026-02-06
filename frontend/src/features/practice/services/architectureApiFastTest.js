@@ -1,8 +1,9 @@
 /**
  * Architecture Practice API Service
  *
- * 사용자의 아키텍처 + 설명을 분석하여 부족한 부분을 파악하고,
- * 해당 영역에 맞는 고품질 질문 3개를 생성
+ * 6대 기둥 각각에 전담 에이전트를 배정하여 병렬로 질문 6개를 생성
+ * - 기둥 선택 비결정성을 원천 제거 (항상 동일한 6개 카테고리)
+ * - Promise.allSettled로 병렬 실행하여 속도 유지
  *
  * txt 파일에서 [핵심 분석 원칙] 섹션만 파싱하여 사용
  */
@@ -64,6 +65,96 @@ const PILLAR_DATA = {
 };
 
 /**
+ * 기둥별 Fallback 질문 (API 실패 시 사용)
+ */
+const FALLBACK_QUESTIONS = {
+  reliability: {
+    category: '신뢰성',
+    gap: '장애 대응',
+    question: '핵심 서버가 갑자기 다운된다면, 사용자들은 어떤 경험을 하게 되나요? 서비스가 완전히 중단되나요?'
+  },
+  performance: {
+    category: '성능',
+    gap: '확장성',
+    question: '동시 사용자가 평소의 10배로 급증하면, 이 아키텍처가 자동으로 처리량을 늘릴 수 있나요?'
+  },
+  operational: {
+    category: '운영',
+    gap: '모니터링',
+    question: '시스템에 문제가 생겼을 때, 운영팀이 사용자보다 먼저 알 수 있는 방법이 있나요?'
+  },
+  cost: {
+    category: '비용',
+    gap: '비용 효율성',
+    question: '트래픽이 적은 새벽 시간대에도 동일한 인프라 비용이 발생하나요? 비용을 줄일 수 있는 구조인가요?'
+  },
+  security: {
+    category: '보안',
+    gap: '접근 제어',
+    question: '외부에서 내부 데이터베이스에 직접 접근하는 것을 어떻게 차단하고 있나요?'
+  },
+  sustainability: {
+    category: '지속가능성',
+    gap: '유지보수성',
+    question: '새로운 기능을 추가하거나 기존 컴포넌트를 교체할 때, 다른 부분에 영향을 최소화할 수 있는 구조인가요?'
+  }
+};
+
+/**
+ * 단일 기둥 전담 에이전트: 해당 기둥 관점의 질문 1개 생성
+ */
+async function generateSinglePillarQuestion(pillarKey, pillar, context) {
+  const categoryName = FALLBACK_QUESTIONS[pillarKey].category;
+
+  const prompt = `당신은 **${pillar.name}** 전문 아키텍트입니다.
+
+## 임무
+지원자의 아키텍처와 설명에서 ${pillar.name} 관점의 부족한 점을 파악하고,
+**구체적이고 상황 기반의 질문 1개**를 생성하세요.
+
+## 시나리오
+${context.scenario || '시스템 아키텍처 설계'}
+
+## 미션
+${context.missions.length > 0 ? context.missions.map((m, i) => `${i + 1}. ${m}`).join('\n') : '없음'}
+
+## 제약조건
+${context.constraints.length > 0 ? context.constraints.map((c, i) => `${i + 1}. ${c}`).join('\n') : '없음'}
+
+## 아키텍처
+컴포넌트:
+${context.componentList || '(없음)'}
+
+연결:
+${context.connectionList || '(없음)'}
+
+## 지원자 설명
+"${context.userExplanation || '(설명 없음)'}"
+
+## ${pillar.name} 핵심 원칙
+${pillar.principles}
+
+## 규칙
+- "~한 상황이 발생하면" 형태의 상황 기반 질문
+- 배치된 컴포넌트만 언급
+- Yes/No가 아닌 설계 의도를 묻는 개방형 질문
+- 지원자가 이미 설명한 내용은 재질문 금지
+
+## JSON 출력 (반드시 이 형식만)
+{ "category": "${categoryName}", "gap": "부족한 점", "question": "질문" }`;
+
+  const response = await callOpenAI(prompt, { maxTokens: 400, temperature: 0.4 });
+  const jsonMatch = response.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    const parsed = JSON.parse(jsonMatch[0]);
+    // 카테고리를 강제 고정 (LLM이 다른 카테고리를 반환할 수 있으므로)
+    parsed.category = categoryName;
+    return parsed;
+  }
+  throw new Error('Invalid JSON from pillar agent');
+}
+
+/**
  * OpenAI API 호출
  */
 async function callOpenAI(prompt, options = {}) {
@@ -100,7 +191,10 @@ export async function fetchProblems() {
 }
 
 /**
- * 사용자 설명 + 아키텍처 분석 → 부족한 부분 파악 → 맞춤형 질문 3개 생성
+ * 6대 기둥 병렬 에이전트로 맞춤형 질문 6개 생성
+ * - 각 기둥마다 전담 에이전트가 해당 관점의 질문 1개를 생성
+ * - Promise.allSettled로 병렬 실행 → 속도 유지
+ * - 실패한 에이전트는 해당 기둥의 fallback 질문 사용
  */
 export async function generateFollowUpQuestions(problem, components, connections, mermaidCode, userExplanation) {
   // 컴포넌트/연결 정보 정리
@@ -111,152 +205,37 @@ export async function generateFollowUpQuestions(problem, components, connections
     return from && to ? `- ${from.text} → ${to.text}` : null;
   }).filter(Boolean).join('\n');
 
-  // 문제 정보
-  const scenario = problem?.scenario || '';
-  const constraints = problem?.constraints || [];
-  const missions = problem?.missions || [];
+  // 공통 컨텍스트 빌드
+  const context = {
+    scenario: problem?.scenario || '',
+    missions: problem?.missions || [],
+    constraints: problem?.constraints || [],
+    componentList,
+    connectionList,
+    mermaidCode,
+    userExplanation
+  };
 
-  // 6대 기둥 원칙 텍스트 생성 (txt 파일에서 추출한 내용)
-  const principlesText = Object.entries(PILLAR_DATA)
-    .filter(([_, pillar]) => pillar.principles) // 원칙이 있는 것만
-    .map(([key, pillar]) => `
-### ${pillar.name}
-${pillar.principles}
-`).join('\n---\n');
+  // 6개 기둥 병렬 실행
+  const pillarEntries = Object.entries(PILLAR_DATA);
+  const results = await Promise.allSettled(
+    pillarEntries.map(([key, pillar]) => generateSinglePillarQuestion(key, pillar, context))
+  );
 
-  const prompt = `당신은 **시니어 클라우드 솔루션 아키텍트**입니다.
-
-## 당신의 임무
-1. 지원자의 **아키텍처 다이어그램**과 **설명**을 분석
-2. **부족하거나 언급되지 않은 영역** 3가지를 파악
-3. 각 부족한 영역에 대해 **구체적이고 상황 기반의 질문** 1개씩 생성
-
----
-
-## 📋 문제 상황
-
-### 시나리오
-${scenario || '시스템 아키텍처 설계'}
-
-### 미션
-${missions.length > 0 ? missions.map((m, i) => `${i + 1}. ${m}`).join('\n') : '없음'}
-
-### 제약조건
-${constraints.length > 0 ? constraints.map((c, i) => `${i + 1}. ${c}`).join('\n') : '없음'}
-
----
-
-## 🏗️ 지원자의 아키텍처
-
-### 배치된 컴포넌트 (${components.length}개)
-${componentList || '(없음)'}
-
-### 연결 관계 (${connections.length}개)
-${connectionList || '(없음)'}
-
-### Mermaid 다이어그램
-\`\`\`mermaid
-${mermaidCode || 'graph LR'}
-\`\`\`
-
----
-
-## 💬 지원자의 설명
-"${userExplanation || '(설명 없음)'}"
-
----
-
-## 📚 6대 기둥 분석 원칙 (부족한 부분 판단 기준)
-
-${principlesText}
-
----
-
-## 📝 질문 생성 규칙
-
-### 1. 부족한 부분 파악 방법
-- 지원자의 설명에서 **언급하지 않은** 중요한 관점 찾기
-- 아키텍처에서 **누락된 컴포넌트나 연결** 찾기
-- 문제의 제약조건/미션과 **맞지 않는** 부분 찾기
-
-### 2. 질문 생성 원칙
-- **상황 기반**: "~한 상황이 발생하면" 형태로 질문
-- **구체적**: 이 시나리오의 특정 컴포넌트/상황을 언급
-- **개방형**: Yes/No가 아닌 설계 의도를 설명하게 유도
-- **배치된 컴포넌트만 언급** (없는 컴포넌트 질문 금지)
-
-### 3. 피해야 할 것
-- 일반적인 교과서적 질문
-- 지원자가 이미 설명한 내용 재질문
-- 전문 용어 나열식 질문
-
----
-
-## 출력 형식 (JSON만)
-
-{
-  "gaps_analysis": {
-    "mentioned": ["지원자가 설명에서 언급한 관점들"],
-    "missing": ["부족하거나 언급되지 않은 관점 3가지"]
-  },
-  "questions": [
-    {
-      "category": "부족한 영역 (예: 신뢰성, 성능, 운영 등)",
-      "gap": "이 질문으로 확인하려는 부족한 부분",
-      "question": "상황 기반의 구체적인 질문"
-    },
-    {
-      "category": "부족한 영역",
-      "gap": "이 질문으로 확인하려는 부족한 부분",
-      "question": "상황 기반의 구체적인 질문"
-    },
-    {
-      "category": "부족한 영역",
-      "gap": "이 질문으로 확인하려는 부족한 부분",
-      "question": "상황 기반의 구체적인 질문"
+  // 성공한 결과 수집, 실패 시 fallback
+  const questions = results.map((result, idx) => {
+    if (result.status === 'fulfilled' && result.value) {
+      return result.value;
     }
-  ]
-}`;
+    console.warn(`기둥 에이전트 실패 (${pillarEntries[idx][0]}):`, result.reason);
+    return FALLBACK_QUESTIONS[pillarEntries[idx][0]];
+  });
 
-  try {
-    const response = await callOpenAI(prompt, {
-      maxTokens: 1200,
-      temperature: 0.7
-    });
-
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        analysis: parsed.gaps_analysis || {},
-        questions: (parsed.questions || []).slice(0, 3)
-      };
-    }
-    throw new Error('Invalid JSON');
-  } catch (error) {
-    console.error('질문 생성 실패:', error);
-
-    // Fallback
-    const mainComponent = components[0]?.text || '메인 서버';
-    return {
-      analysis: { mentioned: [], missing: ['분석 실패'] },
-      questions: [
-        {
-          category: '신뢰성',
-          gap: '장애 대응',
-          question: `${mainComponent}가 갑자기 다운된다면, 사용자들은 어떤 경험을 하게 되나요? 서비스가 완전히 중단되나요?`
-        },
-        {
-          category: '성능',
-          gap: '확장성',
-          question: `동시 사용자가 평소의 10배로 급증하면, 이 아키텍처가 자동으로 처리량을 늘릴 수 있나요?`
-        },
-        {
-          category: '운영',
-          gap: '모니터링',
-          question: `시스템에 문제가 생겼을 때, 운영팀이 사용자보다 먼저 알 수 있는 방법이 있나요?`
-        }
-      ]
-    };
-  }
+  return {
+    analysis: {
+      mentioned: [],
+      missing: questions.map(q => q.category)
+    },
+    questions // 6개
+  };
 }

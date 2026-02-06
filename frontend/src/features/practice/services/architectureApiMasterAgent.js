@@ -1,9 +1,9 @@
 /**
- * Architecture Evaluation Service (Simplified)
+ * Architecture Evaluation Service
  *
- * 핵심 기둥 3개만 평가 (Option C)
- * - 질문 생성 시 파악된 부족한 3개 영역만 평가
- * - 각 영역 33% 비중으로 점수 산출
+ * 6대 기둥 전체 평가
+ * - 6개 병렬 에이전트가 생성한 질문에 대한 답변 평가
+ * - 각 영역 16.7% 비중으로 점수 산출
  * - 모범답안 제공으로 학습 효과 증대
  */
 
@@ -200,8 +200,8 @@ ${relevantPrinciples || '(원칙 없음)'}
 - 사용자가 배울 수 있도록 상세하게
 
 ### 3. 최종 점수
-- **반드시 정확히 3개** 영역만 평가 (evaluations 배열 길이 = 3)
-- 3개 영역 점수의 평균 (각 33.3%)
+- **반드시 정확히 6개** 영역만 평가 (evaluations 배열 길이 = 6)
+- 6개 영역 점수의 평균 (각 16.7%)
 
 ---
 
@@ -229,7 +229,7 @@ ${relevantPrinciples || '(원칙 없음)'}
 
   try {
     const response = await callOpenAI(prompt, {
-      maxTokens: 2500,
+      maxTokens: 4000,
       temperature: 0.5
     });
 
@@ -240,8 +240,8 @@ ${relevantPrinciples || '(원칙 없음)'}
       const endTime = Date.now();
       console.log(`✅ 평가 완료 (${((endTime - startTime) / 1000).toFixed(1)}s)`);
 
-      // 정확히 3개만 유지
-      const evaluations = (result.evaluations || []).slice(0, 3);
+      // 6개 유지
+      const evaluations = (result.evaluations || []).slice(0, 6);
 
       // 결과 포맷팅
       return {
@@ -253,7 +253,7 @@ ${relevantPrinciples || '(원칙 없음)'}
         weaknesses: result.weaknesses || [],
         suggestions: result.recommendations || [],
 
-        // 질문별 평가 (모범답안 포함) - 3개 고정
+        // 질문별 평가 (모범답안 포함) - 6개
         questionEvaluations: evaluations,
 
         // 기존 호환용
@@ -281,16 +281,17 @@ function buildNfrScores(evaluations) {
   };
 
   evaluations.forEach(ev => {
-    const cat = ev.category?.toLowerCase();
-    if (cat?.includes('신뢰') || cat?.includes('reliability')) {
+    const cat = ev.category;
+    if (cat?.includes('신뢰')) {
       scores.reliability = { score: ev.score, feedback: ev.feedback };
       scores.availability = { score: ev.score, feedback: ev.feedback };
-    } else if (cat?.includes('성능') || cat?.includes('performance')) {
+    } else if (cat?.includes('성능')) {
       scores.performance = { score: ev.score, feedback: ev.feedback };
       scores.scalability = { score: ev.score, feedback: ev.feedback };
-    } else if (cat?.includes('보안') || cat?.includes('security')) {
+    } else if (cat?.includes('보안')) {
       scores.consistency = { score: ev.score, feedback: ev.feedback };
     }
+    // 운영, 비용, 지속가능성은 pillarScores에서 매핑됨
   });
 
   return scores;

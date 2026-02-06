@@ -12,7 +12,7 @@ import {
  *
  * 프로세스:
  * 1. 사용자 아키텍처 설명 입력
- * 2. 고품질 질문 3개 생성 (txt 파일 참고)
+ * 2. 6대 기둥 병렬 에이전트로 질문 6개 생성 (txt 파일 참고)
  * 3. 질문에 대한 답변 수집
  * 4. 6대 기둥 기반 평가 실행
  */
@@ -100,7 +100,7 @@ export function useEvaluation() {
   }
 
   /**
-   * 사용자 설명 제출 후 고품질 질문 3개 생성
+   * 사용자 설명 제출 후 6대 기둥 병렬 에이전트로 질문 6개 생성
    */
   async function submitUserExplanation(explanation, problem, droppedComponents, connections, mermaidCode) {
     userExplanation.value = explanation;
@@ -114,7 +114,7 @@ export function useEvaluation() {
     });
 
     try {
-      // 고품질 질문 3개 생성 (txt 파일 참고)
+      // 6대 기둥 병렬 에이전트로 질문 6개 생성
       const result = await generateFollowUpQuestions(
         problem,
         droppedComponents,
@@ -152,6 +152,18 @@ export function useEvaluation() {
         {
           category: '운영',
           question: '서비스에 장애가 났을 때, 관리자가 알기 전에 시스템이 먼저 알려주는 알람 기능이 있나요?'
+        },
+        {
+          category: '비용',
+          question: '트래픽이 적은 새벽 시간대에도 동일한 인프라 비용이 발생하나요? 비용을 줄일 수 있는 구조인가요?'
+        },
+        {
+          category: '보안',
+          question: '외부에서 내부 데이터베이스에 직접 접근하는 것을 어떻게 차단하고 있나요?'
+        },
+        {
+          category: '지속가능성',
+          question: '새로운 기능을 추가하거나 기존 컴포넌트를 교체할 때, 다른 부분에 영향을 최소화할 수 있는 구조인가요?'
         }
       ];
       currentQuestionIndex.value = 0;
@@ -178,10 +190,9 @@ export function useEvaluation() {
       mermaidCode
     );
 
-    // 설명 항목 제외, 질문 답변만 추출 (정확히 3개)
+    // 설명 항목 제외, 6대 기둥 질문 답변 추출
     const deepDiveQnA = collectedDeepDiveAnswers.value
       .filter(item => item.category !== '아키텍처 설명')
-      .slice(0, 3)
       .map(item => ({
         category: item.category,
         question: item.question,

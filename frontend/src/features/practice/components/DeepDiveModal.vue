@@ -109,7 +109,7 @@ export default {
     },
     totalQuestions: {
       type: Number,
-      default: 3
+      default: 6
     },
     category: {
       type: String,
