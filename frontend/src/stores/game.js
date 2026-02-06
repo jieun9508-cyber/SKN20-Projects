@@ -65,8 +65,9 @@ export const useGameStore = defineStore('game', {
                 const imageMap = {
                     'Pseudo Practice': '/image/unit_code.png',
                     'Debug Practice': '/image/unit_debug.png',
+                    'System Practice': '/image/unit_system.png'
                     /* [수정일: 2026-01-31] 비활성 이미지 맵 주석 처리
-                    'System Practice': '/image/unit_system.png',
+                    
                     'Ops Practice': '/image/unit_ops.png',
                     'Agent Practice': '/image/unit_agent.png'
                     */

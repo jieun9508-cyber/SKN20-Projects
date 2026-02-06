@@ -14,7 +14,6 @@ axios.defaults.xsrfCookieName = 'csrftoken'
 axios.defaults.xsrfHeaderName = 'X-CSRFToken'
 
 // 새로운 퀘스트 기반 Logic Mirror 임포트
-import PseudoPractice from './features/practice/pseudoProblem.vue'
 import CoduckWars from './features/practice/pseudocode/CoduckWars.vue'
 import SystemArchitecturePractice from './features/practice/SystemArchitecturePractice.vue'
 import BugHunt from './features/practice/BugHunt.vue'

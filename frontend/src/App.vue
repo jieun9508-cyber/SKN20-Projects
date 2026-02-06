@@ -42,7 +42,7 @@
             <header class="unit-modal-header-v3">
               <div class="title-section-v3">
                 <div class="unit-label-v3">
-                  {{ game.activeUnit?.name === 'Debug Practice' ? 'DEBUG GYM' : 'UNIT ' + (game.chapters.indexOf(game.activeUnit) + 1) }}
+                  {{ game.activeUnit?.name === 'Debug Practice' ? 'DEBUG ARCADE' : 'UNIT ' + (game.chapters.indexOf(game.activeUnit) + 1) }}
                 </div>
                 <h2 class="unit-name-v3">
                   <template v-if="game.activeUnit?.name === 'Debug Practice'">
