@@ -11,7 +11,7 @@
 |---|---|---|---|
 | `3rd_Project` | 청년이음 | 온통청년 Open API 기반 **RAG 청년 정책 챗봇** | [README](./3rd_Project/README.md) |
 | `4th_Project` | 청년 정책 AI 챗봇 서비스 | Django 기반 **청년 정책 추천/검색 웹 앱** | [README](./4th_Project/README.md) |
-| `Final_Project` | Final Project (진행중) | 실무형 훈련 통합 플랫폼(개발중) | 🚧 README 준비중 (WIP) |
+| `Final_Project` | Engineer-Gym | 게이미피케이션 기반 AI 엔지니어링 실습 플랫폼 | [README](./Final_Project/README.md) |
 
 ---
 
@@ -24,5 +24,5 @@ SKN20-Projects/
 ├── 4th_Project/
 │   └── README.md
 ├── Final_Project/
-│   └── (WIP)
+│   └── README.md
 └── README.md
