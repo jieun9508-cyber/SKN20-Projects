@@ -21,7 +21,45 @@
 
     <!-- MAIN VIEWPORT -->
     <main class="viewport">
-      
+        
+      <!-- LEFT VERTICAL DRAWER (Persistent Across Phases) -->
+      <div class="tutorial-drawer-left">
+        <!-- 1. Visible Rail (Fixed on Left) -->
+        <div class="drawer-rail">
+            <div 
+                v-for="(card, idx) in currentMission.cards" 
+                :key="idx"
+                class="rail-step-marker"
+                :class="{ 
+                    'is-active': idx === activeStepIndex,
+                    'is-done': idx < activeStepIndex
+                }"
+                @click="explainStep(idx)"
+            >
+                <span v-if="idx < activeStepIndex" class="rm-icon">✓</span>
+                <span v-else class="rm-num">{{ idx + 1 }}</span>
+            </div>
+        </div>
+
+        <!-- 2. Hidden Content Panel (Slides out to Right) -->
+        <div class="drawer-content-panel">
+            <div class="content-header">GUIDE</div>
+            <div 
+                v-for="(card, idx) in currentMission.cards" 
+                :key="idx"
+                class="expanded-step-item"
+                :class="{ 'is-active': idx === activeStepIndex }"
+                @click="explainStep(idx)"
+            >
+                <div class="est-header">
+                    <span class="est-icon">{{ card.icon }}</span>
+                    <span class="est-title">STEP {{ idx + 1 }}</span>
+                </div>
+                <div class="est-desc">{{ card.text.split(':')[1] }}</div>
+            </div>
+        </div>
+      </div>
+
       <!-- PHASE: DIAGNOSTIC 1 & 2 (Shared Layout) -->
       <section v-if="gameState.phase.startsWith('DIAGNOSTIC')" class="combat-grid">
          <!-- LEFT: Entity Card -->
@@ -114,7 +152,11 @@
                 <div class="disconnect-tag">! 분석 대기 !</div>
              </div>
 
-
+             <!-- ADDED: Dialogue Box for Real-time Feedback -->
+             <div class="dialogue-box">
+                <span class="speaker">Coduck</span>
+                <p class="dialogue-text">"{{ gameState.coduckMessage }}"</p>
+             </div>
 
              <!-- 3. Mission Box -->
              <div class="mission-problem-box">
@@ -134,7 +176,6 @@
                  <span class="p-sub-small badge-natural">Python 코드 금지</span>
              </div>
 
-             <!-- Top Briefing Zone (Incident + Rules) -->
              <div class="top-briefing-zone">
                 <div class="briefing-section">
                     <div class="briefing-label"><span class="b-icon">🚨</span> 제약 사건 (Current Incident)</div>
@@ -170,7 +211,7 @@
              <div class="editor-action-bar">
                 <div class="writing-notice">※ 코드가 아닌 '말(설명)'로 적어주세요.</div>
                 <button class="btn-execute-large" @click="submitPseudo">
-                    <span class="btn-text">설계 확정 및 AI 제출</span>
+                    <span class="btn-text">다음</span>
                     <span class="btn-icon">→</span>
                 </button>
              </div>
@@ -298,8 +339,13 @@
                  <div v-else style="flex:1"></div>
 
                  <div class="btn-group">
-                      <button class="btn-reset" @click="initPhase4Scaffolding">초기화</button>
-                      <button class="btn-execute" @click="submitPythonFill">코드 배포</button>
+                      <button class="btn-reset-large" @click="initPhase4Scaffolding">
+                          <span class="btn-text">초기화</span>
+                      </button>
+                      <button class="btn-execute-large" @click="submitPythonFill">
+                          <span class="btn-text">코드 배포</span>
+                          <span class="btn-icon">→</span>
+                      </button>
                  </div>
             </div>
          </div>
@@ -483,8 +529,23 @@ const {
     restartMission,
     initPhase4Scaffolding,
     handlePseudoInput,
-    addLogicBlock // Add this
+    addLogicBlock, // Add this
+    explainStep,
+    currentMission
 } = useCoduckWars();
+
+const activeStepIndex = computed(() => {
+    switch (gameState.phase) {
+        case 'DIAGNOSTIC_1': 
+        case 'DIAGNOSTIC_2': return 0;
+        case 'PSEUDO_WRITE': return 1;
+        case 'PYTHON_FILL': return 2;
+        case 'DEEP_QUIZ': 
+        case 'EVALUATION': 
+        case 'CAMPAIGN_END': return 3;
+        default: return 0;
+    }
+});
 
 // Helper to switch questions based on diagnostic phase
 const currentDiagnosticQuestion = computed(() => {
@@ -793,6 +854,149 @@ const getLogLabel = (type) => {
     background: #4ade80; /* Neon Green on Hover */
     color: #000;
 }
+/* LEFT DRAWER STYLES (Fixed Rail) */
+.tutorial-drawer-left {
+    position: absolute;
+    left: 0;
+    top: 20%; /* Vertically centered-ish */
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+}
+
+/* 1. Visible Rail */
+.drawer-rail {
+    width: 60px;
+    background: #09090b; /* Solid Dark */
+    border: 1px solid #333;
+    border-left: none;
+    border-radius: 0 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    gap: 20px;
+    align-items: center;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+    z-index: 1002; /* Above content */
+    position: relative;
+}
+
+.rail-step-marker {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #27272a;
+    color: #71717a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.rail-step-marker:hover {
+    background: #3f3f46;
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.rail-step-marker.is-active {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+.rail-step-marker.is-done {
+    background: #10b981;
+    color: #fff;
+    border-color: #10b981;
+}
+
+/* 2. Content Panel (Slides out RIGHT) */
+.drawer-content-panel {
+    position: absolute;
+    left: 50px; /* Start hidden behind rail (width 60px - overlap 10px) */
+    top: 0;
+    width: 260px;
+    background: #111; /* Solid Background for Opacity */
+    border: 1px solid #333;
+    border-left: none;
+    border-radius: 0 12px 12px 0;
+    padding: 20px 20px 20px 30px; /* Extra padding left for rail overlap */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    
+    /* Animation: Slide from Left, behind Rail */
+    opacity: 0;
+    transform: translateX(-20px);
+    pointer-events: none; /* Click through when hidden */
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 1001; /* Below Rail */
+    box-shadow: 10px 0 30px rgba(0,0,0,0.8);
+    min-height: 100%;
+}
+
+.tutorial-drawer-left:hover .drawer-content-panel {
+    opacity: 1;
+    transform: translateX(0);
+    left: 60px; /* Move next to rail */
+    pointer-events: auto;
+}
+
+.content-header {
+    font-size: 0.8rem;
+    font-weight: 900;
+    color: #52525b;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+}
+
+.expanded-step-item {
+    padding: 15px;
+    border-radius: 8px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.expanded-step-item:hover {
+    background: #27272a;
+    border-color: #3f3f46;
+}
+
+.expanded-step-item.is-active {
+    background: #27272a;
+    border-color: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.est-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.est-icon { font-size: 1.1rem; }
+.est-title { 
+    font-size: 0.85rem; 
+    font-weight: 900; 
+    color: #d4d4d8; 
+}
+.expanded-step-item.is-active .est-title { color: #fff; }
+
+.est-desc {
+    font-size: 0.8rem;
+    color: #a1a1aa;
+    line-height: 1.4;
+}
+.expanded-step-item.is-active .est-desc { color: #e4e4e7; }
+
 .opt-content {
     flex: 1;
     padding: 0 40px;
@@ -960,7 +1164,32 @@ const getLogLabel = (type) => {
 
 .editor-action-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between; /* Changed to space-between to align notice left, button right */
+    align-items: center;
+    padding-top: 10px;
+}
+
+.btn-execute-large {
+    background: #4ade80; /* Neon Green */
+    color: #000;
+    font-weight: 900;
+    padding: 10px 30px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-execute-large:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+    background: #22c55e;
 }
 
 
@@ -987,8 +1216,47 @@ const getLogLabel = (type) => {
 .snippet-list { flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto; margin-bottom:20px; }
 .snippet-btn { background:#222; border:1px solid #333; color:#eee; padding:15px; text-align:left; cursor:pointer; display:flex; align-items:center; gap:10px; z-index:60; position:relative; }
 .snippet-btn:hover { border-color:#4ade80; color:#4ade80; }
-.command-box { display:flex; flex-direction:column; gap:10px; }
-.btn-reset { background:transparent; border:1px solid #666; color:#666; padding:10px; cursor:pointer; z-index:60; position:relative; }
+/* Button Group Spacing */
+.btn-group { 
+    display: flex; 
+    gap: 15px; 
+    align-items: center; 
+    z-index: 500; 
+    position: relative;
+}
+
+.action-bar-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+    margin-top: auto;
+}
+
+.btn-reset-large {
+    background: transparent;
+    color: #ef4444; /* Red Text */
+    font-weight: 900;
+    padding: 10px 30px;
+    border: 2px solid #ef4444; /* Red Border */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    height: 44px; /* Fixed Height matching execute */
+}
+
+.btn-reset-large:hover {
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    transform: translateY(-2px);
+}
 
 /* PHASE 5 & RESULT */
 .centered-layout { justify-content:center; align-items:center; height:100vh; }

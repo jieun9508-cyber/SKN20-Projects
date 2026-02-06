@@ -84,9 +84,61 @@ export function useCoduckWars() {
         }, 30000);
     };
 
+    // --- Idle Monitor & Real-time Feedback ---
+    let idleInterval = null;
+    let lastInputTime = Date.now();
+
+    const startIdleMonitor = () => {
+        lastInputTime = Date.now();
+        if (idleInterval) clearInterval(idleInterval);
+
+        idleInterval = setInterval(() => {
+            if (gameState.phase !== 'PSEUDO_WRITE') return;
+
+            const now = Date.now();
+            const diff = now - lastInputTime;
+
+            // 10 seconds idle: Gentle nudge
+            if (diff > 10000 && diff < 11000) {
+                gameState.coduckMessage = "생각이 막히시나요? 왼쪽의 [GUIDE] 탭을 열어 단계별 힌트를 확인해보세요!";
+                addSystemLog("코덕: 아키텍트의 입력이 지연되고 있습니다...", "INFO");
+            }
+
+            // 25 seconds idle: Specific hint based on blank state
+            if (diff > 25000 && diff < 26000) {
+                if (gameState.phase3Reasoning.length < 10) {
+                    gameState.coduckMessage = "시작이 어렵다면 '1. 먼저 학습 데이터의 분포를 파악한다' 라고 적어보세요.";
+                } else {
+                    gameState.coduckMessage = "잘 하고 계십니다. '테스트 데이터'를 어떻게 다룰지도 꼭 포함해주세요.";
+                }
+            }
+        }, 1000);
+    };
+
+    const stopIdleMonitor = () => {
+        if (idleInterval) clearInterval(idleInterval);
+        idleInterval = null;
+    };
+
     const handlePseudoInput = (e) => {
+        const prevLen = gameState.phase3Reasoning.length;
         gameState.phase3Reasoning = e.target.value;
+        const newLen = gameState.phase3Reasoning.length;
+
+        lastInputTime = Date.now();
         resetHintTimer();
+
+        // Real-time flow feedback (Throttled random praise)
+        // Trigger only on significant typing chunks or randomly
+        if (newLen > prevLen && newLen % 30 === 0) {
+            const praises = [
+                "좋습니다! 논리가 구체화되고 있어요.",
+                "계속 하세요! 시스템 동기화율이 상승 중입니다.",
+                "훌륭한 접근입니다. 키워드를 놓치지 마세요.",
+                "그렇죠! 바로 그겁니다."
+            ];
+            gameState.coduckMessage = praises[Math.floor(Math.random() * praises.length)];
+        }
     };
 
     // --- Current Mission Data ---
@@ -118,6 +170,7 @@ export function useCoduckWars() {
             clearTimeout(hintTimer);
             hintTimer = null;
         }
+        stopIdleMonitor(); // Stop idle checks on phase switch
 
         try {
             switch (newPhase) {
@@ -134,6 +187,7 @@ export function useCoduckWars() {
                     gameState.phase3Reasoning = ""; // Reset for new entry
                     addSystemLog("자연어 처리 에디터 로드됨", "SUCCESS");
                     startHintTimer(); // Start 30s timer
+                    startIdleMonitor(); // Start real-time feedback
                     break;
                 case 'PYTHON_FILL':
                     gameState.coduckMessage = "사고와 코드가 일치하는지 확인하십시오.";
@@ -519,6 +573,22 @@ export function useCoduckWars() {
             if (!gameState.phase3Reasoning.includes(text)) {
                 gameState.phase3Reasoning += (gameState.phase3Reasoning ? "\n" : "") + "- " + text;
             }
+        },
+        currentMission, // Expose for UI
+        explainStep: (stepIdx) => {
+            const steps = currentMission.value.cards;
+            if (!steps || !steps[stepIdx]) return;
+
+            const step = steps[stepIdx];
+            const explanations = [
+                "제 분석 모듈을 가동하여 시스템 전체의 데이터 흐름을 시각화합니다. 어디가 막혔는지 찾아낼게요!", // Step 1
+                "오염된 데이터를 걸러내기 위한 정밀 필터를 설계합니다. 제 알고리즘 회로를 동기화해주세요.", // Step 2
+                "파이썬 코드로 실제 정화 장치를 가동합니다. 구문 오류가 없도록 제가 실시간 감시할게요.", // Step 3
+                "모든 시스템이 정상인지 최종 점검하고 재부팅 승인 도장을 찍습니다. 준비되셨나요?" // Step 4
+            ];
+
+            gameState.coduckMessage = step.coduckMsg || explanations[stepIdx] || "이 단계에서 필요한 작업을 수행하세요.";
+            addSystemLog(`가이드 요청: ${step.text.split(':')[0]}`, "INFO");
         }
     };
 }
