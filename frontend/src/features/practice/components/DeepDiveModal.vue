@@ -86,7 +86,13 @@
 </template>
 
 <script>
-// import mermaid from 'mermaid';
+import mermaid from 'mermaid';
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+});
 
 export default {
   name: 'DeepDiveModal',
@@ -109,7 +115,7 @@ export default {
     },
     totalQuestions: {
       type: Number,
-      default: 6
+      default: 3
     },
     category: {
       type: String,
@@ -201,8 +207,8 @@ export default {
       if (!container || !this.mermaidCode) return;
 
       try {
-        // const { svg } = await mermaid.render('deepdive-mermaid-' + Date.now(), this.mermaidCode);
-        container.innerHTML = '<p>Mermaid diagram disabled temporarily.</p>'; // svg;
+        const { svg } = await mermaid.render('deepdive-mermaid-' + Date.now(), this.mermaidCode);
+        container.innerHTML = svg;
       } catch (error) {
         container.innerHTML = '<p class="mermaid-error">다이어그램 렌더링 오류</p>';
       }
