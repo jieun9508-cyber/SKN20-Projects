@@ -458,7 +458,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
-import { useCoduckWars } from './CoduckWarsLogic.js';
+import { useCoduckWars } from './composables/useCoduckWars.js'; // [수정일: 2026-02-06] 폴더 계층화(composables) 반영 및 로직 통합
 
 const router = useRouter();
 const gameStore = useGameStore();

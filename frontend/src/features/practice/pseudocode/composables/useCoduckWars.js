@@ -1,6 +1,6 @@
 import { ref, computed, reactive, onMounted } from 'vue';
 import axios from 'axios';
-import { aiQuests } from './stages.js';
+import { aiQuests } from '../data/stages.js'; // [수정일: 2026-02-06] 폴더 계층화(data) 반영
 
 export function useCoduckWars() {
     const DEBUG_MODE = true;

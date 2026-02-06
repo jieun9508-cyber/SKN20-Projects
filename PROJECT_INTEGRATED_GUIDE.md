@@ -59,6 +59,22 @@ docker-compose exec backend python manage.py loaddata practice_unit_data.json pr
 | **데이터 추출(Dump)** | `docker-compose exec backend python -Xutf8 manage.py dumpdata [앱명] --indent 4 > [파일명].json` |
 | **데이터 적재(Load)** | `docker-compose exec backend python manage.py loaddata [파일명].json` |
 
+### 3-1. 모델(Model) 수정 표준 절차
+
+**A. 수정자(Modifier) 프로세스**
+1.  **최신화**: `git pull origin main`으로 최신 코드 확보
+2.  **수정**: `models.py` 수정 후 상단에 **수정일/내용 주석** 작성
+3.  **생성**: `docker-compose exec backend python manage.py makemigrations`
+4.  **반영**: `docker-compose exec backend python manage.py migrate`
+5.  **커밋**: 생성된 마이그레이션 파일(`#.py`)을 포함하여 `git push`
+
+**B. 팀원(Collaborator) 프로세스**
+1.  **동기화**: `git pull origin main`으로 마이그레이션 파일 수신
+2.  **반영**: `docker-compose exec backend python manage.py migrate` 실행 (필수!)
+
+> [!CAUTION]
+> 마이그레이션 파일은 팀 간의 DB 상태를 맞추는 중요한 지표입니다. 절대 임의로 삭제하지 마세요.
+
 ---
 
 ## 4. 🌐 접속 정보
