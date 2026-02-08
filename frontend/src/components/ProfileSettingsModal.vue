@@ -215,16 +215,4 @@ export default {
 }
 </script>
 
-<style scoped>
-.avatar-preview-box {
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  cursor: zoom-in;
-}
-
-.avatar-preview-box:hover {
-  transform: scale(2.0);
-  border-color: #b6ff40 !important;
-  box-shadow: 0 0 40px rgba(182, 255, 64, 0.6) !important;
-  z-index: 100;
-}
-</style>
+<style scoped src="./ProfileSettingsModal.css"></style>

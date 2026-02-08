@@ -5,7 +5,6 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia } from 'pinia'
 import axios from 'axios'
-import './index.css'
 import App from './App.vue'
 
 // [2026-01-25] Axios 전역 인증/보안 설정: 세션 쿠키 공유 및 Django CSRF 연동
@@ -18,6 +17,8 @@ import CoduckWars from './features/practice/pseudocode/CoduckWars.vue'
 import SystemArchitecturePractice from './features/practice/SystemArchitecturePractice.vue'
 import BugHunt from './features/practice/BugHunt.vue'
 // import OpsPractice from './features/practice/OpsPractice.vue'
+import ManagementView from './features/dashboard/ManagementView.vue'
+import MyHistoryView from './features/dashboard/MyHistoryView.vue'
 
 // [수정일: 2026-01-31] 사용하지 않는 구버전/비활성 컴포넌트 임포트 주석 처리
 // import AiDetectivePractice from './features/practice/AiDetectivePractice.vue'
@@ -75,12 +76,22 @@ const routes = [
     name: 'PseudoCompany',
     component: PseudoCompany
   },
-  {
-    path: '/practice/pseudo-emergency',
-    name: 'PseudoEmergency',
-    component: PseudoEmergency
-  },
+    {
+      path: '/practice/pseudo-emergency',
+      name: 'PseudoEmergency',
+      component: PseudoEmergency
+    },
   */
+  {
+    path: '/management/progress',
+    name: 'Management',
+    component: ManagementView
+  },
+  {
+    path: '/my-records',
+    name: 'MyHistory',
+    component: MyHistoryView
+  },
   {
     path: '/main.html',
     redirect: '/'

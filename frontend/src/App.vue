@@ -30,6 +30,8 @@
           <div class="user-avatar-header" v-if="auth.userAvatarUrl">
              <img :src="auth.userAvatarUrl" class="header-avatar-img">
           </div>
+          <button class="btn-history" @click="router.push('/my-records')">My Records</button>
+          <button v-if="auth.user?.is_superuser" class="btn-mgmt" @click="router.push('/management/progress')">Management</button>
           <button class="btn-profile-settings" @click="ui.isProfileSettingsModalOpen = true">Setting</button>
           <button class="btn-logout-v2" @click="auth.logout">Logout</button>
         </div>
@@ -181,8 +183,9 @@ const isPracticePage = computed(() => {
     'PseudoCode',
     'SystemArchitecturePractice',
     'BugHunt',
-    // 'OpsPractice',
-    'ProgressiveProblems'
+    'ProgressiveProblems',
+    'Management',
+    'MyHistory'
   ];
   return practiceRoutes.includes(route?.name);
 });
@@ -314,11 +317,17 @@ function selectProblem(problem) {
 }
 
 function handlePracticeClose() {
-    // [2026-01-27] 실습 페이지에서 'X' 또는 닫기 이벤트 발생 시 처리
+    // [2026-02-08] 기록 조회나 관리 화면에서 나갈 때는 유닛 모달을 띄우지 않음
+    const noModalRoutes = ['Management', 'MyHistory'];
+    const currentRouteName = route.name;
+
     ui.isPseudoCodeOpen = false;
     router.push('/');
-    // 닫은 후 유닛 선택 팝업을 다시 보여주어 연속성 유지
-    ui.isUnitModalOpen = true;
+
+    // 일반 실습(퀘스트 등) 종료 시에만 유닛 선택 팝업을 다시 보여주어 연속성 유지
+    if (!noModalRoutes.includes(currentRouteName)) {
+        ui.isUnitModalOpen = true;
+    }
 }
 
 // [수정일: 2026-01-31] 미사용 메서드 제거 (모드 전환 기능 제거)
@@ -393,155 +402,4 @@ onUpdated(() => {
 });
 </script>
 
-<style scoped>
-/* 게임 모드 선택 버튼 스타일 */
-.game-mode-btn {
-  flex: 1;
-  padding: 18px 30px;
-  font-family: 'Orbitron', sans-serif;
-  font-weight: bold;
-  font-size: 1.1em;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.game-mode-btn.bug-hunt {
-  background: linear-gradient(135deg, #ff00ff, #ff4db8);
-  color: white;
-  box-shadow: 0 4px 15px rgba(255, 0, 255, 0.3);
-}
-
-.game-mode-btn.bug-hunt:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(255, 0, 255, 0.5);
-}
-
-/* Auth Buttons for LandingView Slot */
-.btn-login-ref, .btn-signup-ref {
-  padding: 0.6rem 1.2rem;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  border: none;
-}
-
-.btn-login-ref {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.btn-signup-ref {
-  background: #6366f1;
-  color: #fff;
-  margin-left: 0.5rem;
-}
-
-.btn-login-ref:hover, .btn-signup-ref:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.2);
-}
-
-.user-profile-v2 {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0.4rem 0.8rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.user-info-v2 {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.user-name-v2 {
-  font-weight: 800;
-  color: #fff;
-  font-size: 0.9rem;
-}
-
-.user-rank-v2 {
-  font-size: 0.7rem;
-  color: #b6ff40;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.user-avatar-header {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid rgba(182, 255, 64, 0.5);
-  box-shadow: 0 0 10px rgba(182, 255, 64, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  cursor: zoom-in;
-}
-
-.user-avatar-header:hover {
-  transform: scale(4.0);
-  border-color: #b6ff40;
-  box-shadow: 0 0 20px rgba(182, 255, 64, 0.6), 0 0 40px rgba(182, 255, 64, 0.3);
-  z-index: 1001;
-}
-
-.header-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.btn-logout-v2 {
-  background: rgba(255, 75, 75, 0.1);
-  color: #ff4b4b;
-  border: 1px solid rgba(255, 75, 75, 0.2);
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  margin-left: 0.5rem;
-}
-
-.btn-profile-settings {
-  background: rgba(182, 255, 64, 0.1);
-  color: #b6ff40;
-  border: 1px solid rgba(182, 255, 64, 0.2);
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-profile-settings:hover {
-  background: rgba(182, 255, 64, 0.2);
-  box-shadow: 0 0 10px rgba(182, 255, 64, 0.3);
-}
-
-/* User avatar on progression map node */
-.user-avatar-on-node {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 3px solid #b6ff40;
-  box-shadow: 0 0 20px rgba(182, 255, 64, 0.5);
-  object-fit: cover;
-  background: #000;
-}
-</style>
+<style scoped src="./App.css"></style>

@@ -287,7 +287,8 @@ export default {
           job_role: this.jobRole || null,
           interests: this.interests || null, // 관심사 추가
           avatar_style: this.avatarStyle,    // [수정일: 2026-02-06] 아바타 스타일 추가
-          avatar_seed: this.avatarSeed       // [수정일: 2026-02-06] 아바타 시드 추가
+          avatar_seed: this.avatarSeed,      // [수정일: 2026-02-06] 아바타 시드 추가
+          avatar_preview_url: this.avatarPreviewUrl // [수정일: 2026-02-08] 미리보기 URL 추가하여 저장 시 일관성 유지 (Antigravity)
         }
       };
 
@@ -332,12 +333,4 @@ export default {
 }
 </script>
 
-<style scoped>
-.required-mark {
-    color: #ef4444;
-    margin-left: 4px;
-    font-weight: bold;
-}
-
-/* Inherits global styles from style.css */
-</style>
+<style scoped src="./SignUpModal.css"></style>
