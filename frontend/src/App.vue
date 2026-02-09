@@ -25,8 +25,14 @@
         <div v-else class="user-profile-v2">
           <div class="user-info-v2">
             <span class="user-name-v2">{{ auth.sessionNickname }}</span>
-            <span class="user-rank-v2">ENGINEER</span>
+            <span class="user-rank-v2">{{ auth.userRank }}</span>
           </div>
+          <div class="user-avatar-header" v-if="auth.userAvatarUrl">
+             <img :src="auth.userAvatarUrl" class="header-avatar-img">
+          </div>
+          <button class="btn-history" @click="router.push('/my-records')">My Records</button>
+          <button v-if="auth.user?.is_superuser" class="btn-mgmt" @click="router.push('/management/progress')">Management</button>
+          <button class="btn-profile-settings" @click="ui.isProfileSettingsModalOpen = true">Setting</button>
           <button class="btn-logout-v2" @click="auth.logout">Logout</button>
         </div>
       </template>
@@ -46,7 +52,7 @@
                 </div>
                 <h2 class="unit-name-v3">
                   <template v-if="game.activeUnit?.name === 'Debug Practice'">
-                    {{ game.currentDebugMode === 'bug-hunt' ? '🐞 Bug Hunt' : '✨ Vibe Code Clean Up' }}
+                    🐞 Bug Hunt
                   </template>
                   <template v-else-if="game.activeUnit?.name === 'Pseudo Practice'">
                     <!-- [수정일: 2026-01-31] 유닛 1 모드 통합: AI Detective, Pseudo Forest 등의 개별 타이틀을 제거하고 통합 타이틀로 표시 -->
@@ -83,7 +89,9 @@
 
                 <div class="platform-circle-v3">
                   <template v-if="game.currentUnitProgress.includes(problem.questIndex)">
-                    <img v-if="problem.questIndex === currentMaxIdx" src="/image/unit_duck.png" class="duck-on-node-v3">
+                    <img v-if="problem.questIndex === currentMaxIdx"
+                         :src="auth.userAvatarUrl || '/image/unit_duck.png'"
+                         class="duck-on-node-v3 user-avatar-on-node">
                     <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
                   </template>
                   <template v-else>
@@ -92,12 +100,7 @@
                 </div>
 
                 <div class="node-label-premium">
-                  <template v-if="game.activeUnit?.name === 'Debug Practice' && game.currentDebugMode === 'vibe-cleanup'">
-                    개발중..
-                  </template>
-                  <template v-else>
-                    {{ problem.displayNum || problem.title }} - {{ problem.title }}
-                  </template>
+                  {{ problem.displayNum || problem.title }} - {{ problem.title }}
                 </div>
               </div>
 
@@ -115,10 +118,9 @@
               <!-- [수정일: 2026-01-31] Unit 1(Pseudo Practice) 전용 하단 모드 전환 버튼 제거 -->
               <!-- 기존의 ai detective, pseudo forest 등 모드 전환 기능을 제거하고 통합된 연습 경험을 제공합니다. -->
 
-              <!-- 기존 Debug Practice 모드 전환 버튼 -->
+              <!-- Debug Practice 버튼 (Bug Hunt만 표시) -->
               <template v-if="game.activeUnit?.name === 'Debug Practice'">
-                <button class="game-mode-btn bug-hunt" :class="{ 'active': game.currentDebugMode === 'bug-hunt' }" @click="selectGameMode('bug-hunt')">🐞 Bug Hunt</button>
-                <button class="game-mode-btn vibe-cleanup" :class="{ 'active': game.currentDebugMode === 'vibe-cleanup' }" @click="selectGameMode('vibe-cleanup')">✨ Vibe Code Clean Up</button>
+                <button class="game-mode-btn bug-hunt active">🐞 Bug Hunt</button>
               </template>
 
               <!-- 일반 상태 표시 (진행도/잠금) -->
@@ -139,6 +141,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUpdated, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useUiStore } from '@/stores/ui';
@@ -158,13 +161,17 @@ const route = useRoute();
 const router = useRouter();
 
 // Local State
-const leaderboard = ref([
-  { id: 1, username: 'TopEngineer', solved: 45, shakes: 2450 },
-  { id: 2, username: 'DjangoMaster', solved: 42, shakes: 2100 },
-  { id: 3, username: 'VueNinja', solved: 38, shakes: 1850 },
-  { id: 4, username: 'AgentZero', solved: 35, shakes: 1600 },
-  { id: 5, username: 'OpsWizard', solved: 30, shakes: 1400 }
-]);
+const leaderboard = ref([]);
+
+// [수정일: 2026-02-06] 리더보드 실시간 연동
+const fetchLeaderboard = async () => {
+    try {
+        const response = await axios.get('/api/core/activity/leaderboard/');
+        leaderboard.value = response.data.leaderboard;
+    } catch (error) {
+        console.error("Failed to fetch leaderboard:", error);
+    }
+};
 
 // [수정일: 2026-01-31] 미사용 상태 제거 (모드 통합으로 인해 불필요)
 // const detectiveLevel = ref('초급');
@@ -174,11 +181,11 @@ const isPracticePage = computed(() => {
   // PseudoCode는 페이지/모달 하이브리드로 동작 (isPracticePage에 포함하여 배경 제어)
   const practiceRoutes = [
     'PseudoCode',
-    'SystemArchitecturePractice', 
-    'BugHunt', 
-    'VibeCodeCleanUp', 
-    'OpsPractice',
-    'ProgressiveProblems'
+    'SystemArchitecturePractice',
+    'BugHunt',
+    'ProgressiveProblems',
+    'Management',
+    'MyHistory'
   ];
   return practiceRoutes.includes(route?.name);
 });
@@ -190,14 +197,6 @@ const displayProblems = computed(() => {
   // [수정일: 2026-01-31] 모든 유닛에 대해 최신 매핑 데이터 사용 (일부 유닛의 캐시 문제 해결)
   const unitIndex = game.chapters.indexOf(activeUnit);
   const problems = game.mapDetailsToProblems(activeUnit, unitIndex + 1);
-  const unitName = (activeUnit.name || '').toLowerCase().replace(/\s+/g, '');
-
-  if (unitName === 'debugpractice' && game.currentDebugMode !== 'bug-hunt') {
-    // Vibe 문제 세트가 있으면 우선 사용
-    const vibeProblems = activeUnit.vibeProblems || [];
-    return vibeProblems.length > 0 ? vibeProblems : problems;
-  }
-
   return problems;
 });
 
@@ -226,7 +225,7 @@ const currentMaxIdx = computed(() => {
 
 // [수정일: 2026-01-28] 라우트 감시: 연습 페이지에서 홈으로 돌아올 때 유닛 상세 모달 자동 재개
 watch(() => route.name, (newNav, oldNav) => {
-  const practiceRoutes = ['PseudoCode', 'SystemArchitecturePractice', 'BugHunt', 'VibeCodeCleanUp', 'OpsPractice' /*, 'AiDetective', 'PseudoForest', 'PseudoCompany', 'PseudoEmergency' */];
+  const practiceRoutes = ['PseudoCode', 'SystemArchitecturePractice', 'BugHunt' /*, 'OpsPractice', 'AiDetective', 'PseudoForest', 'PseudoCompany', 'PseudoEmergency' */];
   // 연습 페이지에서 홈('/')으로 돌아오는 경우
   if (newNav === 'Home' && practiceRoutes.includes(oldNav)) {
     if (game.activeUnit) {
@@ -302,18 +301,11 @@ function selectProblem(problem) {
     game.selectedSystemProblemIndex = problem.problemIndex || 0;
     router.push({ path: '/practice/system-architecture', query: { problem: problem.problemIndex || 0 } });
   } else if (chapterName === 'debugpractice') {
-    if (game.currentDebugMode === 'bug-hunt') {
-      // p1, p2, p3 미션으로 바로 이동
-      router.push({
-        path: '/practice/bug-hunt',
-        query: { missionId: problem.id, mapMode: 'true' }
-      });
-    } else {
-      // Vibe Code Clean Up
-      router.push('/practice/vibe-cleanup');
-    }
-  } else if (chapterName === 'opspractice') {
-    router.push('/practice/ops-practice');
+    // Bug Hunt 미션으로 이동
+    router.push({
+      path: '/practice/bug-hunt',
+      query: { missionId: problem.id, mapMode: 'true' }
+    });
   } else if (chapterName === 'Agent Practice') {
     ui.isAgentModalOpen = true;
     nextTick(() => {
@@ -325,11 +317,17 @@ function selectProblem(problem) {
 }
 
 function handlePracticeClose() {
-    // [2026-01-27] 실습 페이지에서 'X' 또는 닫기 이벤트 발생 시 처리
+    // [2026-02-08] 기록 조회나 관리 화면에서 나갈 때는 유닛 모달을 띄우지 않음
+    const noModalRoutes = ['Management', 'MyHistory'];
+    const currentRouteName = route.name;
+
     ui.isPseudoCodeOpen = false;
     router.push('/');
-    // 닫은 후 유닛 선택 팝업을 다시 보여주어 연속성 유지
-    ui.isUnitModalOpen = true;
+
+    // 일반 실습(퀘스트 등) 종료 시에만 유닛 선택 팝업을 다시 보여주어 연속성 유지
+    if (!noModalRoutes.includes(currentRouteName)) {
+        ui.isUnitModalOpen = true;
+    }
 }
 
 // [수정일: 2026-01-31] 미사용 메서드 제거 (모드 전환 기능 제거)
@@ -338,18 +336,11 @@ function handlePracticeClose() {
 function selectGameMode(mode) {
   game.currentDebugMode = mode;
 
-  // Bug Hunt 모드로 전환 시 진행도 동기화
+  // Bug Hunt 모드 진행도 동기화
   if (mode === 'bug-hunt') {
     syncDebugProgress();
   }
 
-  if (game.activeUnit?.name === 'Debug Practice') {
-    const isDebugRoute = ['BugHunt', 'VibeCodeCleanUp'].includes(route.name);
-    if (isDebugRoute) {
-      const nextPath = mode === 'bug-hunt' ? '/practice/bug-hunt' : '/practice/vibe-cleanup';
-      router.push(nextPath);
-    }
-  }
   nextTick(() => {
     if (window.lucide) window.lucide.createIcons();
   });
@@ -371,6 +362,7 @@ function handleGuidebookClick() {
 onMounted(() => {
   auth.checkSession();
   game.initGame();
+  fetchLeaderboard(); // [수정일: 2026-02-06] 리더보드 데이터 호출
   nextTick(() => {
     if (window.lucide) window.lucide.createIcons();
   });
@@ -410,104 +402,4 @@ onUpdated(() => {
 });
 </script>
 
-<style scoped>
-/* 게임 모드 선택 버튼 스타일 */
-.game-mode-btn {
-  flex: 1;
-  padding: 18px 30px;
-  font-family: 'Orbitron', sans-serif;
-  font-weight: bold;
-  font-size: 1.1em;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.game-mode-btn.bug-hunt {
-  background: linear-gradient(135deg, #ff00ff, #ff4db8);
-  color: white;
-  box-shadow: 0 4px 15px rgba(255, 0, 255, 0.3);
-}
-
-.game-mode-btn.bug-hunt:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(255, 0, 255, 0.5);
-}
-
-.game-mode-btn.vibe-cleanup {
-  background: linear-gradient(135deg, #ffff00, #ffd700);
-  color: #1a1f2e;
-  box-shadow: 0 4px 15px rgba(255, 255, 0, 0.3);
-}
-
-.game-mode-btn.vibe-cleanup:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(255, 255, 0, 0.5);
-}
-
-/* Auth Buttons for LandingView Slot */
-.btn-login-ref, .btn-signup-ref {
-  padding: 0.6rem 1.2rem;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  border: none;
-}
-
-.btn-login-ref {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.btn-signup-ref {
-  background: #6366f1;
-  color: #fff;
-  margin-left: 0.5rem;
-}
-
-.btn-login-ref:hover, .btn-signup-ref:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.2);
-}
-
-.user-profile-v2 {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-info-v2 {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.user-name-v2 {
-  font-weight: 800;
-  color: #fff;
-  font-size: 0.9rem;
-}
-
-.user-rank-v2 {
-  font-size: 0.7rem;
-  color: #b6ff40;
-  font-weight: 900;
-}
-
-.btn-logout-v2 {
-  background: rgba(255, 75, 75, 0.1);
-  color: #ff4b4b;
-  border: 1px solid rgba(255, 75, 75, 0.2);
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-</style>
+<style scoped src="./App.css"></style>

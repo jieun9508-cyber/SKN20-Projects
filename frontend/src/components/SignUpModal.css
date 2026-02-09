@@ -1,0 +1,12 @@
+/* 
+  [2026-02-08] SignUpModal.vue 전용 스타일 시트
+  - 회원가입 모달의 레이아웃, 입력 폼, 아바타 미리보기 스타일 정의
+*/
+
+.required-mark {
+    color: #ef4444;
+    margin-left: 4px;
+    font-weight: bold;
+}
+
+/* Inherits global styles from style.css */

@@ -129,6 +129,9 @@
           <div class="remaining-bugs">
             🪱 {{ 3 - progressiveCompletedSteps.length }} worms left
           </div>
+          <button class="editor-btn tutorial-btn" @click="startTutorial" style="margin-right: 10px;">
+            📖 튜토리얼
+          </button>
           <button class="back-btn" @click="confirmExit">EXIT</button>
         </div>
       </header>
@@ -142,64 +145,28 @@
               <p class="scenario-text">{{ currentProgressiveMission?.scenario }}</p>
             </div>
 
-            <!-- 단서창 (문제 관련 로그/힌트 표시) 또는 설명 입력창 -->
+            <!-- 단서창 (문제 관련 로그/힌트 표시) - 항상 표시 -->
             <div class="clue-panel neon-border" :class="{ 'attention-pulse': showAttentionEffect }">
-              <!-- 디버그 모드: 로그 표시 -->
-              <template v-if="currentProgressivePhase === 'debug'">
-                <div class="clue-header">
-                  <span class="clue-icon">🔍</span>
-                  <span class="clue-title">CLUES & LOGS</span>
+              <!-- 로그 항상 표시 -->
+              <div class="clue-header">
+                <span class="clue-icon">🔍</span>
+                <span class="clue-title">CLUES & LOGS</span>
+              </div>
+              <div class="clue-content" ref="clueContentRef">
+                <div
+                  v-for="(clue, idx) in clueMessages"
+                  :key="idx"
+                  class="clue-item"
+                  :class="{
+                    'new-clue': clue.isNew,
+                    'clue-success': clue.type === 'SUCCESS',
+                    'clue-error': clue.type === 'ERROR'
+                  }"
+                >
+                  <span class="clue-badge" :class="`badge-${clue.type.toLowerCase()}`">{{ clue.type }}</span>
+                  <span class="clue-text">{{ clue.text }}</span>
                 </div>
-                <div class="clue-content" ref="clueContentRef">
-                  <div
-                    v-for="(clue, idx) in clueMessages"
-                    :key="idx"
-                    class="clue-item"
-                    :class="{ 'new-clue': clue.isNew }"
-                  >
-                    <span class="clue-badge">{{ clue.type }}</span>
-                    <span class="clue-text">{{ clue.text }}</span>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 설명 모드: 전략 입력창 -->
-              <template v-else-if="currentProgressivePhase === 'explain'">
-                <transition name="slide-down">
-                  <div class="clue-header success-header">
-                    <span class="clue-icon">🎯</span>
-                    <span class="clue-title">BUG {{ currentProgressiveStep }} FIXED!</span>
-                  </div>
-                </transition>
-                <transition name="fade-up">
-                  <div class="explanation-section-inline">
-                  <div class="explanation-body">
-                    <label class="explanation-label">
-                      <span class="label-icon">💭</span>
-                      어떤 전략으로 이 버그를 해결했나요?
-                    </label>
-                    <textarea
-                      v-model="chatInput"
-                      @keydown.ctrl.enter="handleChatSubmit"
-                      placeholder="버그 해결 전략을 작성해주세요...&#10;&#10;• 어떤 문제를 발견했나요?&#10;• 왜 이렇게 수정했나요?&#10;• 어떤 효과가 있나요?"
-                      class="explanation-textarea"
-                      rows="8"
-                      autofocus
-                    ></textarea>
-                    <div class="explanation-hint">💡 Ctrl + Enter로 빠르게 제출</div>
-                  </div>
-                  <div class="explanation-footer">
-                    <button
-                      class="submit-explanation-btn"
-                      @click="handleChatSubmit"
-                      :disabled="!chatInput.trim()"
-                    >
-                      📝 전략 제출하기
-                    </button>
-                  </div>
-                </div>
-                </transition>
-              </template>
+              </div>
             </div>
           </div>
         </aside>
@@ -313,7 +280,7 @@
           <!-- MISS 이펙트 -->
           <transition name="miss">
             <div v-if="showMissEffect" class="miss-effect" :style="missEffectStyle">
-              <span class="miss-text">MISSED! 😢</span>
+              <span class="miss-text">MISSED!</span>
             </div>
           </transition>
 
@@ -338,6 +305,33 @@
             </div>
           </div>
 
+          <!-- 전략 작성 오리 (힌트 오리와 동일한 UI) -->
+          <transition name="duck-pop">
+            <div v-if="showStrategyDuck" class="hint-duck-container">
+              <div class="hint-speech-bubble strategy-bubble">
+                <div class="bubble-header">전략을 작성해주세요! ✍️</div>
+                <div class="bubble-content">
+                  <textarea
+                    v-model="strategyInput"
+                    @keydown.ctrl.enter="handleStrategySubmit"
+                    placeholder="버그 해결 전략을 작성해주세요...&#10;&#10;• 어떤 문제를 발견했나요?&#10;• 왜 이렇게 수정했나요?&#10;• 어떤 효과가 있나요?"
+                    class="strategy-textarea"
+                    rows="6"
+                    autofocus
+                  ></textarea>
+                  <button
+                    class="submit-strategy-btn"
+                    @click="handleStrategySubmit"
+                    :disabled="!strategyInput.trim()"
+                  >
+                    📝 전략 제출하기
+                  </button>
+                </div>
+              </div>
+              <img :src="unitDuck" class="hint-duck-img" alt="Strategy Duck">
+            </div>
+          </transition>
+
           <div class="editor-body" ref="editorBodyRef">
             <!-- 현재 스텝만 표시 -->
             <div class="code-sections">
@@ -355,18 +349,18 @@
                       {{ getStepData(step)?.title }}
                     </span>
                     <span class="section-status">
-                      <span v-if="currentProgressivePhase === 'debug'" class="status-current">🔧 CURRENT</span>
-                      <span v-else-if="currentProgressivePhase === 'explain'" class="status-success">✅ SOLVED</span>
+                      <span v-if="step === currentProgressiveStep && !progressiveCompletedSteps.includes(step)" class="status-current">🔧 CURRENT</span>
+                      <span v-else-if="progressiveCompletedSteps.includes(step)" class="status-success">✅ SOLVED</span>
                     </span>
                   </div>
 
-                  <!-- 편집 가능한 섹션 (디버그 모드) 또는 읽기 전용 (설명 모드) -->
+                  <!-- 편집 가능한 섹션 (디버그 모드) 또는 읽기 전용 (전략 입력 시) -->
                   <div class="code-editor-wrapper active-wrapper monaco-active-wrapper">
                     <vue-monaco-editor
                       v-model:value="progressiveStepCodes[Number(step)]"
                       theme="vs-dark"
                       language="python"
-                      :options="currentProgressivePhase === 'explain' ? { ...editorOptions, readOnly: true } : editorOptions"
+                      :options="editorOptions"
                       @mount="handleEditorMount"
                       class="bughunt-monaco-editor"
                     />
@@ -385,28 +379,12 @@
                 <div class="bubble-header">DUC-TIP! 💡</div>
                 <div class="bubble-content">{{ getCurrentStepData()?.hint }}</div>
               </div>
-              <img src="/image/unit_duck.png" class="hint-duck-img" alt="Hint Duck">
+              <img :src="unitDuck" class="hint-duck-img" alt="Hint Duck">
             </div>
           </transition>
         </main>
       </div>
 
-      <!-- 날아가는 패널 (중앙에서 로그창으로) -->
-      <transition name="fade">
-        <div v-if="showFlyingPanel" class="flying-panel" :style="flyingPanelStyle">
-          <div class="flying-panel-header">
-            <span class="flying-icon">🎯</span>
-            <span class="flying-title">BUG {{ currentProgressiveStep }} FIXED!</span>
-          </div>
-          <div class="flying-panel-body">
-            <div class="flying-label">
-              <span class="label-icon">💭</span>
-              전략 작성하기
-            </div>
-            <div class="flying-preview">버그 해결 전략을 작성해주세요...</div>
-          </div>
-        </div>
-      </transition>
     </div>
 
     <!-- 최종 평가 화면 -->
@@ -428,14 +406,14 @@
                 <span class="label">FINAL SCORE</span>
                 <span class="value">{{ progressiveMissionScore }}</span>
               </div>
-              <div class="penalty-stats" v-if="(codeSubmitFailCount || Object.values(progressiveHintUsed).filter(v => v).length)">
+              <div class="penalty-stats" v-if="hasPenalties">
                  <div class="penalty-item">
                    <span class="p-label">CODE RETRY ({{ codeSubmitFailCount }})</span>
                    <span class="p-value">-{{ codeSubmitFailCount * 2 }}</span>
                  </div>
                  <div class="penalty-item">
-                   <span class="p-label">HINTS USED ({{ Object.values(progressiveHintUsed).filter(v => v).length }})</span>
-                   <span class="p-value">-{{ Object.values(progressiveHintUsed).filter(v => v).length }}</span>
+                    <span class="p-label">HINTS USED ({{ totalHintCount }})</span>
+                    <span class="p-value">-{{ totalHintCount }}</span>
                  </div>
               </div>
             </div>
@@ -571,6 +549,15 @@
         </div>
       </div>
     </transition>
+
+    <!-- 튜토리얼 오버레이 -->
+    <BugHuntTutorialOverlay
+      v-if="showTutorial && currentView === 'progressivePractice'"
+      :tutorial-steps="bugHuntTutorialSteps"
+      @complete="onTutorialComplete"
+      @skip="onTutorialComplete"
+    />
+
   </div>
 </template>
 
@@ -880,7 +867,8 @@ import unitDuck from '@/assets/image/unit_duck.png';
 import { useRoute, useRouter } from 'vue-router';
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
 import progressiveData from './progressive-problems.json';
-import { evaluateBugHunt } from './services/bugHuntApi';
+import { evaluateBugHunt, verifyCodeBehavior } from './services/bugHuntApi';
+import BugHuntTutorialOverlay from './components/BugHuntTutorialOverlay.vue';
 import './BugHunt.css';
 
 const route = useRoute();
@@ -1039,6 +1027,14 @@ const showAchievementPopup = ref(false);
 const newAchievement = ref(null);
 const showStatsPanel = ref(false);
 
+const hasPenalties = computed(() => {
+  return codeSubmitFailCount.value > 0 || totalHintCount.value > 0;
+});
+
+const totalHintCount = computed(() => {
+  return Object.values(progressiveHintUsed.value).filter(v => v).length;
+});
+
 // [2026-02-03] 오리 캐릭터의 상태(평상시/먹기)를 제어하기 위한 반응형 변수 추가
 const isEating = ref(false);
 const isSad = ref(false);
@@ -1075,14 +1071,9 @@ const showShutter = ref(false);
 // 로그창 주목 효과
 const showAttentionEffect = ref(false);
 
-// 날아가는 패널 상태
-const showFlyingPanel = ref(false);
-const flyingPanelStyle = ref({
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  opacity: 1
-});
+// 전략 입력 관련 상태
+const showStrategyDuck = ref(false);      // 전략 오리 + 말풍선 표시 여부
+const strategyInput = ref('');             // 전략 입력 내용
 
 // 코드 제출 상태
 const codeSubmitFailCount = ref(0);
@@ -1090,7 +1081,6 @@ const codeSubmitFailCount = ref(0);
 // 설명 및 평가 데이터
 const stepExplanations = reactive({ 1: '', 2: '', 3: '' });
 const clueMessages = ref([]); // 단서 메시지 (로그, 힌트 등)
-const chatInput = ref('');
 const clueContentRef = ref(null);
 const hasNewMessage = ref(false);
 
@@ -1119,6 +1109,62 @@ const showAlertPopup = ref(false);
 const alertPopupMessage = ref('');
 const alertPopupPhase = ref(''); // 'shake' | 'fly' | ''
 const chatInterfaceRef = ref(null);
+
+// 튜토리얼 상태
+const showTutorial = ref(false);
+const bugHuntTutorialSteps = [
+  {
+    selector: '.progressive-header',
+    title: '미션 정보',
+    description: '현재 진행 중인 프로젝트 제목과 남은 벌레 수를 확인할 수 있습니다.',
+    cardPosition: 'bottom'
+  },
+  {
+    selector: '.scenario-box',
+    title: '미션 브리핑',
+    description: '여기에서 현재 해결해야 할 문제의 시나리오를 확인하세요.',
+    cardPosition: 'right'
+  },
+  {
+    selector: '.clue-panel',
+    title: '단서 및 로그',
+    description: '시스템 로그와 힌트가 표시되는 곳입니다. 디버깅의 중요한 실마리를 찾으세요.',
+    cardPosition: 'right'
+  },
+  {
+    selector: '.full-code-editor',
+    title: '코드 에디터',
+    description: '실제 코드를 수정하는 영역입니다. 벌레가 숨어있는 부분을 찾아 올바르게 수정해 주세요.',
+    cardPosition: 'left'
+  },
+  {
+    selector: '.hint-btn',
+    title: '힌트 시스템',
+    description: '문제가 풀리지 않을 때는 힌트 버튼을 눌러보세요! 오리가 유용한 단서를 알려줍니다. (점수가 조금 차감될 수 있습니다)',
+    cardPosition: 'bottom'
+  },
+  {
+    selector: '.reset-btn',
+    title: '코드 초기화',
+    description: '코드를 처음부터 다시 작성하고 싶다면 리셋 버튼을 사용하세요.',
+    cardPosition: 'bottom'
+  },
+  {
+    selector: '.submit-btn',
+    title: '제출 버튼',
+    description: '코드를 모두 수정했다면 제출 버튼을 클릭해 결과를 확인하세요!',
+    cardPosition: 'top'
+  }
+];
+
+function onTutorialComplete() {
+  showTutorial.value = false;
+  localStorage.setItem('bughunt-tutorial-done', 'true');
+}
+
+function startTutorial() {
+  showTutorial.value = true;
+}
 
 
 
@@ -1298,49 +1344,44 @@ function moveToNextStep() {
   }
 }
 
-// 채팅 제출 (설명 처리)
-// 채팅 제출 (설명 처리)
-const isSubmittingStrategy = ref(false);
+/**
+ * 전략 제출 처리
+ */
+function handleStrategySubmit() {
+  if (!strategyInput.value.trim()) return;
 
-function handleChatSubmit() {
-  if (isSubmittingStrategy.value) return;
-  if (!chatInput.value.trim() || currentProgressivePhase.value !== 'explain') return;
+  // 전략 저장
+  stepExplanations[currentProgressiveStep.value] = strategyInput.value.trim();
 
-  isSubmittingStrategy.value = true;
-  const userText = chatInput.value.trim();
-
-  // 설명 저장
-  stepExplanations[currentProgressiveStep.value] = userText;
-
-  // 전략 기록 로그
+  // 로그에 기록
   addClue('SUCCESS', `Step ${currentProgressiveStep.value} 전략이 기록되었습니다.`);
 
-  chatInput.value = '';
+  // 입력창 초기화
+  strategyInput.value = '';
 
-  // 시스템 응답 및 다음 단계 진행
-  scheduleTimeout(() => {
-    if (currentProgressiveStep.value < 3) {
-      scheduleTimeout(() => {
-        moveToNextStep();
+  // 오리와 말풍선 숨기기
+  showStrategyDuck.value = false;
 
-        // 다음 단계 에러 로그만 표시
-        const stepData = getCurrentStepData();
-        if (stepData?.error_log) {
-          clueMessages.value = [{
-            type: 'ERROR',
-            text: stepData.error_log,
-            isNew: true
-          }];
-        }
-        isSubmittingStrategy.value = false;
-      }, 500);
-    } else {
-      scheduleTimeout(() => {
-        completeMission();
-        isSubmittingStrategy.value = false;
-      }, 1500);
-    }
-  }, 300);
+  // 다음 단계로 이동 또는 미션 완료
+  if (currentProgressiveStep.value < 3) {
+    scheduleTimeout(() => {
+      moveToNextStep();
+
+      // 다음 단계 에러 로그만 표시
+      const stepData = getCurrentStepData();
+      if (stepData?.error_log) {
+        clueMessages.value = [{
+          type: 'ERROR',
+          text: stepData.error_log,
+          isNew: true
+        }];
+      }
+    }, 500);
+  } else {
+    scheduleTimeout(() => {
+      completeMission();
+    }, 500);
+  }
 }
 
 // 평가 화면 보기
@@ -1413,14 +1454,37 @@ function showProgressiveHint() {
   showProgressiveHintPanel.value = !showProgressiveHintPanel.value;
 }
 
-// Progressive 솔루션 체크
-function checkProgressiveSolution() {
+// Progressive 솔루션 체크 (행동 기반 검증 + 문자열 폴백)
+// 반환값: { passed: boolean, result: object }
+async function checkProgressiveSolution() {
   const stepData = getCurrentStepData();
-  if (!stepData) return false;
+  if (!stepData) return { passed: false, result: null };
 
-  const check = stepData.solution_check;
   const code = progressiveStepCodes.value[currentProgressiveStep.value];
+  const problemId = `${currentProgressiveMission.value?.id}_step${currentProgressiveStep.value}`;
 
+  // 1. 행동 기반 검증 시도 (verification_code가 있는 경우)
+  if (stepData.verification_code) {
+    try {
+      const result = await verifyCodeBehavior(code, stepData.verification_code, problemId);
+
+      // 검증 성공/실패가 명확한 경우
+      if (result.verified !== null) {
+        console.log('🔬 행동 기반 검증 결과:', result);
+        return { passed: result.verified, result };  // result 객체도 함께 반환
+      }
+      // result.verified === null 이면 폴백으로 진행
+      console.log('⚠️ 행동 기반 검증 불가, 문자열 검증으로 폴백');
+    } catch (e) {
+      console.warn('행동 기반 검증 실패, 문자열 검증으로 폴백:', e);
+    }
+  }
+
+  // 2. 폴백: 기존 문자열 기반 검증
+  const check = stepData.solution_check;
+  if (!check) return { passed: false, result: null };
+
+  let passed = false;
   switch (check.type) {
     case 'multi_condition':
       // required_all: 모든 조건이 코드에 포함되어야 함 (AND)
@@ -1434,26 +1498,32 @@ function checkProgressiveSolution() {
       // forbidden: 금지된 패턴이 코드에 없어야 함
       const hasNoForbidden = check.forbidden?.every(forbidden => !code.includes(forbidden)) ?? true;
 
-      return hasAllRequired && hasAnyRequired && hasNoForbidden;
+      passed = hasAllRequired && hasAnyRequired && hasNoForbidden;
+      break;
 
     case 'contains':
-      return code.includes(check.value);
+      passed = code.includes(check.value);
+      break;
 
     case 'notContains':
-      return !code.includes(check.value);
+      passed = !code.includes(check.value);
+      break;
 
     case 'regex':
       // 패턴 일치 여부 확인 (string -> RegExp)
       try {
         const re = new RegExp(check.value, check.flags ?? '');
-        return re.test(code);
+        passed = re.test(code);
       } catch {
-        return false;
+        passed = false;
       }
+      break;
 
     default:
-      return false;
+      passed = false;
   }
+
+  return { passed, result: null };
 }
 
 // 해골이 bugs-status로 날아가는 애니메이션
@@ -1499,14 +1569,50 @@ function animateSkullToBug(targetStep) {
 }
 
 // Progressive 스텝 제출
-function submitProgressiveStep() {
+async function submitProgressiveStep() {
   if (currentProgressiveStep.value > 3) return;
 
   isRunning.value = true;
   isSad.value = false; // 새로운 제출 시 슬픈 상태 초기화
 
-  scheduleTimeout(() => {
-    const passed = checkProgressiveSolution();
+  scheduleTimeout(async () => {
+    const { passed, result } = await checkProgressiveSolution();
+    const stepData = getCurrentStepData();
+
+    // 🔍 디버깅 로그
+    console.log('📊 검증 결과:', { passed, result });
+    console.log('📊 result?.details:', result?.details);
+    console.log('📊 simulation_logs 있음?:', !!result?.details?.simulation_logs);
+
+    // 검증 결과에 따라 로그 업데이트
+    if (passed && stepData?.success_log) {
+      // 성공 시: success_log로 교체
+      clueMessages.value = [{
+        type: 'SUCCESS',
+        text: stepData.success_log,
+        isNew: true
+      }];
+    } else if (!passed) {
+      // 실패 시: 실제 실행 로그 또는 error_log 표시
+      if (result?.details?.simulation_logs) {
+        // 실제 실행 결과 로그 표시
+        clueMessages.value = [{
+          type: 'ERROR',
+          text: `=== 실시간 추론 로그 ===\n${result.details.simulation_logs}\n\n[ALERT] ${result.message}`,
+          isNew: true
+        }];
+      } else if (stepData?.error_log) {
+        // 기본 error_log 표시 (폴백)
+        const hasErrorLog = clueMessages.value.some(msg => msg.text === stepData.error_log);
+        if (!hasErrorLog) {
+          clueMessages.value.push({
+            type: 'ERROR',
+            text: stepData.error_log,
+            isNew: true
+          });
+        }
+      }
+    }
 
     // 저격 애니메이션
     shootBug(currentProgressiveStep.value, passed);
@@ -1535,41 +1641,13 @@ function submitProgressiveStep() {
         // 성공 시 힌트 창 닫기
         showProgressiveHintPanel.value = false;
 
-        // 날아가는 패널 표시
-        showFlyingPanel.value = true;
-        flyingPanelStyle.value = {
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          opacity: 1,
-          transition: 'none'
-        };
-
-        // 짧은 딜레이 후 로그창으로 날아가기 시작
+        // 전략 작성 오리 표시 (클릭하면 오버레이 열림)
         scheduleTimeout(() => {
-          flyingPanelStyle.value = {
-            top: '40%',
-            left: '18%',
-            transform: 'translate(-50%, -50%) scale(0.8)',
-            opacity: 0,
-            transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
-          };
-        }, 100);
-
-        // 날아가는 애니메이션 완료 후 설명 페이즈로 전환
-        scheduleTimeout(() => {
-          showFlyingPanel.value = false;
-          currentProgressivePhase.value = 'explain';
-          showAttentionEffect.value = true;
-        }, 900);
-
-        // 주목 효과 종료
-        scheduleTimeout(() => {
-          showAttentionEffect.value = false;
-        }, 2500);
+          showStrategyDuck.value = true;
+        }, 500);
 
       } else {
-        // 실패 - 아무 로그도 추가하지 않음 (기존 에러 로그 유지)
+        // 실패
         codeSubmitFailCount.value++;
       }
       isRunning.value = false;
@@ -1691,27 +1769,29 @@ const flyingNotificationStyle = computed(() => ({
   top: `${flyingNotificationPosition.y}%`
 }));
 
-// 지렁이 움직임 애니메이션 (바닥에서 기어다니도록 수정)
+// 지렁이 움직임 애니메이션 (땅 영역 30%에서만 움직이도록 수정)
 function animateBug(step) {
   if (progressiveCompletedSteps.value.includes(step)) return;
 
   const time = Date.now() / 1000;
 
-  // 에디터 내부에서만 움직이도록 범위 제한
-  const movementRadiusX = 25; // 좌우 이동 범위 축소 (40 → 25)
+  // 땅 영역: 하단 75~95% 구간 (코드 70% + 땅 30%)
+  const movementRadiusX = 30; // 좌우 이동 범위
   const centerX = 50; // 중앙 기준
 
-  // Y축은 에디터 중하단에서 움직임
-  const baseY = 65; // 기본 위치
-  const verticalWiggle = 3; // 상하 움직임 축소
+  // Y축은 땅 영역(하단 30%)에서만 움직임
+  const groundMinY = 75; // 땅 시작 위치
+  const groundMaxY = 95; // 땅 끝 위치
+  const baseY = (groundMinY + groundMaxY) / 2; // 중간 위치
+  const verticalWiggle = 5; // 상하 움직임
 
-  // 위치 계산 (에디터 경계 10-90% 내로 제한)
+  // 위치 계산
   let x = centerX + Math.sin(time * 0.3 + step * 10) * movementRadiusX + Math.cos(time * 0.5) * 5;
   let y = baseY + Math.sin(time * 0.8 + step * 5) * verticalWiggle;
 
-  // 경계 제한 (clamp) - 이미지 크기 고려하여 여유있게
-  x = Math.max(15, Math.min(85, x));
-  y = Math.max(15, Math.min(80, y));
+  // 경계 제한 (땅 영역 내에서만)
+  x = Math.max(10, Math.min(90, x));
+  y = Math.max(groundMinY, Math.min(groundMaxY, y));
 
   bugPositions[step] = {
     left: `${x}%`,
@@ -1721,24 +1801,26 @@ function animateBug(step) {
   bugAnimationIds[step] = requestAnimationFrame(() => animateBug(step));
 }
 
-// 오리 걷기 애니메이션
+// 오리 걷기 애니메이션 (땅 영역 30%에서만 움직이도록 수정)
 function animateDuck() {
   const time = Date.now() / 1000;
 
-  // 오리도 에디터 내부에서만 걷기
-  const movementRadiusX = 20; // 이동 범위 축소
-  const centerX = 25; // 왼쪽 영역 (15 → 25)
+  // 땅 영역: 하단 75~95% 구간 (코드 70% + 땅 30%)
+  const movementRadiusX = 25; // 이동 범위
+  const centerX = 30; // 왼쪽 영역
 
-  const baseY = 65; // 바닥 위치
-  const verticalBob = 1.5; // 상하 움직임 축소
+  const groundMinY = 75; // 땅 시작 위치
+  const groundMaxY = 95; // 땅 끝 위치
+  const baseY = (groundMinY + groundMaxY) / 2;
+  const verticalBob = 5; // 상하 움직임
 
-  // 위치 계산 (에디터 경계 10-45% 내로 제한 - 왼쪽 영역)
+  // 위치 계산
   let x = centerX + Math.sin(time * 0.4) * movementRadiusX;
   let y = baseY + Math.sin(time * 2) * verticalBob;
 
-  // 경계 제한 (clamp) - 오리는 왼쪽 영역, 이미지 크기 고려
-  x = Math.max(15, Math.min(50, x));
-  y = Math.max(15, Math.min(80, y));
+  // 경계 제한 (땅 영역 내에서만)
+  x = Math.max(5, Math.min(55, x));
+  y = Math.max(groundMinY, Math.min(groundMaxY, y));
 
   walkingDuckPosition.left = `${x}%`;
   walkingDuckPosition.top = `${y}%`;
@@ -1932,6 +2014,11 @@ onMounted(() => {
       startProgressiveMission(mission, missionIndex, 1);
     }
   }
+
+  // 튜토리얼 체크
+  if (!localStorage.getItem('bughunt-tutorial-done')) {
+    showTutorial.value = true;
+  }
 });
 
 onUnmounted(() => {
@@ -1941,7 +2028,7 @@ onUnmounted(() => {
 </script>
 
 
-<style scoped src="./BugHunt.css"></style>
+
 
 <style scoped>
 /* ============================================ */
@@ -2010,11 +2097,12 @@ onUnmounted(() => {
 
 .clue-panel {
   flex: 1; /* Take all remaining space (Expanded Log Window) */
-  min-height: 200px;
-  background: rgba(0, 0, 0, 0.4); /* Slightly darker/transparent */
+  min-height: 0; /* flex child가 shrink 가능하도록 */
+  background: rgba(0, 0, 0, 0.4);
   border-top: 1px solid rgba(0, 255, 255, 0.2);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .clue-header {
@@ -2036,6 +2124,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-height: 0; /* flex child가 shrink 가능하도록 */
 }
 
 .clue-item {
@@ -2063,7 +2152,7 @@ onUnmounted(() => {
 .clue-text {
   flex: 1;
   line-height: 1.6;
-  color: #e0e0e0;
+  color: #90EE90; /* 연두색 */
   white-space: pre-wrap;
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 0.85rem;
@@ -2113,118 +2202,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 로그창 설명 입력 섹션 (인라인) */
-.explanation-section-inline {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
-  gap: 1rem;
-  overflow-y: auto;
-  max-height: calc(100% - 2rem);
-}
-
-.explanation-section-inline .explanation-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  min-height: 0;
-}
-
-.explanation-section-inline .explanation-label {
-  font-size: 1rem;
-  font-weight: bold;
-  color: #0ff;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-}
-
-.explanation-section-inline .explanation-textarea {
-  flex: 1;
-  min-height: 150px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(0, 255, 255, 0.3);
-  border-radius: 8px;
-  padding: 1rem;
-  color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  resize: vertical;
-  transition: all 0.3s;
-}
-
-.explanation-section-inline .explanation-textarea:focus {
-  outline: none;
-  border-color: #0ff;
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.explanation-section-inline .explanation-hint {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.6);
-  text-align: right;
-  font-style: italic;
-}
-
-.explanation-section-inline .explanation-footer {
-  display: flex;
-  justify-content: center;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(0, 255, 255, 0.2);
-}
-
-.explanation-section-inline .submit-explanation-btn {
-  background: linear-gradient(135deg, #0ff, #00aaff);
-  border: none;
-  color: #000;
-  font-weight: bold;
-  padding: 1rem 3rem;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
-}
-
-.explanation-section-inline .submit-explanation-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s;
-}
-
-.explanation-section-inline .submit-explanation-btn:hover:not(:disabled)::before {
-  left: 100%;
-}
-
-.explanation-section-inline .submit-explanation-btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0, 255, 255, 0.6);
-  background: linear-gradient(135deg, #00aaff, #0ff);
-}
-
-.explanation-section-inline .submit-explanation-btn:active:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4);
-}
-
-.explanation-section-inline .submit-explanation-btn:disabled {
-  background: linear-gradient(135deg, #333, #444);
-  color: #666;
-  cursor: not-allowed;
-  box-shadow: none;
-}
 
 /* 성공 헤더 스타일 */
 .success-header {
@@ -2336,4 +2313,79 @@ onUnmounted(() => {
     transform: translateY(0);
   }
 }
+
+
+@keyframes duckBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* 말풍선 팝 트랜지션 */
+.speech-pop-enter-active {
+  animation: speechPopIn 0.4s ease-out;
+}
+
+.speech-pop-leave-active {
+  animation: speechPopOut 0.3s ease-in;
+}
+
+@keyframes speechPopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@keyframes speechPopOut {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+}
+
+/* 오리 팝 트랜지션 */
+.duck-pop-enter-active {
+  animation: duckPopIn 0.5s ease-out;
+}
+
+.duck-pop-leave-active {
+  animation: duckPopOut 0.3s ease-in;
+}
+
+@keyframes duckPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-20deg);
+  }
+  60% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes duckPopOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-20px);
+  }
+}
+
 </style>
