@@ -1,7 +1,7 @@
 // Monaco Editor용 헬퍼 파일 (성능 최적화 & 무한루프 방지 버전)
 import { ref, watch, onBeforeUnmount } from 'vue';
 
-export function useMonacoEditor(currentMission, gameState) {
+export function useMonacoEditor(currentMission, editorState) {
     // [최적화] Monaco 인스턴스는 Vue 반응형 시스템(ref)에 넣지 않는 것이 좋음 (성능 저하 및 루프 원인)
     let monacoEditorRaw = null;
     const decorationsCollection = ref(null);
@@ -58,9 +58,9 @@ export function useMonacoEditor(currentMission, gameState) {
 
     // 코드 삽입 함수
     const insertCodeSnippet = (code) => {
-        const currentCode = gameState.userCode;
+        const currentCode = editorState.userCode;
         if (!currentCode) {
-            gameState.userCode = code;
+            editorState.userCode = code;
             return;
         }
 
@@ -71,9 +71,9 @@ export function useMonacoEditor(currentMission, gameState) {
             const fullMatch = match[0];
             const indent = match[1] || "";
             const indentedCode = code.split('\n').map(line => indent + line).join('\n');
-            gameState.userCode = currentCode.replace(fullMatch, indentedCode);
+            editorState.userCode = currentCode.replace(fullMatch, indentedCode);
         } else {
-            gameState.userCode = currentCode + "\n" + code;
+            editorState.userCode = currentCode + "\n" + code;
         }
     };
 
@@ -90,11 +90,33 @@ export function useMonacoEditor(currentMission, gameState) {
             resizeObserver.observe(container);
         }
 
-        if ((!gameState.userCode || gameState.userCode.length < 5) && currentMission.value?.implementation?.codeFrame?.template) {
-            gameState.userCode = currentMission.value.implementation.codeFrame.template;
+        // [중요] Native Drop 이벤트 리스너 등록 (옵션 비활성화 상태에서도 동작하도록)
+        const domNode = editor.getDomNode();
+        if (domNode) {
+            domNode.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Drop 허용
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
+            }, true);
+
+            domNode.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const code = e.dataTransfer.getData('text/plain');
+                if (code) {
+                    insertCodeSnippet(code);
+                }
+            }, true);
+        }
+
+        if ((!editorState.userCode || editorState.userCode.length < 5) && currentMission.value?.implementation?.codeFrame?.template) {
+            editorState.userCode = currentMission.value.implementation.codeFrame.template;
         }
 
         editor.onDidChangeModelContent(() => {
+            // [CRITICAL FIX] Manual two-way binding: Editor -> State
+            // v-model might be failing, so we force update state from editor content.
+            editorState.userCode = editor.getValue();
             updateDecorations();
         });
 
@@ -111,8 +133,16 @@ export function useMonacoEditor(currentMission, gameState) {
     // 스테이지 변경 시 템플릿 리로드
     watch(() => currentMission.value?.id, (newId) => {
         if (newId && currentMission.value?.implementation?.codeFrame?.template) {
-            gameState.userCode = currentMission.value.implementation.codeFrame.template;
+            editorState.userCode = currentMission.value.implementation.codeFrame.template;
             setTimeout(updateDecorations, 500);
+        }
+    });
+
+    // [CRITICAL FIX] 상태 변화를 에디터에 강제 동기화 (v-model이 반응하지 않을 때를 대비)
+    watch(() => editorState.userCode, (newCode) => {
+        if (monacoEditorRaw && newCode !== monacoEditorRaw.getValue()) {
+            monacoEditorRaw.setValue(newCode);
+            // 커서를 맨 앞으로 이동시키거나 상태 유지 (선택사항)
         }
     });
 

@@ -210,6 +210,48 @@ export const CONSISTENCY_CHECK_RULES = {
     }
 };
 
+export const SCORING_RUBRIC = {
+    dataLeakage: {
+        checks: [
+            {
+                id: 'train_test_split',
+                name: '학습/테스트 분리 명시',
+                points: 20,
+                regex: /(분리|split|train.*test)/i,
+                feedback: {
+                    pass: '✅ 데이터 분리를 명시했습니다',
+                    fail: '❌ train/test 분리 단계가 명확하지 않습니다'
+                }
+            },
+            {
+                id: 'fit_order',
+                name: 'fit 순서 정확성',
+                points: 30,
+                validator: (pseudocode) => {
+                    const lines = pseudocode.toLowerCase().split('\n');
+                    const fitIndex = lines.findIndex(l => /train.*fit/.test(l));
+                    const transformIndex = lines.findIndex(l => /test.*transform/.test(l));
+
+                    if (fitIndex === -1) return { score: 0, reason: 'fit 단계 없음' };
+                    if (transformIndex === -1) return { score: 15, reason: 'transform 단계 없음' };
+                    if (fitIndex > transformIndex) return { score: 0, reason: 'fit이 transform보다 나중' };
+
+                    return { score: 30, reason: '올바른 순서' };
+                }
+            },
+            {
+                id: 'no_leakage_patterns',
+                name: '누수 패턴 없음',
+                points: 20,
+                antiPatterns: [
+                    { regex: /전체.*fit/i, penalty: 20, msg: '전체 데이터로 fit 금지' },
+                    { regex: /concat.*fit/i, penalty: 15, msg: '데이터 합친 후 fit 금지' }
+                ]
+            }
+        ]
+    }
+};
+
 export function buildEvaluationPrompt(problem, pseudocode, rubric, examples) {
     return `당신은 AI 기반 의사코드 평가 전문가입니다.
 
@@ -229,6 +271,9 @@ export function buildEvaluationPrompt(problem, pseudocode, rubric, examples) {
 
 # 5차원 메트릭 평가 기준
 ${JSON.stringify(rubric, null, 2)}
+
+# 상세 채점 루브릭 (Scoring Rubric)
+${JSON.stringify(SCORING_RUBRIC[problem.type] || {}, null, 2)}
 
 # Few-shot Examples (참고용)
 
@@ -314,6 +359,10 @@ ${pseudocode}
   "keywordCheck": {
     "found": ["발견된 긍정 키워드들"],
     "missing": ["누락된 필수 개념들"]
+  },
+  "rubricCheck": {
+    "passed": ["통과한 항목들"],
+    "failed": ["실패한 항목들"]
   }
 }`;
 }

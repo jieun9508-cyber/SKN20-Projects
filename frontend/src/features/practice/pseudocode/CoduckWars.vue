@@ -287,14 +287,18 @@
                 </div>
 
                 <!-- 2. Python Monaco Editor -->
-                <div class="python-editor-col">
+                <div 
+                    class="python-editor-col"
+                    @dragover.prevent
+                    @drop.prevent="handleEditorDrop"
+                >
                     <div class="panel-subheader">
                         <span class="sub-icon">🐍</span>
                         <span class="sub-title">Python 구현</span>
                         <span class="lang-badge">Python</span>
                     </div>
                     <vue-monaco-editor
-                        v-model:value="gameState.userCode"
+                        v-model:value="runnerState.userCode"
                         language="python"
                         theme="vs-dark"
                         :options="monacoOptions"
@@ -302,22 +306,23 @@
                         class="monaco-editor-main"
                     />
                     <div class="editor-bottom-hint">
-                        💡 오른쪽 모듈을 클릭하면 빈칸(TODO)이 자동으로 채워집니다! (순서대로 클릭하세요)
+                        💡 오른쪽 모듈을 에디터로 드래그하거나 직접 코드를 작성하세요!
                     </div>
                 </div>
 
-                <!-- 3. 모듈 (클릭 가능) -->
+                <!-- 3. 모듈 (드래그 가능) -->
                 <div class="modules-col">
                     <div class="panel-subheader">
                         <span class="sub-icon">📦</span>
-                        <span class="sub-title">모듈 (Click)</span>
+                        <span class="sub-title">모듈 (Drag)</span>
                     </div>
                     <div class="snippet-list-scroll">
                         <div 
                             v-for="(snip, idx) in pythonSnippets" 
                             :key="idx" 
                             class="snippet-block-draggable"
-                            @click="insertCodeSnippet(snip.code)"
+                            draggable="true"
+                            @dragstart="onDragStart($event, snip.code)"
                         >
                             <span class="s-icon">::</span>
                             <span class="s-label">{{ snip.label }}</span>
@@ -600,6 +605,7 @@ const toggleWritingGuide = () => {
 
 const { 
     gameState, 
+    runnerState, // ✅ CRITICAL FIX: Extract runnerState
     diagnosticQuestion1, 
     diagnosticQuestion2, 
     deepQuizQuestion,
@@ -627,8 +633,8 @@ const {
     selectStage // ✅ 추가: 단계 선택 기능
 } = useCoduckWars();
 
-// Monaco Editor 설정
-const { monacoOptions, handleMonacoMount, insertCodeSnippet } = useMonacoEditor(currentMission, gameState);
+// Monaco Editor 설정 - ✅ CRITICAL FIX: Pass runnerState instead of gameState
+const { monacoOptions, handleMonacoMount, insertCodeSnippet } = useMonacoEditor(currentMission, runnerState);
 
 // [안전장치 제거] useMonacoEditor 내부에서 이미 템플릿 로드 로직이 통합되어 있으므로 중복 제거 (루프 방지)
 onMounted(() => {
@@ -723,18 +729,26 @@ const exitToHub = () => {
 };
 
 // Drag and Drop Logic
+const onDragStart = (evt, code) => {
+    evt.dataTransfer.dropEffect = 'copy';
+    evt.dataTransfer.effectAllowed = 'copy';
+    evt.dataTransfer.setData('text/plain', code);
+};
+
 const onDrop = (slotKey, evt) => {
     const code = evt.dataTransfer.getData('text/plain');
     if (code) {
-        // Direct update since we might not have exported a helper yet, 
-        // or just use the helper if we export it.
-        // Let's assume we need to update state directly if helper is missing, 
-        // but `handleSlotDrop` is better. 
-        // I will check if `handleSlotDrop` is available in `useCoduckWars` return.
-        // For now, let's update directly to be safe as `gameState` is reactive.
         if (gameState.codeSlots[slotKey]) {
             gameState.codeSlots[slotKey].content = code;
         }
+    }
+};
+
+// Editor Custom Drop Handler
+const handleEditorDrop = (evt) => {
+    const code = evt.dataTransfer.getData('text/plain');
+    if (code) {
+        insertCodeSnippet(code);
     }
 };
 

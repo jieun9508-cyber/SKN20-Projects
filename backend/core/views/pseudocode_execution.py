@@ -14,10 +14,23 @@ import json
 import time
 
 # Docker 실행 설정
-TIMEOUT_SECONDS = 30 # Reduced to 30s as dependencies are pre-installed
+TIMEOUT_SECONDS = 10 # Relaxed timeout for Windows environment
 MEMORY_LIMIT = "512m"
 CPU_LIMIT = "1.0"
 DOCKER_IMAGE = "coduck-sandbox:latest"
+
+def check_security(user_code):
+    """
+    위험한 패턴을 정적 분석으로 사전 차단
+    """
+    dangerous_keywords = ['import os', 'import sys', 'import subprocess', 'from os', 'from sys', '__import__', 'eval(', 'exec(']
+    for keyword in dangerous_keywords:
+        if keyword in user_code:
+            return {
+                "success": False,
+                "error": "보안 위반: 허용되지 않은 모듈이나 함수가 감지되었습니다. (os, sys, subprocess, eval 등 금지)"
+            }
+    return None
 
 def generate_runner_script(user_code, function_name, test_cases):
     """
@@ -34,8 +47,6 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 import random
 import re
-
-# ... (rest of the script is unchanged, just removing the try-except/fallback for imports as they are guaranteed)
 
 # === 사용자 코드 영역 ===
 try:
@@ -181,12 +192,12 @@ def _execute_in_docker(script_code):
     docker_cmd = [
         "docker", "run",
         "--rm",             # 실행 후 컨테이너 삭제
-        # "--network", "none", # 네트워크 격리 (이미지 내부에 라이브러리가 있으므로 외부 통신 불필요)
+        "--network", "none", # 네트워크 격리 (이미지 내부에 라이브러리가 있으므로 외부 통신 불필요)
         "--memory", MEMORY_LIMIT,
         "--cpus", CPU_LIMIT,
         "-i",               # stdin 개방
         DOCKER_IMAGE,
-        "sh", "-c", "python -"       # stdin에서 코드를 읽어 실행 (pip install 제거)
+        "python", "-"       # stdin에서 코드를 읽어 실행 (sh -c 제거해도 됨)
     ]
 
     try:
@@ -222,10 +233,12 @@ def _execute_in_docker(script_code):
             last_line = lines[-1] if lines else ""
             return json.loads(last_line)
         except json.JSONDecodeError:
+            # SyntaxError 등으로 JSON 출력이 안된 경우
             return {
-                "error": "Invalid output format",
                 "success": False,
-                "raw_output": stdout
+                "error": f"Execution Error (Syntax/Runtime): {stdout.strip()}",
+                "results": [],
+                "output": stdout.strip()
             }
 
     except FileNotFoundError:
@@ -246,28 +259,38 @@ def execute_python_code(request):
     [POST] /api/core/pseudocode/execute/
     Docker 샌드박스를 이용한 Python 코드 실행 및 테스트
     """
-    code = request.data.get('code', '')
-    function_name = request.data.get('function_name', '')
-    test_cases = request.data.get('test_cases', [])
+    try:
+        code = request.data.get('code', '')
+        function_name = request.data.get('function_name', '')
+        test_cases = request.data.get('test_cases', [])
 
-    if not code or not function_name:
-        return Response(
-            {"error": "Code and function_name are required."}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        if not code or not function_name:
+            return Response(
+                {"error": "Code and function_name are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    # 1. 실행할 스크립트 생성
-    runner_script = generate_runner_script(code, function_name, test_cases)
-    
-    # 2. Docker에서 실행
-    result = _execute_in_docker(runner_script)
-    
-    # 3. 응답 반환
-    if not result.get('success', False):
-        # 실행 자체 실패 (문법 오류, 타임아웃 등)
-        return Response(result, status=status.HTTP_200_OK) # 에러도 200으로 보내서 프론트에서 처리
+        # 1. 보안 체크 (정적 분석)
+        security_check = check_security(code)
+        if security_check:
+            return Response(security_check, status=status.HTTP_200_OK)
+
+        # 2. 실행할 스크립트 생성
+        runner_script = generate_runner_script(code, function_name, test_cases)
         
-    return Response(result, status=status.HTTP_200_OK)
+        # 3. Docker에서 실행
+        result = _execute_in_docker(runner_script)
+        
+        return Response(result, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        import traceback
+        error_msg = f"Internal Server Error: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg) # 서버 로그에 출력
+        return Response(
+            {"error": str(e), "success": False, "details": traceback.format_exc()},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # URL 설정 (urls.py에 추가)

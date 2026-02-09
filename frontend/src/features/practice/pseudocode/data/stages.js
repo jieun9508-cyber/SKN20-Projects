@@ -95,9 +95,9 @@ export const aiQuests = [
             ],
             codeValidation: {
                 mustContain: [
-                    "scaler.fit(train_df)",
-                    "scaler.transform(train_df)",
-                    "scaler.transform(test_df)"
+                    "fit(train_df)",
+                    "transform(train_df)",
+                    "transform(test_df)"
                 ],
                 mustNotContain: [
                     "scaler.fit(test_df)"
