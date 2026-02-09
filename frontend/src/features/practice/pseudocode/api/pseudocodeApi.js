@@ -84,7 +84,9 @@ export async function quickCheckPseudocode(problem, pseudocode) {
   );
 
   try {
+    // [수정일: 2026-02-09] 모델 명시 (gpt-4o-mini) (Antigravity)
     const response = await callOpenAI(prompt, {
+      model: 'gpt-4o-mini',
       temperature: 0.1,  // 더 일관성 있게
       maxTokens: 1200  // 5차원 평가이므로 더 많은 토큰 필요
     });
