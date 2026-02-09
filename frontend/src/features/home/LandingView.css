@@ -12,18 +12,20 @@
     color: #fff;
     font-family: 'Outfit', sans-serif;
     overflow-x: hidden;
-    min-height: 100vh;
+    height: 100vh;
+    /* [수정일: 2026-02-09] 스냅 활성화를 위해 고정 높이 설정 */
     overflow-y: auto;
     scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
 }
 
 /* [Hero Playground Premium] */
 .hero-playground-premium {
     position: relative;
-    min-height: 100vh;
-    padding: 120px 0;
-    /* 네비게이션 공간 확보 및 상하 여백 */
+    height: 100vh;
+    /* [수정일: 2026-02-09] 1개 섹션 점유 강제 */
+    padding: clamp(60px, 10vh, 120px) 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -31,6 +33,8 @@
     overflow: hidden;
     background-color: #0c0e14;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+    /* [수정일: 2026-02-09] 휠 1회에 1개씩 */
     will-change: transform;
 }
 
@@ -555,6 +559,7 @@
 .playground-section-premium {
     position: relative;
     height: 100vh;
+    /* [수정일: 2026-02-09] 1개 섹션 점유 강제 */
     padding: 0 2rem;
     max-width: 1400px;
     margin: 0 auto;
@@ -563,6 +568,7 @@
     flex-direction: column;
     justify-content: center;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
     will-change: transform;
 }
 
@@ -1003,15 +1009,16 @@
 .lb-section-premium {
     position: relative;
     min-height: 100vh;
+    /* [수정일: 2026-02-09] 내용이 많을 경우 확장을 허용하되 최소 100vh 유지 */
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 8vw 2rem;
-    /* 화면 비율에 따른 상하 패딩 */
+    justify-content: flex-start;
+    padding: clamp(3rem, 8vh, 6rem) 2rem 4rem 2rem;
+    /* [수정일: 2026-02-09] 하단 조절 */
     background: #06070a;
-    overflow: hidden;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
 }
 
 .lb-energy-pulse {
@@ -1042,7 +1049,8 @@
 
 .lb-header-v2 {
     text-align: center;
-    margin-bottom: 5rem;
+    margin-bottom: clamp(1rem, 3vh, 2rem);
+    /* [수정일: 2026-02-09] 여백 더 축소 */
 }
 
 .lb-subtitle {
@@ -1071,7 +1079,8 @@
     backdrop-filter: blur(40px);
     border-radius: 40px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    padding: clamp(1rem, 3vw, 2.5rem);
+    padding: clamp(0.5rem, 2vh, 1.5rem);
+    /* [수정일: 2026-02-09] 내부 패딩 축소 */
     width: 92%;
     max-width: 1400px;
     margin: 0 auto;
@@ -1094,9 +1103,11 @@
 .lb-row-v2 {
     display: grid;
     grid-template-columns: 120px 1fr 200px 200px;
-    padding: 1.8rem 2.5rem;
+    padding: clamp(0.8rem, 1.5vh, 1.2rem) 2.5rem;
+    /* [수정일: 2026-02-09] 행 간격 축소 */
     align-items: center;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.4rem;
+    /* [수정일: 2026-02-09] 마진 축소 */
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.015);
     transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
@@ -1307,8 +1318,9 @@
     align-items: center;
     justify-content: center;
     gap: 30px;
-    margin-top: 40px;
-    padding: 20px;
+    margin-top: clamp(10px, 3vh, 30px);
+    /* [수정일: 2026-02-09] 마진 축소 */
+    padding: 10px 20px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.05);
