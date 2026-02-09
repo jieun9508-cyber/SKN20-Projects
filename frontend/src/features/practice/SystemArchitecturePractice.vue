@@ -99,6 +99,7 @@
         :is-active="isDeepDiveModalActive"
         :question="deepDiveQuestion"
         :is-generating="isGeneratingDeepDive"
+        :is-judging="isJudgingAnswer"
         :current-question="currentQuestionIndex + 1"
         :total-questions="deepDiveQuestions.length"
         :category="deepDiveQuestions[currentQuestionIndex]?.category || ''"
@@ -206,6 +207,7 @@ export default {
       showResultScreen: evaluation.showResultScreen,
       isDeepDiveModalActive: evaluation.isDeepDiveModalActive,
       isGeneratingDeepDive: evaluation.isGeneratingDeepDive,
+      isJudgingAnswer: evaluation.isJudgingAnswer,
       deepDiveQuestion: evaluation.deepDiveQuestion,
       deepDiveQuestions: evaluation.deepDiveQuestions,
       currentQuestionIndex: evaluation.currentQuestionIndex,

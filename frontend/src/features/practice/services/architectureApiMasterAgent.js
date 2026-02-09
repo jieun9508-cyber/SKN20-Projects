@@ -1,9 +1,10 @@
 /**
- * Architecture Evaluation Service
+ * Architecture Evaluation Service - Quick Mode
  *
- * 6대 기둥 전체 평가
- * - 6개 병렬 에이전트가 생성한 질문에 대한 답변 평가
- * - 각 영역 16.7% 비중으로 점수 산출
+ * [수정일: 2026-02-09]
+ * 퀵 플레이 모드: 3개 갈래 평가
+ * - 분석 에이전트가 선택한 3개 영역만 평가
+ * - 각 영역 33.3% 비중으로 점수 산출
  * - 모범답안 제공으로 학습 효과 증대
  */
 
@@ -199,9 +200,9 @@ ${relevantPrinciples || '(원칙 없음)'}
 - 실제 기술/서비스 이름 포함
 - 사용자가 배울 수 있도록 상세하게
 
-### 3. 최종 점수
-- **반드시 정확히 6개** 영역만 평가 (evaluations 배열 길이 = 6)
-- 6개 영역 점수의 평균 (각 16.7%)
+### 3. 최종 점수 (퀵 모드)
+- **반드시 정확히 3개** 영역만 평가 (evaluations 배열 길이 = 3)
+- 3개 영역 점수의 평균 (각 33.3%)
 
 ---
 
@@ -238,10 +239,10 @@ ${relevantPrinciples || '(원칙 없음)'}
       const result = JSON.parse(jsonMatch[0]);
 
       const endTime = Date.now();
-      console.log(`✅ 평가 완료 (${((endTime - startTime) / 1000).toFixed(1)}s)`);
+      console.log(`✅ [퀵 모드] 평가 완료 (${((endTime - startTime) / 1000).toFixed(1)}s)`);
 
-      // 6개 유지
-      const evaluations = (result.evaluations || []).slice(0, 6);
+      // 3개만 유지 (퀵 모드)
+      const evaluations = (result.evaluations || []).slice(0, 3);
 
       // 결과 포맷팅
       return {
@@ -253,7 +254,7 @@ ${relevantPrinciples || '(원칙 없음)'}
         weaknesses: result.weaknesses || [],
         suggestions: result.recommendations || [],
 
-        // 질문별 평가 (모범답안 포함) - 6개
+        // 질문별 평가 (모범답안 포함) - 3개
         questionEvaluations: evaluations,
 
         // 기존 호환용

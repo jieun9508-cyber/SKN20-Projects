@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 // 마스터 에이전트 기반 다중 에이전트 평가 사용 (6대 기둥)
 import { evaluateWithMasterAgent, getAvailableSubAgents, getAllQuestionStrategies } from '../services/architectureApiMasterAgent';
-import { generateFollowUpQuestions } from '../services/architectureApiFastTest';
+import { generateFollowUpQuestions, judgeAnswerSufficiency, generateDeepDiveQuestion } from '../services/architectureApiFastTest';
 import {
   buildArchitectureContext,
   generateMockEvaluation
@@ -36,6 +36,11 @@ export function useEvaluation() {
   const userExplanation = ref('');
   const explanationAnalysis = ref(null);
 
+  // 답변 충분성 판정 상태
+  const isJudgingAnswer = ref(false);
+  // 딥다이브 컨텍스트 (judgeAnswerSufficiency, generateDeepDiveQuestion에 전달)
+  const deepDiveContext = ref(null);
+
   // Chat messages for evaluation context
   const chatMessages = ref([]);
 
@@ -58,6 +63,39 @@ export function useEvaluation() {
         content: `[심화 질문 - ${currentQ?.category}] ${deepDiveQuestion.value}\n\n[답변] ${answer}`,
         type: 'answer'
       });
+    }
+
+    // 이미 딥다이브 질문(후속 질문)이면 판정 없이 다음으로 이동
+    if (currentQ?.isDeepDive) {
+      return moveToNextQuestion();
+    }
+
+    // 답변 충분성 판정
+    if (answer && deepDiveContext.value) {
+      isJudgingAnswer.value = true;
+      try {
+        const judgment = await judgeAnswerSufficiency(currentQ, answer, deepDiveContext.value);
+        console.log(`🔍 [판정] ${currentQ?.category}: ${judgment.isSufficient ? '충분' : '불충분'} - ${judgment.reason}`);
+
+        if (!judgment.isSufficient) {
+          // 딥다이브 후속 질문 생성
+          const followUp = await generateDeepDiveQuestion(
+            currentQ,
+            answer,
+            judgment.missingPoints || [],
+            deepDiveContext.value
+          );
+          followUp.isDeepDive = true; // 후속 질문 마킹
+
+          // 현재 질문 바로 뒤에 삽입
+          deepDiveQuestions.value.splice(currentQuestionIndex.value + 1, 0, followUp);
+          console.log(`🔄 [딥다이브] "${followUp.question}" 삽입 (총 ${deepDiveQuestions.value.length}개)`);
+        }
+      } catch (error) {
+        console.warn('답변 판정 실패, 다음 질문으로 이동:', error);
+      } finally {
+        isJudgingAnswer.value = false;
+      }
     }
 
     return moveToNextQuestion();
@@ -105,6 +143,15 @@ export function useEvaluation() {
   async function submitUserExplanation(explanation, problem, droppedComponents, connections, mermaidCode) {
     userExplanation.value = explanation;
     isGeneratingDeepDive.value = true;
+
+    // 딥다이브 판정/질문 생성에 사용할 컨텍스트 저장
+    const componentList = droppedComponents.map(c => `${c.text} (${c.type})`).join(', ');
+    const connectionList = connections.map(conn => {
+      const from = droppedComponents.find(c => c.id === conn.from);
+      const to = droppedComponents.find(c => c.id === conn.to);
+      return from && to ? `${from.text} → ${to.text}` : null;
+    }).filter(Boolean).join(', ');
+    deepDiveContext.value = { componentList, connectionList, mermaidCode };
 
     // 설명을 첫 번째 답변으로 저장
     collectedDeepDiveAnswers.value.push({
@@ -232,6 +279,8 @@ export function useEvaluation() {
     evaluationPhase.value = 'idle';
     userExplanation.value = '';
     explanationAnalysis.value = null;
+    isJudgingAnswer.value = false;
+    deepDiveContext.value = null;
   }
 
   function isPendingEvaluation() {
@@ -251,6 +300,7 @@ export function useEvaluation() {
     // Deep Dive State
     isDeepDiveModalActive,
     isGeneratingDeepDive,
+    isJudgingAnswer,
     deepDiveQuestion,
     deepDiveQuestions,
     currentQuestionIndex,

@@ -26,12 +26,12 @@
 
       <!-- 메인 -->
       <div class="frame-main">
-        <div v-if="isGenerating" class="loading-section">
+        <div v-if="isGenerating || isJudging" class="loading-section">
           <div class="loading-orbit">
             <div class="orbit-ring"></div>
             <div class="orbit-core"></div>
           </div>
-          <p>ANALYZING_ARCHITECTURE...</p>
+          <p>{{ isJudging ? 'EVALUATING_RESPONSE...' : 'ANALYZING_ARCHITECTURE...' }}</p>
         </div>
 
         <template v-else>
@@ -76,7 +76,7 @@
           class="btn btn-submit"
           :class="{ 'btn-explanation': isExplanationPhase }"
           @click="submitAnswer"
-          :disabled="isGenerating || !answer.trim()"
+          :disabled="isGenerating || isJudging || !answer.trim()"
         >
           {{ submitButtonText }}
         </button>
@@ -106,6 +106,10 @@ export default {
       default: ''
     },
     isGenerating: {
+      type: Boolean,
+      default: false
+    },
+    isJudging: {
       type: Boolean,
       default: false
     },
