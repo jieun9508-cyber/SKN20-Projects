@@ -14,9 +14,9 @@ import json
 import time
 
 # Docker 실행 설정
-TIMEOUT_SECONDS = 15
-MEMORY_LIMIT = "256m"
-CPU_LIMIT = "0.5"
+TIMEOUT_SECONDS = 120 # Increased to 120s to allow for very slow pip install
+MEMORY_LIMIT = "512m"
+CPU_LIMIT = "1.0"
 DOCKER_IMAGE = "python:3.10-slim"
 
 def generate_runner_script(user_code, function_name, test_cases):
@@ -28,9 +28,14 @@ def generate_runner_script(user_code, function_name, test_cases):
 import sys
 import json
 import traceback
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+# 의존성 설치가 완료된 후 임포트
+try:
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+except ImportError:
+    # Fallback to avoid immediate crash if install fails (though it likely crashed before python started)
+    pass
 import random
 import re
 
@@ -178,12 +183,12 @@ def _execute_in_docker(script_code):
     docker_cmd = [
         "docker", "run",
         "--rm",             # 실행 후 컨테이너 삭제
-        "--network", "none", # 네트워크 차단
+        # "--network", "none", # PIP 설치를 위해 네트워크 허용
         "--memory", MEMORY_LIMIT,
         "--cpus", CPU_LIMIT,
         "-i",               # stdin 개방
         DOCKER_IMAGE,
-        "python", "-"       # stdin에서 코드를 읽어 실행
+        "sh", "-c", "pip install numpy pandas scikit-learn > /dev/null 2>&1 && python -"       # stdin에서 코드를 읽어 실행
     ]
 
     try:

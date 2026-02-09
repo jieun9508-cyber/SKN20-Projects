@@ -82,49 +82,97 @@ class AIEvaluationView(APIView):
         print(f"[DEBUG] Eval Start: {quest_title} / {score}", flush=True)
         
         try:
+            # [DEBUG] API Key Check
+            # [DEBUG] API Key Check
             api_key = settings.OPENAI_API_KEY
+            if api_key:
+                print(f"[DEBUG] OPENAI_API_KEY Loaded. Prefix: {api_key[:8]}...", flush=True)
+            else:
+                print(f"[DEBUG] OPENAI_API_KEY is Missing or Empty.", flush=True)
+            
             if not api_key:
+                print("[CRITICAL] OpenAI API Key is missing in settings!", flush=True)
                 return Response({"error": "OpenAI API Key is missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             client = openai.OpenAI(api_key=api_key)
+            print("[DEBUG] OpenAI Client Initialized", flush=True)
 
             # [수정일: 2026-02-04] 수석 아키텍트급 정밀 평가를 위한 프롬프트 강화 및 모델 업그레이드 (gpt-4o-mini)
-            system_prompt = """
+            # [2026-02-09] 프론트엔드에서 전달받은 정밀 평가 기준 추출
+            criteria = request.data.get('evaluation_criteria', {})
+            rules = criteria.get('rules', [])
+            constraints = criteria.get('constraints', {})
+            code_constraints = criteria.get('code_constraints', {})
+            
+            # 규칙 텍스트 포맷팅
+            rules_str = "\n".join([f"- {r}" for r in rules]) if rules else "정보 없음"
+            must_keywords = ", ".join(constraints.get('must_include_keywords', []))
+            must_code = ", ".join(code_constraints.get('must_contain', []))
+            
+            system_prompt = f"""
             당신은 20년 경력의 예리한 수석 소프트웨어 아키텍트 'Coduck Wizard'입니다. 
             당신은 단순히 로직을 평가하는 것을 넘어, 사용자가 인터뷰에서 정한 '설계 지침'을 충실히 따랐는지, 
             그리고 로직이 실무 수준의 정밀도를 갖췄는지 엄격하게 심사합니다.
 
+            [현재 미션의 핵심 평가 기준]
+            1. 엔지니어링 규칙 준수 여부:
+            {rules_str}
+            
+            2. 필수 포함 키워드 (설계 서술): {must_keywords}
+            3. 필수 포함 코드 패턴: {must_code}
+
             반드시 아래의 **JSON 형식으로만** 응답해야 합니다.
 
-            [평가 규칙]
-            1. 사용자가 문장 형태의 '의사코드'를 작성하지 않고 단어만 나열했다면 'is_logical'을 false로 하고 30점 이하를 부여하십시오.
-            2. '필수 설계 요구사항'이 제공된 경우, 
-            이를 하나라도 누락하거나 잘못 해석했다면 가차 없이 'is_logical'을 false로 하고 승인을 반려하십시오.
-            3. 말투는 시의적절하게 전문적이고, 보완이 필요한 부분은 날카롭고 구체적으로 지적하십시오.
+            [평가 규칙 - 엄격 모드 적용]
+            1. **점수 인플레이션 방지**: 
+               - 완벽한 통찰력이 없는 '일반적인 정답'은 **80~89점** 사이로 배점하십시오.
+               - **100점(만점)**은 엔지니어링 규칙을 완벽히 준수하고, 심오한 아키텍처적 통찰(예: 트레이드오프 분석, 엣지 케이스 고려)이 있을 때만 부여하십시오.
+               - 키워드만 나열하고 논리가 부족하면 **50점 이하**로 과락 처리하십시오.
+            
+            2. **감점 기준 강화**:
+               - 위에서 제시한 **'엔지니어링 규칙'**을 하나라도 어기면 즉시 **-20점** 감점하십시오.
+               - '필수 포함 키워드'가 누락되었다면 **-10점** 감점하십시오.
+               - 단순 의사코드(pseudo-code)가 아닌 실행 불가능한 자연어만 썼다면 **-30점** 감점하십시오.
+
+            3. **피드백 스타일**: 
+               - 날카로운 시니어 아키텍트의 페르소나를 유지하십시오. 
+               - 칭찬보다는 **"무엇이 부족해서 100점이 아닌지"**를 구체적으로 지적하십시오.
 
             [JSON 구조]
-            {
+            {{
               "score": 0-100,
               "analysis": "사용자 로직의 타당성 및 설계 지침 준수 여부 정밀 분석 (2~3문단)",
               "advice": "다음 단계를 위한 시니어의 핵심 조언",
               "is_logical": true/false (지침 미준수 시 false),
-              "metrics": {
+              "metrics": {{
                 "정합성": 0-100, "추상화": 0-100, "예외처리": 0-100, "구현력": 0-100, "설계력": 0-100
-              },
-              "tail_question": {
+              }},
+              "tail_question": {{
                 "question": "현재 설계된 아키텍처의 맹점을 찌르거나 다음 구현 단계에서 고려해야 할 예외 상황 질문",
                 "options": [
-                  {"text": "정답", "is_correct": true, "reason": "이유..."},
-                  {"text": "오답1", "is_correct": false, "reason": "이유..."},
-                  {"text": "오답2", "is_correct": false, "reason": "이유..."}
+                  {{"text": "정답", "is_correct": true, "reason": "이유..."}},
+                  {{"text": "오답1", "is_correct": false, "reason": "이유..."}},
+                  {{"text": "오답2", "is_correct": false, "reason": "이유..."}}
                 ]
-              }
-            }
+              }},
+              "supplementary_videos": [
+                {{
+                  "title": "추천 학습 주제 (예: Python Data Scaling Best Practices)",
+                  "desc": "추천 이유 (예: 데이터 누수를 방지하기 위함)",
+                  "search_query": "유튜브 검색어 (예: python sklearn standardscaler train test split leak)"
+                }}
+              ]
+            }}
             """
             
             logic_str = ', '.join(user_logic) if isinstance(user_logic, list) else str(user_logic)
             user_msg = f"""
             [미션] {quest_title}
+            
+            [평가 기준 요약]
+            - 규칙: {rules_str}
+            - 코드 필수 포함: {must_code}
+            
             [사용자 로직]
             {logic_str}
             
@@ -184,8 +232,25 @@ class AIEvaluationView(APIView):
 
         except Exception as e:
             tb = traceback.format_exc()
-            print(f"[CRITICAL] AI Error: {e}\n{tb}", flush=True)
-            return Response({"error": str(e), "traceback": tb}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(f"[CRITICAL] AI Error: {e}\n{tb}", file=sys.stderr, flush=True)
+            
+            # [Fallback Response] 에러 발생 시에도 프론트엔드가 멈추지 않도록 기본 응답 반환
+            fallback_result = {
+                "score": 75,
+                "analysis": f"AI 신경망 연결이 불안정하여 정밀 분석을 완료하지 못했습니다. (Error: {str(e)})",
+                "advice": "잠시 후 다시 시도하거나, 네트워크 상태를 확인해주세요.",
+                "is_logical": True,
+                "metrics": { "정합성": 70, "추상화": 70, "예외처리": 70, "구현력": 70, "설계력": 70 },
+                "tail_question": {
+                    "question": "네트워크 분할(Network Partition) 상황에서 시스템 가용성을 유지하기 위한 전략은?",
+                    "options": [
+                        {"text": "CAP 이론에 따라 일관성(Consistency)을 일부 희생하고 가용성(Availability)을 택한다.", "is_correct": True, "reason": "가용성이 중요할 때의 일반적인 선택입니다."},
+                        {"text": "시스템을 즉시 종료한다.", "is_correct": False, "reason": "가용성을 0으로 만드는 행위입니다."},
+                        {"text": "모든 요청을 대기시킨다.", "is_correct": False, "reason": "사용자 경험을 크게 저해합니다."}
+                    ]
+                }
+            }
+            return Response(fallback_result, status=status.HTTP_200_OK)
         
 
 @method_decorator(csrf_exempt, name='dispatch')

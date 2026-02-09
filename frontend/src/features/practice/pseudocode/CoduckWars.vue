@@ -273,7 +273,7 @@
                 <span class="p-sub">참조: 3단계 로직</span>
             </div>
             
-            <!-- 3열 레이아웃: 자연어(35%) + 에디터(50%) + 모듈(15%) -->
+            <!-- 3열 레이아웃: 자연어(25%) + 에디터(60%) + 모듈(15%) -->
             <div class="phase4-tri-panel">
                 <!-- 1. 자연어 참조 -->
                 <div class="natural-lang-col">
@@ -771,7 +771,7 @@ const getLogLabel = (type) => {
   background-color: #050505; /* Pitch Black */
   color: #E5E7EB;
   font-family: 'Inter', sans-serif;
-  overflow: hidden;
+  overflow: hidden; /* Prevent scroll */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -833,36 +833,51 @@ const getLogLabel = (type) => {
 .integrity-monitor {
     display: flex;
     align-items: center;
-    gap: 20px; /* Wider gap */
-    font-family: 'JetBrains Mono', monospace;
+    gap: 20px; /* LAYOUT GRID */
 }
-.integrity-label { color: #4ade80; font-size: 0.9rem; font-weight: bold; }
+.viewport { flex: 1; position: relative; z-index: 50; padding: 0; display: flex; }
+.combat-grid {
+    display: flex;
+    flex-wrap: nowrap; /* CRITICAL: Force side-by-side */
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevent scroll */
+}
+
+/* LEFT PANEL - ENTITY CARD */
+.entity-card {
+    /* Fixed width to preserve "Coduck" card ratio */
+    flex: 0 0 450px; 
+    max-width: 450px;
+    height: 100%; /* Fill Text/Image Logic Height */
+    background: #0a0a0a;
+    border-right: 1px solid #333;
+    padding: 30px; /* Fixed padding for consistent look */
+    display: flex;
+    flex-direction: column;
+}
+
+/* ... existing styles ... */
+
 .hp-bar-bg {
-    width: 250px; /* Wider bar */
+    width: 15vw; /* Relative width */
+    max-width: 250px;
+    min-width: 100px;
     height: 10px;
     background: #1f2937;
     border-radius: 4px;
     overflow: hidden;
 }
-.hp-bar-fill { height: 100%; background: #4ade80; transition: width 0.3s; }
-.integrity-val { color: #fff; font-weight: bold; font-size: 1.1rem; }
 
-/* LAYOUT GRID */
-.viewport { flex: 1; position: relative; z-index: 50; padding: 0; display: flex; }
-.combat-grid {
-    display: flex;
-    width: 100%;
-    height: 100%;
-}
+/* ... existing styles ... */
 
-/* LEFT PANEL - ENTITY CARD */
-.entity-card {
-    width: 500px; /* Wider Left Panel */
-    background: #0a0a0a;
-    border-right: 1px solid #333;
-    padding: 50px;
-    display: flex;
-    flex-direction: column;
+.snippet-panel { 
+    flex: 0 0 25%; /* Replaces fixed 350px */
+    min-width: 280px;
+    background:#111; 
+    padding:30px; 
+    display:flex; 
+    flex-direction:column; 
 }
 .entity-header {
     display: flex;
@@ -922,11 +937,13 @@ const getLogLabel = (type) => {
 /* RIGHT PANEL - DECISION ENGINE */
 .decision-panel {
     flex: 1;
-    padding: 60px 100px; /* Big padding */
+    min-width: 0; /* CRITICAL: Allow shrinking */
+    padding: 4vw 6vw; /* Responsive padding (was 60px 100px) */
     display: flex;
     flex-direction: column;
     justify-content: center; /* Center Vertically */
     background: rgba(10, 10, 10, 0.3); /* Slight tint */
+    overflow-y: auto;
 }
 .system-status-text {
     color: #6b7280;
@@ -1840,10 +1857,12 @@ const getLogLabel = (type) => {
     overflow-x: hidden; /* Prevent horizontal scrolling logic */
 }
 
-/* Modules Sidebar (Right Col - Fixed Width) */
+/* Modules Sidebar (Right Col - Fixed Width -> Fluid) */
 .modules-sidebar {
-    width: 280px; /* Slightly wider for modules */
-    flex-shrink: 0; /* Prevent shrinking */
+    flex: 0 0 20%; /* Replaces fixed 280px */
+    min-width: 200px;
+    max-width: 300px;
+    flex-shrink: 0;
     background: #0a0a0a;
     border: 1px solid #333;
     display: flex;

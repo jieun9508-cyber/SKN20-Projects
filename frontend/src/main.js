@@ -93,6 +93,10 @@ const routes = [
     component: MyHistoryView
   },
   {
+    path: '/practice/',
+    redirect: '/practice/pseudo-code'
+  },
+  {
     path: '/main.html',
     redirect: '/'
   }

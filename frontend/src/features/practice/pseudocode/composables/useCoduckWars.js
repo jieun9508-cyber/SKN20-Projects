@@ -372,6 +372,8 @@ export function useCoduckWars() {
             // 2. 백엔드로 실제 실행 요청
 
 
+
+            console.log("[DEBUG] submitPythonFill: Requesting execution with timeout 120s...");
             const response = await axios.post('/api/core/pseudocode/execute/', {
                 code: userCode,
                 test_cases: currentMission.value.testCases || [
@@ -384,7 +386,7 @@ export function useCoduckWars() {
                     }
                 ],
                 function_name: 'leakage_free_scaling'
-            });
+            }, { timeout: 120000 }); // Increased timeout to 120s for slow pip install
 
             gameState.codeExecutionResult = response.data;
 
@@ -460,23 +462,34 @@ export function useCoduckWars() {
         } catch (error) {
             console.error('[CoduckWars] Code execution error:', error);
 
-            // 네트워크 오류 등으로 아예 요청 실패 시에도 Fallback 시도
+            // 500 에러 또는 네트워크 오류 발생 시에도 Fallback 로직 수행
             const code = gameState.userCode;
-            const validation = currentMission.value.implementation.codeValidation;
-            const missingKeywords = validation.mustContain.filter(keyword => !code.includes(keyword));
 
-            if (missingKeywords.length === 0) {
-                gameState.score += 100;
-                gameState.feedbackMessage = "네트워크 동기화 지연 - 로컬 아키텍처 분석으로 승인";
+            // 안전 장치: currentMission이 로드되지 않았을 경우 방지
+            if (!currentMission.value || !currentMission.value.implementation) {
+                gameState.feedbackMessage = "미션 데이터를 불러올 수 없습니다. 다시 시도해주세요.";
+                return;
+            }
+
+            const validation = currentMission.value.implementation.codeValidation;
+
+            // 필수 키워드 검사 (로컬 검증)
+            const missingKeywords = validation.mustContain.filter(keyword => !code.includes(keyword));
+            const containsForbidden = validation.mustNotContain.some(keyword => code.includes(keyword));
+
+            if (missingKeywords.length === 0 && !containsForbidden) {
+                gameState.score += 100; // Fallback 점수 (약간 낮게 책정 가능)
+                gameState.feedbackMessage = "네트워크 지연 감지 - 로컬 아키텍처 분석으로 승인";
+                addSystemLog("⚠️ 서버 응답 없음: 로컬 검증 모드로 전환하여 승인", "WARN");
                 setTimeout(() => setPhase('DEEP_QUIZ'), 1000);
             } else {
                 handleDamage();
-                gameState.feedbackMessage = "코드 구성 오류 (네트워크 연결 확인 필요)";
+                const reason = missingKeywords.length > 0
+                    ? `구조적 결함 감지: ${missingKeywords.join(", ")} 로직 누락`
+                    : "보안 위반: 금지된 패턴이 포함되었습니다.";
+                gameState.feedbackMessage = reason + " (오프라인 모드)";
+                addSystemLog(`오류: ${reason}`, "ERROR");
             }
-
-            // Fallback logic is already handled above in the if/else
-            console.error('[CoduckWars] Critical error in submission:', error);
-            gameState.feedbackMessage = "마더 서버 응답 지연 - 시스템 무결성 수동 확인 필요";
         }
     };
 
@@ -570,6 +583,10 @@ export function useCoduckWars() {
         evaluationResult.gameScore = gamePerformanceScore;
 
         try {
+            const missionRules = currentMission.value.designContext?.engineeringRules || [];
+            const missionValidation = currentMission.value.designContext?.validation || {};
+            const implementationCriteria = currentMission.value.implementation?.codeValidation || {};
+
             const response = await axios.post('/api/core/ai-evaluate/', {
                 quest_title: currentMission.value.title || "Pseudocode Practice",
                 user_logic: gameState.phase3Reasoning,
@@ -578,8 +595,23 @@ export function useCoduckWars() {
                 performance: {
                     score: gameState.score,
                     hp: gameState.playerHP
+                },
+                // [2026-02-09] LLM 정확도 개선: 정답 기준 데이터 전달
+                evaluation_criteria: {
+                    rules: missionRules, // Engineering Rules
+                    constraints: {
+                        must_include_keywords: missionValidation.mustInclude || [],
+                        min_chars: missionValidation.minChars || 0
+                    },
+                    code_constraints: {
+                        must_contain: implementationCriteria.mustContain || [],
+                        must_not_contain: implementationCriteria.mustNotContain || []
+                    },
+                    deep_dive_topic: currentMission.value.deepDiveQuestion?.question || ""
                 }
-            });
+            }, { timeout: 120000 }); // Increased to 120s for GPT-4 precision analysis
+
+            console.log("[DEBUG] generateEvaluation: Request sent with timeout 120s");
 
             const aiResult = response.data;
             const aiOverallScore = aiResult.score || 0;

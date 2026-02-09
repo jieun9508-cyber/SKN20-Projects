@@ -53,11 +53,12 @@ class AIProxyView(APIView):
             return Response({"content": ai_content}, status=status.HTTP_200_OK)
 
         except openai.AuthenticationError as e:
-            print(f"[AIProxy] Authentication Error (Check API Key): {e}", flush=True)
+            print(f"[AIProxy] Authentication Error (Check API Key): {e}", file=sys.stderr, flush=True)
             return Response({"error": "Invalid API Key or Authentication Error"}, status=status.HTTP_401_UNAUTHORIZED)
         except openai.RateLimitError as e:
-            print(f"[AIProxy] Rate Limit Error (Quota Exceeded?): {e}", flush=True)
+            print(f"[AIProxy] Rate Limit Error (Quota Exceeded?): {e}", file=sys.stderr, flush=True)
             return Response({"error": "Rate Limit Exceeded"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except Exception as e:
-            print(f"[AIProxy] General Error: {e}", flush=True)
+            tb = traceback.format_exc()
+            print(f"[AIProxy] General Error: {e}\n{tb}", file=sys.stderr, flush=True)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
