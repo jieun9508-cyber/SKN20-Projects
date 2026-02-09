@@ -35,7 +35,9 @@ export const useGameStore = defineStore('game', {
         // [수정일: 2026-01-28] Unit 1의 현재 모드 확장 (pseudo-practice | ai-detective | pseudo-forest | pseudo-company | pseudo-emergency)
         unit1Mode: 'pseudo-practice',
         selectedQuestIndex: 0,
-        selectedSystemProblemIndex: 0
+        selectedSystemProblemIndex: 0,
+        // [수정일: 2026-02-09] 서버에서 불러온 사용자 해결 문제 기록 저장
+        userSolvedProblems: []
     }),
 
     actions: {
@@ -296,6 +298,21 @@ export const useGameStore = defineStore('game', {
 
         setActiveUnit(unit) {
             this.activeUnit = unit;
+        },
+
+        /**
+         * [사용자 해결 문제 기록 조회]
+         * [수정일: 2026-02-09] 유닛별 사고 과정 및 코드 복구를 위해 해결 기록을 서버에서 가져옵니다.
+         */
+        async fetchUserSolvedProblems() {
+            try {
+                const response = await axios.get('/api/core/activity/solved-problems/', {
+                    withCredentials: true
+                });
+                this.userSolvedProblems = response.data;
+            } catch (error) {
+                console.error("[GameStore] Failed to fetch solved problems:", error);
+            }
         }
     },
 

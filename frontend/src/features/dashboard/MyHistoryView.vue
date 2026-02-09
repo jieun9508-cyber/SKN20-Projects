@@ -35,7 +35,19 @@
               <span class="log-title">{{ ans.title }}</span>
               <span class="log-score">{{ ans.score }}pts</span>
             </div>
-            <pre class="log-code">{{ formatAnswer(ans.submitted_data) }}</pre>
+            <div v-if="isStructuredData(ans.submitted_data)" class="structured-log">
+              <div v-for="(val, key) in ans.submitted_data" :key="key" class="log-section">
+                <div class="log-section-header">
+                  <span class="section-icon">{{ getSectionIcon(key) }}</span>
+                  <span class="section-title">{{ key }}</span>
+                </div>
+                <div class="section-content" :class="{ 'code-mode': key.includes('코드') || key.includes('Implementation') }">
+                  <pre v-if="key.includes('코드') || key.includes('Implementation')">{{ val }}</pre>
+                  <p v-else>{{ val }}</p>
+                </div>
+              </div>
+            </div>
+            <pre v-else class="log-code">{{ formatAnswer(ans.submitted_data) }}</pre>
             <div class="log-date">{{ formatDate(ans.solved_date) }}</div>
           </div>
         </div>
@@ -93,6 +105,19 @@ const formatAnswer = (data) => {
 
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleString();
+};
+
+const isStructuredData = (data) => {
+  if (!data || typeof data !== 'object') return false;
+  // 단일 문자열 필드인 경우 제외 (기본 JSON은 객체로 오지만, 우리 커스텀 포맷은 여러 키를 가짐)
+  return Object.keys(data).length > 0;
+};
+
+const getSectionIcon = (key) => {
+  if (key.includes('사고') || key.includes('Architecture')) return '🧠';
+  if (key.includes('AI') || key.includes('Evaluation')) return '🤖';
+  if (key.includes('코드') || key.includes('Implementation')) return '💻';
+  return '📝';
 };
 
 onMounted(fetchUnits);

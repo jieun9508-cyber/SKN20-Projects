@@ -182,6 +182,23 @@ export function useCoduckWars() {
                 console.log("[Deep Dive Candidates]", evaluation.questions);
             }
 
+            // [수정일: 2026-02-09] 중간 저장 추가: 훈련 기록에서 가독성을 높이기 위해 한국어 키 사용
+            try {
+                const questId = `unit01_0${gameState.currentStageId}`;
+                await axios.post('/api/core/activity/submit/', {
+                    detail_id: questId,
+                    score: evaluation.score,
+                    submitted_data: {
+                        "1. 사고 과정 (Architecture)": gameState.phase3Reasoning,
+                        "2. AI 평가 결과": evaluation.feedback
+                    }
+                });
+                addSystemLog("아키텍처 설계 데이터 동기화 완료", "INFO");
+            } catch (saveError) {
+                console.warn('[CoduckWars] Intermediate save failed:', saveError);
+                addSystemLog("동기화 지연: 로컬 상태 유지", "WARN");
+            }
+
             // 점수와 관계없이 다음 단계로 (학습 기회 제공)
             setTimeout(() => {
                 setPhase('PYTHON_FILL');
@@ -237,7 +254,27 @@ export function useCoduckWars() {
 
         // Unlock next stage
         const nextId = gameState.currentStageId + 1;
-        // Logic to update global unlocked state would go here
+
+        // [수정일: 2026-02-09] 최종 저장: 훈련 기록 동기화
+        syncFinalResult();
+    };
+
+    const syncFinalResult = async () => {
+        try {
+            const questId = `unit01_0${gameState.currentStageId}`;
+            await axios.post('/api/core/activity/submit/', {
+                detail_id: questId,
+                score: gameState.score,
+                submitted_data: {
+                    "1. 사고 과정 (Architecture)": gameState.phase3Reasoning,
+                    "3. 구현 코드 (Implementation)": runnerState.userCode
+                }
+            });
+            addSystemLog("최종 데이터 서버 동기화 완료", "SUCCESS");
+        } catch (error) {
+            console.error('[CoduckWars] Final sync failed:', error);
+            addSystemLog("서버 동기화 실패: 네트워크 상태를 확인하세요", "ERROR");
+        }
     };
 
     // --- Final Evaluation Logic ---
