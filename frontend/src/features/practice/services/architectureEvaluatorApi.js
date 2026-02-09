@@ -22,6 +22,9 @@ import sustainabilityTxt from '@/data/지속가능성.txt?raw';
 // 실제 면접 인사이트 로더
 import { getAnswerBenchmarks } from './interviewInsightsLoader';
 
+// 동적 벤치마크
+import { assessProblemDifficulty, getDynamicBenchmark } from './dynamicBenchmark';
+
 const getApiKey = () => import.meta.env.VITE_OPENAI_API_KEY;
 
 /**
@@ -150,7 +153,11 @@ export async function evaluateWithMasterAgent(
     .filter(Boolean)
     .join('\n\n---\n\n');
 
-  // 실제 면접 기준 벤치마크 가져오기
+  // ✅ Phase 2: 문제 복잡도 추정 (동적 벤치마크)
+  const complexity = assessProblemDifficulty(problem);
+  console.log(`📊 [평가] 문제 복잡도: ${complexity}`);
+
+  // 실제 면접 기준 벤치마크 가져오기 (동적)
   const categoryToKey = {
     '신뢰성': 'reliability',
     '성능': 'performance',
@@ -164,21 +171,26 @@ export async function evaluateWithMasterAgent(
     .map(cat => {
       const pillarKey = categoryToKey[cat];
       if (pillarKey) {
-        const benchmark = getAnswerBenchmarks(pillarKey);
-        if (benchmark) {
+        // 정적 벤치마크 (실제 면접 취약점)
+        const staticBenchmark = getAnswerBenchmarks(pillarKey);
+
+        // 동적 벤치마크 (복잡도별)
+        const dynamicBenchmark = getDynamicBenchmark(pillarKey, complexity, 'mid');
+
+        if (staticBenchmark && dynamicBenchmark) {
           return `
-### ${cat} 영역 - 실제 면접 평가 기준
+### ${cat} 영역 - 실제 면접 평가 기준 (난이도: ${complexity})
 
 **자주 발견되는 취약점:**
-${benchmark.commonGaps.map(gap => `- ${gap}`).join('\n')}
+${staticBenchmark.commonGaps.map(gap => `- ${gap}`).join('\n')}
 
-**답변 수준 벤치마크:**
-- **Excellent (80-100점):** ${benchmark.benchmarks.excellent.join(', ')}
-- **Good (60-79점):** ${benchmark.benchmarks.good.join(', ')}
-- **Needs Improvement (40-59점):** ${benchmark.benchmarks.needsImprovement.join(', ')}
-- **Poor (0-39점):** ${benchmark.benchmarks.poor.join(', ')}
+**답변 수준 벤치마크 (${complexity} 난이도 기준):**
+- **Excellent (80-100점):** ${dynamicBenchmark.benchmarks.excellent}
+- **Good (60-79점):** ${dynamicBenchmark.benchmarks.good}
+- **Needs Improvement (40-59점):** ${dynamicBenchmark.benchmarks.needsImprovement}
+- **Poor (0-39점):** ${dynamicBenchmark.benchmarks.poor}
 
-(${benchmark.exampleCount}개의 실제 면접 사례 기반)
+(${staticBenchmark.exampleCount}개의 실제 면접 사례 + 동적 벤치마크 적용)
 `;
         }
       }
@@ -238,14 +250,20 @@ ${benchmarkInfo || '(벤치마크 정보 없음)'}
 
 ## ⚠️ 평가 규칙
 
-### 1. 점수 산정 기준 (실제 면접 기준 적용)
+### 중요: 이 문제의 복잡도는 "${complexity}"입니다
+- **Simple:** 기본적인 시스템 (To-Do 앱, 블로그)
+- **Moderate:** 중간 복잡도 (E-commerce, 실시간 채팅)
+- **Complex:** 고복잡도 분산 시스템 (Netflix, Uber, 금융)
+
+**이 복잡도에 맞는 위의 동적 벤치마크를 적용하세요.**
+같은 답변이라도 복잡도에 따라 점수가 달라야 합니다.
+
+### 1. 점수 산정 기준 (동적 벤치마크 적용)
 - 각 질문 영역별로 0-100점 부여
-- **기본 점수 40점에서 시작**
-- 위의 실제 면접 벤치마크를 참고하여 점수 부여:
-  * **80-100점 (Excellent):** 구체적 기술명 + 이유 + 트레이드오프, 실제 수치/메트릭 제시
-  * **60-79점 (Good):** 기술명과 기본 이유, 일부 구체적 예시
-  * **40-59점 (Needs Improvement):** 키워드만 나열, 추상적/모호한 설명
-  * **0-39점 (Poor):** 매우 짧고 구체성 없음, 잘못된 개념
+- **위의 "${complexity}" 난이도 벤치마크를 기준으로 평가**
+- 같은 답변이라도:
+  * Simple 문제: "기본 redundancy" → 80점 가능
+  * Complex 문제: "기본 redundancy" → 40점 (글로벌 DR 필요)
 - 실제 면접에서 자주 발견되는 취약점(위 벤치마크)이 있으면 감점
 - 아키텍처에 반영되지 않은 답변은 감점
 
