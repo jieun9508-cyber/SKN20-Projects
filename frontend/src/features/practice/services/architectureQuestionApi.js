@@ -2,10 +2,13 @@
  * Architecture Practice API Service - Quick Mode
  *
  * [수정일: 2026-02-09]
+ * [업데이트: Interview Insights 통합 - 실제 면접 데이터 기반 질문 생성]
+ *
  * 퀵 플레이 모드: 가장 취약한 3개 갈래만 선택하여 질문 생성
  * - 분석 에이전트가 아키텍처에서 취약한 3개 기둥 식별
  * - 각 기둥마다 전담 에이전트가 질문 1개 생성
  * - 딥다이브 최대 1회로 제한하여 5-10분 플레이 시간 유지
+ * - 실제 Google/Facebook 면접 데이터를 활용한 질문 개선
  *
  * txt 파일에서 [핵심 분석 원칙] 섹션만 파싱하여 사용
  */
@@ -19,6 +22,9 @@ import operationalTxt from '@/data/운영유용성.txt?raw';
 import costTxt from '@/data/비용.txt?raw';
 import securityTxt from '@/data/보안.txt?raw';
 import sustainabilityTxt from '@/data/지속가능성.txt?raw';
+
+// 실제 면접 인사이트 로더
+import { enhanceQuestionContext, getProbingPatterns, getAnswerBenchmarks } from './interviewInsightsLoader';
 
 const getApiKey = () => import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -179,15 +185,20 @@ ${allPillars.map(p => `- ${p.name}`).join('\n')}
 
 /**
  * 단일 기둥 전담 에이전트: 해당 기둥 관점의 질문 1개 생성
+ * [업데이트: 실제 면접 인사이트 반영]
  */
 async function generateSinglePillarQuestion(pillarKey, pillar, context) {
   const categoryName = FALLBACK_QUESTIONS[pillarKey].category;
 
+  // 실제 면접 데이터를 활용하여 원칙 강화
+  const enhancedPrinciples = enhanceQuestionContext(pillarKey, pillar.principles);
+
   const prompt = `당신은 **${pillar.name}** 전문 면접관입니다.
+당신은 Google, Facebook 등에서 수백 건의 시스템 디자인 면접을 진행한 경험이 있습니다.
 
 ## 임무
 지원자의 아키텍처에서 ${pillar.name} 관점의 취약점을 파악하고,
-**구체적이고 상황 기반의 질문 1개**를 생성하세요.
+**실제 면접에서 효과적이었던 스타일의 구체적이고 상황 기반의 질문 1개**를 생성하세요.
 
 ## 시나리오
 ${context.scenario || '시스템 아키텍처 설계'}
@@ -208,16 +219,18 @@ ${context.connectionList || '(없음)'}
 ## 지원자 설명
 "${context.userExplanation || '(설명 없음)'}"
 
-## ${pillar.name} 핵심 원칙
-${pillar.principles}
+## ${pillar.name} 핵심 원칙 + 실제 면접 인사이트
+${enhancedPrinciples}
 
-## 질문 스타일 (힌트형 퍼즐, 심문 X)
-- ❌ 나쁜 예: "eviction policy는 뭘 쓰시겠습니까?" (답을 요구)
-- ✅ 좋은 예: "Redis 메모리가 꽉 차면 어떻게 될까요?" (상황 제시)
-- "~한 상황이 발생하면 어떻게 되나요?" 형태 권장
+## 질문 스타일 (실제 면접에서 효과적이었던 방식)
+- ❌ 나쁜 예: "eviction policy는 뭘 쓰시겠습니까?" (답을 요구, 심문형)
+- ✅ 좋은 예: "Redis 메모리가 꽉 차면 어떻게 될까요?" (상황 제시, 사고 유도)
+- ✅ 좋은 예: "주 데이터센터가 다운되면 사용자는 어떤 경험을 하게 되나요?" (구체적 영향)
+- "~한 상황이 발생하면 어떻게 되나요?" / "~는 어떻게 처리하시겠어요?" 형태 권장
 - 배치된 컴포넌트만 언급
 - Yes/No가 아닌 설계 의도를 묻는 개방형 질문
 - 지원자가 이미 설명한 내용은 재질문 금지
+- 실제 면접에서 자주 발견되는 취약점(위 인사이트 참고)을 자연스럽게 탐색할 수 있는 질문
 
 ## JSON 출력 (반드시 이 형식만)
 { "category": "${categoryName}", "gap": "부족한 점", "question": "질문" }`;
@@ -421,6 +434,7 @@ export async function judgeAnswerSufficiency(questionData, userAnswer, context) 
 /**
  * 딥다이브 질문 생성 (같은 갈래에서 더 깊이 파기)
  * [수정일: 2026-02-09]
+ * [업데이트: 실제 면접관의 probing 패턴 적용]
  *
  * @param {Object} questionData - 원래 질문 정보
  * @param {string} userAnswer - 사용자의 불충분한 답변
@@ -433,6 +447,9 @@ export async function generateDeepDiveQuestion(questionData, userAnswer, missing
     key => FALLBACK_QUESTIONS[key].category === questionData.category
   );
   const pillar = pillarKey ? PILLAR_DATA[pillarKey] : null;
+
+  // 실제 면접에서 효과적이었던 probing 패턴 가져오기
+  const probingPatterns = getProbingPatterns(pillarKey);
 
   const prompt = `당신은 **${questionData.category}** 전문 면접관입니다.
 지원자의 답변이 불충분하여, 같은 주제에서 **더 깊이 파고드는 질문**을 생성하세요.
@@ -450,18 +467,29 @@ ${missingPoints.map(p => `- ${p}`).join('\n')}
 컴포넌트: ${context.componentList || '(없음)'}
 연결: ${context.connectionList || '(없음)'}
 
-## 딥다이브 질문 스타일 (힌트형 퍼즐, 심문 X)
+## 실제 면접에서 효과적이었던 후속 질문 패턴 (참고용)
+
+### 효과적인 probing 순서:
+${probingPatterns.sequence.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
+
+### 목표 (Aha Goal):
+${probingPatterns.ahaGoal}
+
+## 딥다이브 질문 스타일 (실제 면접관의 방식)
 - ❌ 나쁜 예: "그럼 eviction policy는 뭘 쓰시겠습니까?" (답 요구, 심문)
 - ✅ 좋은 예: "Redis 메모리가 꽉 차면 어떻게 될까요?" (상황 제시, 사고 유도)
+- ✅ 좋은 예: "구체적으로 몇 초 안에 복구되나요?" (수치 구체화)
+- ✅ 좋은 예: "이 방식을 실제로 테스트해보셨나요?" (검증 경험)
 - 원래 질문과 **같은 주제**를 **다른 각도**로 접근
 - 부족한 점을 자연스럽게 생각하게 만드는 질문
+- 위 probing 패턴을 참고하되, 지원자의 상황에 맞게 자연스럽게 적용
 - "~한 상황에서 어떻게 되나요?" 형태 권장
 
 ## JSON 출력 (반드시 이 형식만)
 { "category": "${questionData.category}", "gap": "추가로 확인할 점", "question": "딥다이브 질문" }`;
 
   try {
-    const response = await callOpenAI(prompt, { maxTokens: 300, temperature: 0.4 });
+    const response = await callOpenAI(prompt, { maxTokens: 350, temperature: 0.4 });
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);

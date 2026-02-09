@@ -2,10 +2,13 @@
  * Architecture Evaluation Service - Quick Mode
  *
  * [수정일: 2026-02-09]
+ * [업데이트: Interview Insights 통합 - 실제 면접 기준 반영]
+ *
  * 퀵 플레이 모드: 3개 갈래 평가
  * - 분석 에이전트가 선택한 3개 영역만 평가
  * - 각 영역 33.3% 비중으로 점수 산출
  * - 모범답안 제공으로 학습 효과 증대
+ * - 실제 Google/Facebook 면접 기준 적용
  */
 
 // txt 파일에서 핵심 원칙 추출 (architectureQuestionApi.js와 동일한 방식)
@@ -15,6 +18,9 @@ import operationalTxt from '@/data/운영유용성.txt?raw';
 import costTxt from '@/data/비용.txt?raw';
 import securityTxt from '@/data/보안.txt?raw';
 import sustainabilityTxt from '@/data/지속가능성.txt?raw';
+
+// 실제 면접 인사이트 로더
+import { getAnswerBenchmarks } from './interviewInsightsLoader';
 
 const getApiKey = () => import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -144,8 +150,46 @@ export async function evaluateWithMasterAgent(
     .filter(Boolean)
     .join('\n\n---\n\n');
 
+  // 실제 면접 기준 벤치마크 가져오기
+  const categoryToKey = {
+    '신뢰성': 'reliability',
+    '성능': 'performance',
+    '운영': 'operational',
+    '비용': 'cost',
+    '보안': 'security',
+    '지속가능성': 'sustainability'
+  };
+
+  const benchmarkInfo = categories
+    .map(cat => {
+      const pillarKey = categoryToKey[cat];
+      if (pillarKey) {
+        const benchmark = getAnswerBenchmarks(pillarKey);
+        if (benchmark) {
+          return `
+### ${cat} 영역 - 실제 면접 평가 기준
+
+**자주 발견되는 취약점:**
+${benchmark.commonGaps.map(gap => `- ${gap}`).join('\n')}
+
+**답변 수준 벤치마크:**
+- **Excellent (80-100점):** ${benchmark.benchmarks.excellent.join(', ')}
+- **Good (60-79점):** ${benchmark.benchmarks.good.join(', ')}
+- **Needs Improvement (40-59점):** ${benchmark.benchmarks.needsImprovement.join(', ')}
+- **Poor (0-39점):** ${benchmark.benchmarks.poor.join(', ')}
+
+(${benchmark.exampleCount}개의 실제 면접 사례 기반)
+`;
+        }
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .join('\n---\n');
+
   const prompt = `당신은 **시니어 클라우드 솔루션 아키텍트**입니다.
-지원자의 시스템 아키텍처 설계와 질문 답변을 평가합니다.
+Google, Facebook, Amazon 등에서 수백 건의 시스템 디자인 면접을 진행한 경험이 있습니다.
+지원자의 시스템 아키텍처 설계와 질문 답변을 **실제 면접 기준**에 따라 평가합니다.
 
 ---
 
@@ -186,23 +230,36 @@ ${relevantPrinciples || '(원칙 없음)'}
 
 ---
 
+## 🎯 실제 면접 평가 기준 (Google/Facebook 기준)
+
+${benchmarkInfo || '(벤치마크 정보 없음)'}
+
+---
+
 ## ⚠️ 평가 규칙
 
-### 1. 점수 산정 기준
+### 1. 점수 산정 기준 (실제 면접 기준 적용)
 - 각 질문 영역별로 0-100점 부여
 - **기본 점수 40점에서 시작**
-- 답변이 구체적이고 기술적 근거가 있으면 +점수
-- 답변이 모호하거나 핵심을 벗어나면 -점수
+- 위의 실제 면접 벤치마크를 참고하여 점수 부여:
+  * **80-100점 (Excellent):** 구체적 기술명 + 이유 + 트레이드오프, 실제 수치/메트릭 제시
+  * **60-79점 (Good):** 기술명과 기본 이유, 일부 구체적 예시
+  * **40-59점 (Needs Improvement):** 키워드만 나열, 추상적/모호한 설명
+  * **0-39점 (Poor):** 매우 짧고 구체성 없음, 잘못된 개념
+- 실제 면접에서 자주 발견되는 취약점(위 벤치마크)이 있으면 감점
 - 아키텍처에 반영되지 않은 답변은 감점
 
-### 2. 모범답안 작성 규칙
+### 2. 모범답안 작성 규칙 (실제 면접 기준)
 - 해당 시나리오와 아키텍처에 맞는 구체적인 답변
-- 실제 기술/서비스 이름 포함
+- 실제 기술/서비스 이름 포함 (예: Redis, PostgreSQL, Kubernetes)
+- **트레이드오프 논의 포함** (예: "Redis는 빠르지만 영속성이 약해서...")
+- 실제 면접에서 좋은 평가를 받을 수 있는 수준의 답변
 - 사용자가 배울 수 있도록 상세하게
 
 ### 3. 최종 점수 (퀵 모드)
 - **반드시 정확히 3개** 영역만 평가 (evaluations 배열 길이 = 3)
 - 3개 영역 점수의 평균 (각 33.3%)
+- **실제 면접이라면 이 답변이 합격할 수 있는지 고려**
 
 ---
 
