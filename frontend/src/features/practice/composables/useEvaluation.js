@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 // 마스터 에이전트 기반 다중 에이전트 평가 사용 (6대 기둥)
-import { evaluateWithMasterAgent, getAvailableSubAgents, getAllQuestionStrategies } from '../services/architectureApiMasterAgent';
-import { generateFollowUpQuestions, judgeAnswerSufficiency, generateDeepDiveQuestion } from '../services/architectureApiFastTest';
+import { evaluateWithMasterAgent, getAvailableSubAgents, getAllQuestionStrategies } from '../services/architectureEvaluatorApi';
+import { generateFollowUpQuestions, judgeAnswerSufficiency, generateDeepDiveQuestion } from '../services/architectureQuestionApi';
 import {
   buildArchitectureContext,
   generateMockEvaluation

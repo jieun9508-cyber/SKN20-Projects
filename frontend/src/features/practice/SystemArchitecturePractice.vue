@@ -133,7 +133,7 @@ import { useCanvasState } from './composables/useCanvasState';
 import { useEvaluation } from './composables/useEvaluation';
 
 // Services & Utils
-import { fetchProblems } from './services/architectureApiFastTest';
+import { fetchProblems } from './services/architectureQuestionApi';
 import { transformProblems } from './utils/architectureUtils';
 
 export default {

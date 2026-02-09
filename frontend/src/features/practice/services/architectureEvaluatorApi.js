@@ -8,7 +8,7 @@
  * - 모범답안 제공으로 학습 효과 증대
  */
 
-// txt 파일에서 핵심 원칙 추출 (architectureApiFastTest.js와 동일한 방식)
+// txt 파일에서 핵심 원칙 추출 (architectureQuestionApi.js와 동일한 방식)
 import reliabilityTxt from '@/data/신뢰성.txt?raw';
 import performanceTxt from '@/data/최적화.txt?raw';
 import operationalTxt from '@/data/운영유용성.txt?raw';
@@ -381,4 +381,4 @@ export function getAllQuestionStrategies() {
   return [];  // 더 이상 사용하지 않음
 }
 
-export { fetchProblems } from './architectureApiFastTest.js';
+export { fetchProblems } from './architectureQuestionApi.js';
