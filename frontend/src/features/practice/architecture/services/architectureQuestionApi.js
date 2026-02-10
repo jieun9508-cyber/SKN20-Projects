@@ -109,8 +109,9 @@ const FALLBACK_QUESTIONS = {
 };
 
 /**
- * 분석 에이전트: 아키텍처에서 가장 취약한 3개 기둥 식별
+ * 분석 에이전트: 아키텍처에서 가장 취약한 3개 기둥 식별 + 구체적인 gap 분석
  * (퀵 플레이 모드)
+ * [수정: 중복 분석 제거 - 한 번에 상세 분석 완료]
  */
 async function analyzeWeakPillars(context) {
   const allPillars = Object.entries(PILLAR_DATA).map(([key, pillar]) => ({
@@ -122,7 +123,7 @@ async function analyzeWeakPillars(context) {
   const prompt = `당신은 **시스템 아키텍처 분석 전문가**입니다.
 
 ## 임무
-지원자의 아키텍처를 분석하여 **가장 취약한 3개 영역**을 식별하세요.
+지원자의 아키텍처를 분석하여 **가장 취약한 3개 영역**을 식별하고, 각 영역의 **구체적인 문제점**을 파악하세요.
 
 ## 시나리오
 ${context.scenario || '시스템 아키텍처 설계'}
@@ -151,13 +152,26 @@ ${allPillars.map(p => `- ${p.name}`).join('\n')}
 2. 시나리오의 핵심 요구사항과 관련이 높은 영역 우선
 3. 아키텍처에 명시되지 않았거나 불충분한 영역 선택
 4. 지원자가 이미 충분히 설명한 영역은 제외
+5. 각 영역의 **구체적인 취약점**을 명확히 기술 (예: "단일 서버 구조로 SPOF 존재")
 
 ## JSON 출력 (반드시 이 형식만, 정확히 3개)
 {
   "weakPillars": [
-    { "category": "신뢰성", "reason": "장애 복구 전략이 명시되지 않음" },
-    { "category": "성능", "reason": "확장성 고려가 부족함" },
-    { "category": "보안", "reason": "접근 제어 메커니즘이 없음" }
+    {
+      "category": "신뢰성",
+      "reason": "장애 복구 전략이 명시되지 않음",
+      "specificGap": "단일 서버 구조로 SPOF 존재, 백업 메커니즘 없음"
+    },
+    {
+      "category": "성능",
+      "reason": "확장성 고려가 부족함",
+      "specificGap": "트래픽 증가 시 대응 방안 없음, 캐싱 전략 부재"
+    },
+    {
+      "category": "보안",
+      "reason": "접근 제어 메커니즘이 없음",
+      "specificGap": "DB 직접 노출, 인증/인가 레이어 없음"
+    }
   ]
 }`;
 
@@ -177,17 +191,30 @@ ${allPillars.map(p => `- ${p.name}`).join('\n')}
 
   // Fallback: 신뢰성, 성능, 보안 (가장 보편적인 3개)
   return [
-    { category: '신뢰성', reason: '장애 복구 전략 확인 필요' },
-    { category: '성능', reason: '확장성 및 성능 최적화 확인 필요' },
-    { category: '보안', reason: '보안 메커니즘 확인 필요' }
+    {
+      category: '신뢰성',
+      reason: '장애 복구 전략 확인 필요',
+      specificGap: '장애 대응 메커니즘 확인 필요'
+    },
+    {
+      category: '성능',
+      reason: '확장성 및 성능 최적화 확인 필요',
+      specificGap: '확장성 및 성능 병목 지점 확인 필요'
+    },
+    {
+      category: '보안',
+      reason: '보안 메커니즘 확인 필요',
+      specificGap: '접근 제어 및 보안 레이어 확인 필요'
+    }
   ];
 }
 
 /**
- * 단일 기둥 전담 에이전트: 해당 기둥 관점의 질문 1개 생성
+ * 단일 기둥 전담 에이전트: 파악된 취약점을 바탕으로 질문 생성
  * [업데이트: 실제 면접 인사이트 반영]
+ * [수정: 중복 분석 제거 - 분석 결과를 받아서 질문만 생성]
  */
-async function generateSinglePillarQuestion(pillarKey, pillar, context) {
+async function generateSinglePillarQuestion(pillarKey, pillar, context, weakPillarInfo) {
   const categoryName = FALLBACK_QUESTIONS[pillarKey].category;
 
   // 실제 면접 데이터를 활용하여 원칙 강화
@@ -197,27 +224,18 @@ async function generateSinglePillarQuestion(pillarKey, pillar, context) {
 당신은 Google, Facebook 등에서 수백 건의 시스템 디자인 면접을 진행한 경험이 있습니다.
 
 ## 임무
-지원자의 아키텍처에서 ${pillar.name} 관점의 취약점을 파악하고,
+이미 파악된 취약점을 바탕으로,
 **실제 면접에서 효과적이었던 스타일의 구체적이고 상황 기반의 질문 1개**를 생성하세요.
 
 ## 시나리오
 ${context.scenario || '시스템 아키텍처 설계'}
 
-## 미션
-${context.missions.length > 0 ? context.missions.map((m, i) => `${i + 1}. ${m}`).join('\n') : '없음'}
+## 아키텍처 요약
+컴포넌트: ${context.componentList || '(없음)'}
+연결: ${context.connectionList || '(없음)'}
 
-## 제약조건
-${context.constraints.length > 0 ? context.constraints.map((c, i) => `${i + 1}. ${c}`).join('\n') : '없음'}
-
-## 아키텍처
-컴포넌트:
-${context.componentList || '(없음)'}
-
-연결:
-${context.connectionList || '(없음)'}
-
-## 지원자 설명
-"${context.userExplanation || '(설명 없음)'}"
+## 파악된 취약점 (이미 분석 완료)
+${weakPillarInfo.specificGap}
 
 ## ${pillar.name} 핵심 원칙 + 실제 면접 인사이트
 ${enhancedPrinciples}
@@ -230,10 +248,10 @@ ${enhancedPrinciples}
 - 배치된 컴포넌트만 언급
 - Yes/No가 아닌 설계 의도를 묻는 개방형 질문
 - 지원자가 이미 설명한 내용은 재질문 금지
-- 실제 면접에서 자주 발견되는 취약점(위 인사이트 참고)을 자연스럽게 탐색할 수 있는 질문
+- 위에 파악된 취약점을 자연스럽게 탐색할 수 있는 질문
 
 ## JSON 출력 (반드시 이 형식만)
-{ "category": "${categoryName}", "gap": "부족한 점", "question": "질문" }`;
+{ "category": "${categoryName}", "gap": "${weakPillarInfo.specificGap}", "question": "질문" }`;
 
   const response = await callOpenAI(prompt, { maxTokens: 400, temperature: 0.4 });
   const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -313,7 +331,7 @@ export async function generateFollowUpQuestions(problem, components, connections
     userExplanation
   };
 
-  // 1단계: 분석 에이전트 - 취약한 3개 기둥 식별
+  // 1단계: 분석 에이전트 - 취약한 3개 기둥 식별 + 구체적인 gap 분석
   const weakPillars = await analyzeWeakPillars(context);
   console.log('📊 취약한 3개 영역:', weakPillars.map(p => p.category).join(', '));
 
@@ -328,11 +346,12 @@ export async function generateFollowUpQuestions(problem, components, connections
   };
 
   // 2단계: 선택된 3개 기둥에 대해 질문 생성 (병렬 실행)
-  const selectedPillarKeys = weakPillars.map(wp => categoryToKey[wp.category]).filter(Boolean);
+  // [수정: 분석 결과(weakPillarInfo)를 함께 전달하여 중복 분석 제거]
   const results = await Promise.allSettled(
-    selectedPillarKeys.map(key => {
+    weakPillars.map(weakPillarInfo => {
+      const key = categoryToKey[weakPillarInfo.category];
       const pillar = PILLAR_DATA[key];
-      return pillar ? generateSinglePillarQuestion(key, pillar, context) : null;
+      return pillar ? generateSinglePillarQuestion(key, pillar, context, weakPillarInfo) : null;
     }).filter(Boolean)
   );
 
@@ -341,7 +360,8 @@ export async function generateFollowUpQuestions(problem, components, connections
     if (result.status === 'fulfilled' && result.value) {
       return result.value;
     }
-    const key = selectedPillarKeys[idx];
+    const weakPillarInfo = weakPillars[idx];
+    const key = categoryToKey[weakPillarInfo.category];
     console.warn(`기둥 에이전트 실패 (${key}):`, result.reason);
     return FALLBACK_QUESTIONS[key];
   });
