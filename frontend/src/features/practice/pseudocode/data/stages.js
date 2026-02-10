@@ -1,95 +1,530 @@
+// ========================================
+// stages.js - Quest 1 완전판
+// 반영사항:
+// 1. criticalPatterns에 구체적 정규식 추가
+// 2. fit_transform 금지 패턴 추가
+// 3. LLM 프롬프트에 학습 키워드 제시 강화
+// ========================================
+
 export const aiQuests = [
     {
         id: 1,
-        title: "Chapter 1: 각성 (Tutorial Zone)",
+        title: "[튜토리얼] 사고 회로 복구: Data Leakage",
         category: "System Reboot",
         emoji: "💡",
-        desc: "어두운 터미널, 켜지는 모니터... Coduck이 깨어납니다. '아키텍처님! 제 음성 모듈이 연결되었습니다... 지지직... 제 사고 회로가 오염되어 복잡한 연산이 불가능해요. 먼저 제 사고 회로를 고쳐주세요!'",
+        desc: "AI 문제를 만났을 때, 코드를 치기 전 무엇을 먼저 생각해야 하는지 훈련합니다.",
         rewardXP: 500,
-        subModuleTitle: "AI 사고법 입문 (BOOT_PROTOCOL)",
+        subModuleTitle: "BOOT_PROTOCOL",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
+
+        cards: [
+            { icon: "🚨", text: "STEP 1: 위험 감지 (Diagnosis)", coduckMsg: "데이터 파이프라인에서 비정상 신호가 감지되었습니다. 현재 상황을 정확히 진단하는 것이 급선무입니다." },
+            { icon: "📝", text: "STEP 2: 설계 (Architecture)", coduckMsg: "문제를 해결하기 위한 논리적 설계를 수립하세요. 코드를 짜기 전에 글로 먼저 정리해야 합니다." },
+            { icon: "💻", text: "STEP 3: 구현 (Implementation)", coduckMsg: "설계한 논리를 바탕으로 실제 복구 코드를 작성하세요. 빈 칸을 채워 시스템을 정상화하십시오." },
+            { icon: "⚖️", text: "STEP 4: 검증 (Validation)", coduckMsg: "수정된 시스템이 올바르게 작동하는지 테스트 케이스를 통해 검증합니다." }
+        ],
+
         interviewQuestions: [
             {
                 id: "q1",
-                question: "코덕이 아군과 적군을 구분하지 못하고 공격 중입니다. 어떤 사고법을 가동해야 할까요?",
-                hintWindow: "전부 삭제한다... 접근하는 모든 데이터는 적이다!",
+                question: "Step 1-1: 사고 회로 복구를 위한 첫 번째 행동은?",
                 options: [
-                    { text: "4단계 사고법 프로토콜 실행", value: "flow", correct: true, desc: "[분석 - 설계 - 구현 - 최적화]를 통해 타겟팅 로직을 정화합니다." },
-                    { text: "데이터 강제 삭제", value: "delete", desc: "분석 없이 모든 데이터를 삭제하여 일단 공격을 중단시킵니다." }
+                    { text: "전체 데이터 흐름(E2E Pipeline)을 먼저 파악한다", value: "flow", correct: true },
+                    { text: "바로 모델과 코드를 수정한다", value: "code" }
                 ],
-                coduckComment: "크으으... 머리가 깨질 것 같아요... 하지만 방금 그 사고법.. 익숙해요."
+                coduckComment: "좋아요. 문제를 고치기 전에, 먼저 전체 흐름을 봐야 해요."
             },
             {
                 id: "q2",
-                question: "오염 패턴을 분석했습니다. 무엇을 통해 정상적인 아군 데이터만 골라낼까요?",
-                hintWindow: "나...(지직)... 나는 누구지? 너도 적인가? 제거한다...",
+                question: "Step 1-2: AI가 환각(Hallucination)에 빠지는 가장 흔한 원인은?",
                 options: [
-                    { text: "정밀 데이터 필터링 설계", value: "detail", correct: true, desc: "데이터 특징을 분석해 아군 패킷만 골라내는 논리를 구축합니다." },
-                    { text: "무작위 데이터 주입", value: "disconnect", desc: "새로운 데이터를 무작위로 넣어 시스템 반응을 기다립니다." }
+                    { text: "잘못된 학습 기준으로 데이터를 처리했기 때문", value: "leakage", correct: true },
+                    { text: "모델이 충분히 똑똑하지 않아서", value: "model" }
                 ],
-                coduckComment: "아... 이제 당신이 보여요. 아키텍처님, 돌아오셨군요!"
+                coduckComment: "정확해요. 기준이 무너지면 모델도 흔들려요."
             }
         ],
-        quizTitle: "Step 4: 재부팅 승인 - 오늘 수행한 복구 프로토콜의 핵심 가치는?",
-        missionObjective: "Step 3: 데이터 정화 - 시스템 복구 도중 발견된 작은 데이터 노이즈\n(빈 문자열)를 제거하여 파이프라인의 무결성을 확보하세요.",
-        pythonSnippets: [
-            { label: '노이즈 스킵', code: 'if not data: continue', icon: 'SkipForward' },
-            { label: '데이터 복구', code: 'result.append(data)', icon: 'PlusCircle' }
-        ],
-        pythonTemplate: `def system_restore_pipeline(data_list):
-    # [수정일: 2026-02-03] 초보자를 위한 가이드 주석 보강
-    # 데이터 파이프라인의 무결성을 위해 오염된 노이즈를 먼저 걸러내는 것이 아키텍처의 핵심입니다.
-    result = []
 
-    for data in data_list:
-        # [Step 3-1] 노이즈(오염된 데이터) 체크
-        # TODO: 데이터가 비어있거나('') None인 경우 건너뛰도록 작성하세요
-        if not data:
-            continue
-            
-        # [Step 3-2] 정화된 데이터만 아카이브에 저장
-        # TODO: data를 result에 추가하세요 (append 사용)
-        result.append(data)
+        designContext: {
+            title: "Step 2: 아키텍처 설계 (자연어 서술)",
+            currentIncident: `
+모델 학습 과정에서 테스트 데이터의 통계 정보가
+학습 기준 생성에 사용되는 데이터 누수(Data Leakage)가 발생했습니다.
 
-    return result`,
-        sampleData: ["Data_01", "", "Data_02", " "],
-        expectedOutput: ["Data_01", "Data_02", " "],
-        failHints: {
-            empty_code: "코드가 비어있습니다. 데이터를 순회하는 for문부터 시작해보세요.",
-            logic_error: "결과 데이터의 개수가 맞지 않습니다. 오염된 데이터('', None)를 정확히 건너뛰었는지 확인하세요.",
-            syntax_error: "파이썬 문법 에러가 발생했습니다. 들여쓰기(Indentation)와 콜론(:)을 확인해주세요."
+검증 성능은 높게 나왔지만,
+실제 서비스 환경에서는 성능이 재현되지 않는 문제가 확인되었습니다.
+            `.trim(),
+            engineeringRules: [
+                "Train 데이터로만 fit 한다.",
+                "Test 데이터는 transform만 수행한다.",
+                "미래 데이터의 정보는 사용하지 않는다.",
+                "학습과 서빙은 동일한 전처리 흐름을 사용한다."
+            ],
+            writingGuide: `
+다음 내용을 포함해 사고 과정을 서술하세요.
+
+- 데이터 누수가 무엇이며 왜 발생했는가
+- 이 문제가 실전 환경에서 왜 위험한가
+- 전처리 파이프라인을 어떤 순서로 설계해야 하는가
+
+※ 코드는 작성하지 말고, 사고 흐름만 서술하세요.
+            `.trim()
         },
-        step4Options: [
-            "저는 단순히 코드를 수선하는 엔지니어를 넘어, 붕괴된 시스템의 전체 파이프라인을 설계하고 리스크를 제어하는 '아키텍처 복구자'로서의 통찰을 발휘했습니다. 이제 어떤 데이터 오염 사건도 해결할 준비가 되었습니다!",
-            "저는 파이썬으로 리스트를 다룰 줄 압니다.",
-            "마더 서버는 언젠가 스스로 복구될 것입니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 아키텍처 전체 흐름 통찰', color: 'border-indigo-500', icon: '️' },
-            { id: 'b2', text: 'Step 2: 정화 알고리즘 상세 설계', color: 'border-amber-500', icon: '🔍' },
-            { id: 'b3', text: 'Step 3: 오염 데이터 제거 코드 구현', color: 'border-rose-500', icon: '💻' },
-            { id: 'b4', text: 'Step 4: 시스템 재부팅 프로토콜 승인', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'system_restore_pipeline',
-        codeValidation: { price: 'data_list', fee1: 'continue', fee2: 'append' },
-        step4CorrectIdx: 0,
-        step4SuccessFeedback: {
-            title: "🔐 시스템 권한 회복",
-            desc: "축하합니다! {username}님, 해당 구역의 데이터 무결성이 확보되었습니다.",
-            details: "훌륭한 설계입니다. 마더 서버는 {username}님의 논리적인 접근에 반응하기 시작했습니다. 다음 구역으로 이동하십시오."
+
+        // ✅ 🔥 핵심 수정 1: PseudocodeValidator용 완전한 validation 구조
+        // 피드백 1 반영: 구체적인 정규표현식 패턴 추가
+        validation: {
+            // 🚨 치명적 오류 패턴 (부정어 처리 포함)
+            criticalPatterns: [
+                {
+                    // ✅ 피드백 1: Positive Pattern 구체화
+                    pattern: {
+                        positive: /(전체|모든|all|both|양쪽).*(데이터|data|dataset).*(fit|학습|fitting|학습시키|학습시킴)/i,
+                        negatives: [
+                            /않|안|금지|never|not|don't|avoid|제외|말고|하지.*않/i,
+                            /말고|대신|instead/i
+                        ]
+                    },
+                    message: '🚨 치명적 오류: 전체 데이터로 fit하면 데이터 누수 발생',
+                    correctExample: '학습 데이터로만 fit → 두 데이터셋 모두 transform',
+                    explanation: '스케일러는 학습 데이터의 통계만 학습해야 합니다. 테스트 데이터 정보가 유입되면 실전 성능이 붕괴됩니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Data Leakage', 'Train-Test Contamination', 'Fit vs Transform']
+                },
+                {
+                    // ✅ 피드백 1: Negative Pattern (테스트 데이터로 fit 감지)
+                    pattern: {
+                        positive: /(test|테스트|검증|validation).*(fit|학습시|fitting|학습시키)/i,
+                        negatives: [
+                            /않|안|금지|never|not|don't|제외|말고/i,
+                            /transform/i  // "test를 transform"은 OK
+                        ]
+                    },
+                    message: '🚨 치명적 오류: 테스트 데이터로 fit 절대 금지',
+                    correctExample: 'train으로 fit → test는 transform만',
+                    explanation: '테스트 데이터는 미래의 데이터를 시뮬레이션합니다. fit에 사용하면 미래 정보가 누수됩니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Test Data Isolation', 'Future Information Leakage']
+                },
+                {
+                    pattern: {
+                        positive: /(concat|merge|합치|병합|결합|통합).*(후|다음|뒤).*(fit|학습)/i,
+                        negatives: [/않|안|금지|말고|하지.*않/i]
+                    },
+                    message: '🚨 치명적 오류: 데이터를 합친 후 fit 금지 (Fit before Split)',
+                    correctExample: '1. 분리 → 2. fit(train) → 3. transform(train, test)',
+                    explanation: 'Fit before Split은 가장 흔한 데이터 누수 패턴입니다. 반드시 분리 후 학습 데이터로만 fit 해야 합니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Fit before Split', 'Data Split Order']
+                },
+                {
+                    // ✅ 피드백 1: Positive Pattern 강화 (학습 데이터로만 fit)
+                    pattern: {
+                        positive: /(학습|train|training).*(만|only).*(fit|학습시)/i,
+                        negatives: []
+                    },
+                    message: '✅ 올바른 접근: 학습 데이터로만 fit',
+                    correctExample: 'scaler.fit(train) ← 정확!',
+                    explanation: '학습 데이터의 통계로만 기준을 세우는 것이 핵심입니다.',
+                    severity: 'PRAISE',  // 긍정적 패턴
+                    studyKeywords: ['Correct Preprocessing Pipeline']
+                }
+            ],
+
+            // ✅ 필수 개념 (가중치 포함)
+            requiredConcepts: [
+                {
+                    id: 'data_split',
+                    name: '데이터 분리',
+                    weight: 15,
+                    patterns: [
+                        /분리|나누|나눔|split|separate|divide/i,
+                        /train.*test|학습.*테스트/i,
+                        /train_test_split/i
+                    ],
+                    hints: [
+                        '데이터를 학습용과 테스트용으로 나누는 단계가 필요합니다.',
+                        'train_test_split 같은 함수를 사용할 수 있습니다.'
+                    ],
+                    studyKeywords: ['train_test_split', 'Data Partitioning']
+                },
+                {
+                    id: 'scaler_create',
+                    name: '스케일러 생성',
+                    weight: 10,
+                    patterns: [
+                        /scaler|스케일러|standardscaler|정규화.*객체/i,
+                        /정규화.*도구|normalization.*tool/i,
+                        /StandardScaler|MinMaxScaler|Normalizer/i
+                    ],
+                    studyKeywords: ['StandardScaler', 'Normalization']
+                },
+                {
+                    id: 'fit_train',
+                    name: '학습 데이터로 fit',
+                    weight: 30,  // 🔥 가장 중요!
+                    patterns: [
+                        /(train|학습).*(fit|학습시|fitting)/i,
+                        /fit.*(train|학습)/i,
+                        /(학습|train).*데이터.*만.*fit/i
+                    ],
+                    studyKeywords: ['fit on training data', 'Learn statistics']
+                },
+                {
+                    id: 'transform_train',
+                    name: '학습 데이터 변환',
+                    weight: 15,
+                    patterns: [
+                        /(train|학습).*(transform|변환)/i,
+                        /transform.*(train|학습)/i
+                    ],
+                    studyKeywords: ['transform training data']
+                },
+                {
+                    id: 'transform_test',
+                    name: '테스트 데이터 변환',
+                    weight: 15,
+                    patterns: [
+                        /(test|테스트).*(transform|변환)/i,
+                        /transform.*(test|테스트)/i,
+                        /(test|테스트).*만.*transform/i
+                    ],
+                    studyKeywords: ['transform test data', 'Apply learned statistics']
+                },
+                {
+                    id: 'same_scaler',
+                    name: '동일한 스케일러 사용',
+                    weight: 15,
+                    patterns: [
+                        /동일한|같은|same|identical/i,
+                        /하나의.*스케일러/i,
+                        /한.*스케일러/i,
+                        /동일.*파이프라인/i
+                    ],
+                    studyKeywords: ['Consistent preprocessing', 'Same scaler instance']
+                }
+            ],
+
+            // ✅ 논리적 순서 의존성
+            dependencies: [
+                {
+                    name: '분리 → 스케일러 생성',
+                    before: 'data_split',
+                    after: 'scaler_create',
+                    points: 5,
+                    strictness: 'RECOMMENDED'
+                },
+                {
+                    name: 'fit → transform(train)',
+                    before: 'fit_train',
+                    after: 'transform_train',
+                    points: 20,
+                    strictness: 'REQUIRED',  // 🔥 필수!
+                    explanation: 'fit으로 기준을 배운 후 그 기준으로 transform 해야 합니다.'
+                },
+                {
+                    name: 'fit → transform(test)',
+                    before: 'fit_train',
+                    after: 'transform_test',
+                    points: 20,
+                    strictness: 'REQUIRED',  // 🔥 필수!
+                    explanation: '학습 데이터로 배운 기준을 테스트 데이터에 적용해야 합니다.'
+                },
+                {
+                    name: 'transform(train) → transform(test)',
+                    before: 'transform_train',
+                    after: 'transform_test',
+                    points: 5,
+                    strictness: 'RECOMMENDED',
+                    explanation: '일반적으로 학습 데이터를 먼저 변환한 후 테스트 데이터를 변환합니다.'
+                }
+            ],
+
+            // ✅ 점수 구성 (총 100점)
+            scoring: {
+                structure: 15,      // 기본 구조 (길이, 번호 등)
+                concepts: 50,       // 필수 개념 포함 (가중치 합산)
+                flow: 35            // 논리적 순서
+            },
+
+            // ✅ 추가 권장사항
+            recommendations: {
+                exceptionHandling: true,
+                minLines: 4,
+                maxLines: 15,
+                minWords: 30,
+                maxWords: 250,
+                preferredStyle: 'numbered'
+            }
         },
-        step4FailFeedback: {
-            title: "⚠️ 시스템 거부",
-            desc: "논리적 오류로 인해 재부팅이 거부되었습니다.",
-            details: "Architect는 나무(코드)가 아닌 숲(파이프라인)을 보는 사람임을 잊지 마세요. 첫 번째 전략의 의미를 다시 고찰해 보십시오."
+
+        implementation: {
+            title: "Step 3: 구현 – 사고 흐름을 코드로 증명하세요",
+            codeFrame: {
+                language: "python",
+                functionName: "leakage_free_scaling",
+                template: `def leakage_free_scaling(train_df, test_df):
+    from sklearn.preprocessing import StandardScaler
+    # 1) 스케일러 초기화
+    # TODO
+
+    # 2) Train 데이터로 기준 생성 (fit)
+    # TODO
+
+    # 3) Train 데이터 변환 (transform)
+    # TODO
+
+    # 4) Test 데이터 변환 (transform)
+    # TODO
+
+    return train_scaled, test_scaled`
+            },
+            expectedFlow: [
+                "Train 데이터로만 fit 수행",
+                "Train 데이터 transform",
+                "Test 데이터 transform"
+            ],
+            snippets: [
+                { id: 1, code: "scaler = StandardScaler()", label: "Initialize Scaler" },
+                { id: 2, code: "scaler.fit(train_df)", label: "Fit Model (Train Data)" },
+                { id: 3, code: "train_scaled = scaler.transform(train_df)", label: "Transform Train Data" },
+                { id: 4, code: "test_scaled = scaler.transform(test_df)", label: "Transform Test Data" }
+            ]
         },
-        quizOptions: [
-            { text: "A. 4단계 복구 프로토콜만이 마더 서버를 살릴 수 있다.", correct: true },
-            { text: "B. AI는 이미 인간의 통제를 넘어섰다.", correct: false }
-        ],
+
+        // ✅ 🔥 핵심 수정 2: CodeValidator용 완전한 codeValidation 구조
+        // 피드백 2 반영: fit_transform 금지 패턴 추가
+        codeValidation: {
+            // 필수 메서드 호출
+            requiredCalls: [
+                {
+                    pattern: /\.fit\s*\(/i,
+                    name: 'fit() 메서드',
+                    mustNotContainIn: 'comments'
+                },
+                {
+                    pattern: /\.transform\s*\(/i,
+                    name: 'transform() 메서드',
+                    mustNotContainIn: 'comments'
+                },
+                {
+                    pattern: /StandardScaler\s*\(|MinMaxScaler\s*\(|Normalizer\s*\(/i,
+                    name: 'Scaler 객체 생성',
+                    mustNotContainIn: 'comments'
+                }
+            ],
+
+            // 금지 패턴 (주석 제외하고 검사)
+            forbiddenPatterns: [
+                {
+                    pattern: /\.fit\s*\(\s*.*test/i,
+                    message: '🚨 테스트 데이터로 fit 호출 금지',
+                    excludeComments: true,
+                    studyKeywords: ['Test Data Isolation']
+                },
+                {
+                    pattern: /\.fit\s*\(.*concat|merge/i,
+                    message: '🚨 병합된 데이터로 fit 금지',
+                    excludeComments: true,
+                    studyKeywords: ['Fit before Split']
+                },
+                {
+                    // ✅ 피드백 2: fit_transform 금지 패턴 추가
+                    pattern: /\.fit_transform\s*\(\s*.*test/i,
+                    message: '🚨 치명적 오류: test 데이터에 fit_transform 절대 금지!',
+                    excludeComments: true,
+                    explanation: 'fit_transform은 fit과 transform을 동시에 수행합니다. test에는 transform만 해야 합니다.',
+                    studyKeywords: ['fit_transform vs transform', 'Test Data Must Not Be Fitted']
+                },
+                {
+                    // ✅ 추가: 전체 데이터 fit_transform 금지
+                    pattern: /pd\.concat.*fit_transform|fit_transform.*pd\.concat/i,
+                    message: '🚨 전체 데이터를 합친 후 fit_transform 금지',
+                    excludeComments: true,
+                    explanation: '데이터를 합치면 테스트 정보가 학습에 유입됩니다.',
+                    studyKeywords: ['Data Concatenation Risk']
+                }
+            ],
+
+            // 주석 패턴 (제거할 부분)
+            commentPatterns: [
+                /#.*$/gm,           // Python single-line
+                /"""[\s\S]*?"""/g,  // Python docstring
+                /'''[\s\S]*?'''/g   // Python docstring alt
+            ],
+
+            // ✅ 허용 패턴 (긍정 피드백)
+            allowedPatterns: [
+                {
+                    pattern: /scaler\.fit\s*\(\s*train/i,
+                    message: '✅ 올바른 패턴: train 데이터로 fit',
+                    praise: true
+                },
+                {
+                    pattern: /scaler\.fit_transform\s*\(\s*train/i,
+                    message: '✅ 허용: train 데이터에만 fit_transform 사용 가능',
+                    praise: true,
+                    explanation: 'train 데이터는 fit_transform을 써도 됩니다 (fit + transform 결합).'
+                }
+            ]
+        },
+
+        deepDiveQuestion: {
+            question: "다음 중 데이터 누수가 특히 위험한 이유는 무엇입니까?",
+            options: [
+                { text: "모델이 미래 정보를 미리 학습해 실전 성능이 붕괴된다", correct: true },
+                { text: "학습 속도가 느려진다", correct: false },
+                { text: "GPU 메모리를 더 많이 사용한다", correct: false },
+                { text: "코드가 복잡해진다", correct: false }
+            ],
+            correctIdx: 0
+        },
+
+        // ✅ 🔥 핵심 수정 3: evaluation 구조 정리
+        // 피드백 3 반영: LLM 프롬프트에 학습 키워드 제시 강화
+        evaluation: {
+            // AI 기반 평가 (레이더 차트용)
+            llmRubric: {
+                system: `너는 AI/ML 아키텍처 관점에서 사고 흐름을 평가하는 시니어 엔지니어이자 면접관이다.
+
+평가 철학:
+- 정답 채점 ❌ → 사고력 평가 ✅
+- 단순 키워드 매칭이 아닌 논리적 연결성 검증
+- 점수 인플레이션 방지: 완벽하지 않으면 100점을 주지 마라
+
+점수 분포 가이드:
+- 90-100점: 완벽한 논리 + 예외처리 + 실무 통찰
+- 75-89점: 핵심은 정확하나 디테일 부족
+- 60-74점: 방향은 맞지만 논리적 비약 존재
+- 40-59점: 일부 개념 이해하나 오개념 혼재
+- 0-39점: 핵심 오개념 또는 무관한 내용`,
+
+                promptTemplate: `
+# 평가 대상
+
+## 문제 (Quest Title)
+${'{'}quest_title{'}'}
+
+## 사용자가 작성한 설계 설명 (의사코드/자연어)
+${'{'}narrative{'}'}
+
+## 사용자가 작성한 코드
+${'{'}code{'}'}
+
+---
+
+# 평가 기준 (5차원 메트릭)
+
+다음 5가지 차원으로 평가하되, **각 차원마다 0-100점 사이의 점수**를 부여하세요:
+
+## 1. 정합성 (Coherence) - 20%
+- 문제의 목표(Data Leakage 방지)를 정확히 이해하고 해결했는가?
+- 설계 의도와 코드 구현이 일치하는가?
+- 각 단계가 문제 해결에 실제로 기여하는가?
+
+## 2. 추상화 (Abstraction) - 20%
+- 핵심 로직만 간결하게 표현했는가?
+- 불필요한 세부사항을 배제했는가?
+- 단순 키워드 나열 vs 논리적 흐름 (키워드만 나열하면 40점 이하)
+
+## 3. 예외처리 (Exception Handling) - 20%
+- 엣지 케이스를 고려했는가?
+- 예외 상황 처리 로직이 명시되었는가?
+- 방어적 프로그래밍 사고가 있는가?
+
+## 4. 구현력 (Implementation) - 20%
+- 실제 구현 가능한 수준으로 구체적인가?
+- 각 단계가 명확하고 실행 가능한가?
+- 순서가 논리적으로 타당한가?
+
+## 5. 설계력 (Architecture) - 20%
+- 단계 간 논리적 연결성이 있는가?
+- 전체적인 설계 구조가 견고한가?
+- 확장 가능성을 고려했는가?
+
+---
+
+# ✅ 피드백 3 반영: 학습 키워드 제시 강화
+
+**중요**: 점수가 낮을 경우, 사용자가 어떤 부분을 다시 공부해야 하는지 **구체적인 학습 키워드**를 포함하라.
+
+예시:
+- 점수 60점 이하: "다시 공부할 키워드: [Data Leakage], [Train-Test Split], [Fit vs Transform]"
+- 약점에 대해: "개선이 필요한 부분: sklearn의 fit/transform 개념을 다시 학습하세요"
+
+---
+
+# 출력 형식 (JSON만 출력!)
+
+반드시 아래 형식의 **JSON만** 출력하세요 (마크다운 불가):
+
+{
+  "totalScore": 0-100,
+  "details": [
+    {
+      "dimension": "정합성",
+      "score": 0-100,
+      "basis": "quest_title과 로직의 일치도 평가 근거 (구체적으로)"
+    },
+    {
+      "dimension": "추상화",
+      "score": 0-100,
+      "basis": "간결성 및 핵심 표현력 평가 근거 (단순 나열이면 40점 이하)"
+    },
+    {
+      "dimension": "예외처리",
+      "score": 0-100,
+      "basis": "예외 상황 대응 로직 확인 근거"
+    },
+    {
+      "dimension": "구현력",
+      "score": 0-100,
+      "basis": "구체성과 실행 가능성 평가 근거"
+    },
+    {
+      "dimension": "설계력",
+      "score": 0-100,
+      "basis": "단계별 연결성 및 아키텍처 완성도 평가 근거"
+    }
+  ],
+  "strengths": [
+    "강점1: 구체적으로 어떤 부분이 좋았는지",
+    "강점2: ..."
+  ],
+  "weaknesses": [
+    "약점1: 어떤 부분이 부족한지 + 개선 방향",
+    "약점2: ..."
+  ],
+  "tailQuestions": [
+    "논리적 허점 발견 시 생성되는 추가 질문 (선택사항)"
+  ],
+  "seniorAdvice": "시니어 엔지니어 관점의 교육적 피드백 (1-2문장)",
+  "studyKeywords": [
+    "점수가 낮을 경우 다시 공부해야 할 핵심 키워드 목록",
+    "예: Data Leakage, Train-Test Contamination, Fit vs Transform"
+  ],
+  "improvementPlan": "구체적인 학습 계획 제시 (점수 60점 이하일 경우 필수)"
+}
+
+---
+
+# 평가 시 주의사항
+
+1. **엄격하게 평가하라**: 완벽하지 않으면 100점 주지 마라
+2. **키워드 나열만 한 경우**: 추상화 40점 이하
+3. **치명적 오류 발견 시**: 
+   - "전체 데이터로 fit" → 정합성 0-30점
+   - "test로 fit" → 정합성 0-20점
+4. **학습 키워드 제시**: 점수 낮으면 반드시 studyKeywords 제공
+5. **개선 계획**: 60점 이하면 improvementPlan 필수 작성
+                `.trim()
+            }
+        },
+
         mapPos: { x: 100, y: 450 }
     },
+
+    // --- 2. Target Leakage (보안 섹터) ---
     {
         id: 2,
         title: "실전! 데이터 누수 가디언",
@@ -99,87 +534,100 @@ export const aiQuests = [
         rewardXP: 300,
         subModuleTitle: "LEAKAGE_SHIELD",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: 뼈대 설계 - 미래의 정보가 현재의 학습에 스며들어 시간선이 꼬이는 'Data Leakage'를 막기 위한 분리 방식은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "시간의 흐름대로 데이터를 분리 (Time-based Split)", value: "time", correct: true, requirementToken: "데이터를 무작위로 섞지 않고 '시간 흐름(Time-series)'에 따라 순차적으로 분리" },
-                    { text: "과거와 미래를 무작위로 섞어서 분리 (Random Split)", value: "random" }
-                ],
-                coduckComment: "옳은 선택입니다, {username}님! 시간선이 뒤섞이면 마더 서버는 환각을 보게 됩니다."
+
+        // ✅ Quest 1 스타일의 고도화된 Validation
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(shuffle|무작위|섞기|random|랜덤).*(시계열|시간|time|date|날짜)/i,
+                        negatives: [/않|안|금지|never|avoid|말고|하지.*않/i]
+                    },
+                    message: '🚨 치명적 오류: 시계열 데이터에 랜덤 셔플링은 금지입니다.',
+                    correctExample: 'Time-based Split을 사용하여 과거로 학습하고 미래로 테스트하세요.',
+                    explanation: '시계열 데이터에서 무작위로 섞으면 미래의 정보가 학습셋에 포함되어 성능이 왜곡됩니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Temporal Leakage', 'Time-series Cross-validation']
+                },
+                {
+                    pattern: {
+                        positive: /(전체|모든|all).*(fit|학습)/i,
+                        negatives: [/분리|나누|split|after/i]
+                    },
+                    message: '🚨 치명적 오류: 분리 전 전체 데이터 fit 금지',
+                    correctExample: '데이터 분리(Split) -> 학습셋(Train)으로만 fit',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Fit before Split', 'Data Contamination']
+                }
+            ],
+            requiredConcepts: [
+                {
+                    id: 'time_sort',
+                    name: '시간순 정렬',
+                    weight: 20,
+                    patterns: [/sort|정렬|순서대로|시간순/i],
+                    hints: ['시계열 데이터는 분리 전 시간순 정렬이 필수입니다.']
+                },
+                {
+                    id: 'threshold_split',
+                    name: '시점 기준 분리',
+                    weight: 40,
+                    patterns: [/기준일|threshold|cutoff|시점|날짜.*기준/i],
+                    studyKeywords: ['Out-of-time Validation']
+                }
+            ],
+            dependencies: [
+                {
+                    name: '정렬 → 기준점 설정 → 분리',
+                    before: 'time_sort',
+                    after: 'threshold_split',
+                    points: 20,
+                    strictness: 'REQUIRED'
+                }
+            ],
+            scoring: { structure: 15, concepts: 50, flow: 35 }
+        },
+
+        implementation: {
+            title: "Step 3: 구현 – 시간 방어막(Time Split) 구축",
+            codeFrame: {
+                language: "python",
+                functionName: "time_based_split",
+                template: `def time_based_split(df, threshold_date):
+    # 1) 시간의 흐름 정렬 (sort_values)
+    # TODO
+    
+    # 2) 기준일 미만: 과거 데이터(Train)
+    # TODO
+    
+    # 3) 기준일 이상: 미래 데이터(Test)
+    # TODO
+    
+    return train_df, test_df`
             },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 마더 서버가 검증 데이터의 통계량을 미리 훔쳐보는 것을 막기 위한 핵심 조치는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "오직 학습용 데이터셋으로만 전처리 기준(fit)을 수립하기", value: "leak", correct: true, requirementToken: "전처리 기준(fit)은 반드시 '학습용 데이터(train_df)'로만 수립하여 미래 정보 유출 차단" },
-                    { text: "모든 데이터를 한 번에 정규화하기", value: "lack" }
+            expectedFlow: ["날짜 정렬", "임계점 분리", "데이터셋 반환"],
+            codeValidation: {
+                requiredCalls: [
+                    { pattern: /\.sort_values\s*\(/i, name: 'sort_values() 호출' },
+                    { pattern: /threshold_date/i, name: '기준 날짜 활용' }
                 ],
-                coduckComment: "정확한 방어 전략입니다. 'Fit before Split'은 Architect가 절대 범해서는 안 되는 실수죠."
+                forbiddenPatterns: [
+                    { pattern: /shuffle\s*=\s*True/i, message: '시계열 분리 시 셔플 금지' }
+                ]
             }
-        ],
-        quizTitle: "Step 4: 보안 리포트 - 데이터 누수 차단 역량을 요약한다면?",
-        missionObjective: "Step 3: 오염 차단 - 학습 데이터로만 기준을 잡고, 미래 정보의 유입 없이 Scaling을 수행하는 모듈을 완성하세요.",
-        pythonSnippets: [
-            { label: '학습 데이터 기준 수립', code: 'scaler.fit(train_df)', icon: 'Zap' },
-            { label: '보안 변환 (Transform)', code: 'scaler.transform(target_df)', icon: 'Filter' }
-        ],
-        pythonTemplate: `def leakage_free_scaling(train_df, test_df):
-    # [수정일: 2026-02-03] 초보자를 위한 가이드 주석 보강
-    # 'Target Leakage'는 미래의 정보를 학습에 사용하는 실수입니다. 
-    # 반드시 학습 데이터(train)로만 기준을 세워야 함을 기억하세요.
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    
-    # [Step 3-1] 오직 Train 데이터로만 전처리 기준 설정 (누수 방지)
-    # TODO: train_df를 사용하여 scaler를 학습(fit)시키세요
-    scaler.fit(train_df)
-    
-    # [Step 3-2] 동일한 보안 기준을 두 데이터셋에 적용
-    train_scaled = scaler.transform(train_df)
-    test_scaled = scaler.transform(test_df)
-    
-    return train_scaled, test_scaled`,
-        sampleData: [[1, 2, 3], [4, 5, 6]],
-        expectedOutput: [[-1.224744871391589, 0.0, 1.224744871391589], [2.449489742783178, 3.674234614174767, 4.898979485566356]],
-        failHints: {
-            logic_error: "누수 방지에 실패했습니다. scaler.fit()의 인자가 train_df인지 확인하세요.",
-            incomplete: "transform() 과정이 누락되었습니다. 학습된 기준으로 데이터를 변환해야 합니다."
         },
-        step4Options: [
-            "저는 시계열 데이터 복구 프로젝트에서 Target Leakage의 위험을 인지했습니다. 이를 위해 Time Series Split 전략을 수립하고, Scaler의 기준을 오직 과거 데이터에 고정함으로써 실전 환경에서의 복구 정확도를 98% 이상 유지했습니다.",
-            "저는 스케일러를 사용하여 데이터를 정화할 줄 압니다.",
-            "데이터가 누수되면 마더 서버의 용량이 늘어나니 좋은 것이라고 답변하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 데이터 시간순 배열 및 격리', color: 'border-indigo-500', icon: '⏳' },
-            { id: 'b2', text: 'Step 2: 과거 데이터 기반 정화 기준 학습', color: 'border-amber-500', icon: '🔧' },
-            { id: 'b3', text: 'Step 3: 확립된 기준으로 미래 데이터 변환', color: 'border-rose-500', icon: '✨' },
-            { id: 'b4', text: 'Step 4: 무결성이 검증된 데이터셋 반환', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'leakage_free_scaling',
-        codeValidation: { price: 'train_df', fee1: 'fit', fee2: 'transform' },
-        step4CorrectIdx: 0,
-        step4SuccessFeedback: {
-            title: "⚖️ 보안 섹터 정화 성공",
-            desc: "완벽합니다! {username}님, 시간선 오염 리스크가 제거되었습니다.",
-            details: "누수된 모델은 겉으론 완벽해 보이지만 실전에서는 무너집니다. {username}님의 강건한 설계가 이 구역을 구했습니다!"
+
+        evaluation: {
+            llmRubric: {
+                system: "너는 타겟 누수를 전문적으로 잡아내는 보안 아키텍트이다.",
+                promptTemplate: "사용자의 설계 설명과 코드가 시간의 선후 관계를 잘 지키고 있는지 평가하라. (JSON 출력 필수)"
+                // Quest 1과 동일한 세부 JSON 구조 사용
+            }
         },
-        step4FailFeedback: {
-            title: "🤔 보안 경보 발생",
-            desc: "미래 정보가 과거로 누출되어 시스템이 오염되었습니다.",
-            details: "마더 서버가 '컨닝'을 하지 못하도록 무엇을 격리해야 할지 다시 생각해보세요. 시간은 되돌릴 수 없습니다."
-        },
-        quizOptions: [
-            { text: "A. 데이터 누수는 인공지능이 미래를 보는 부정행위다.", correct: true },
-            { text: "B. 검증 데이터와 학습 데이터는 섞일수록 좋다.", correct: false }
-        ],
         mapPos: { x: 230, y: 350 }
     },
+
+    // --- 3. Skew Control (Bias Control) ---
     {
         id: 3,
         title: "학습-서빙 불일치(Skew) 방지",
@@ -189,81 +637,78 @@ export const aiQuests = [
         rewardXP: 300,
         subModuleTitle: "SKEW_CONTROLLER",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 학습된 모델이 현장에 배포되었을 때 성능이 급락하는 'Train/Serving Skew'의 주요 원인은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "학습 시 사용한 피처 가공 로직과 실시간 환경의 로직이 다르기 때문", value: "skew", correct: true, requirementToken: "학습(Train)과 운영(Serving) 환경 간의 전처리 파이프라인 로직 통일" },
-                    { text: "서버 사양이 부족해서", value: "server" }
-                ],
-                coduckComment: "날카롭군요! '전처리 코드 형상 관리'가 안 되면 발생하는 비극이죠."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 데이터 편향을 막기 위한 셔플링(Shuffling)이 역효과를 내는 경우는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "시계열적 특성이 중요한 금융/로그 데이터일 때", value: "time", correct: true, requirementToken: "시계열적 특성 보존을 위해 문맥에 맞지 않는 불필요한 셔플링 지양" },
-                    { text: "데이터가 너무 많을 때", value: "volume" }
-                ],
-                coduckComment: "정확합니다. 도메인의 특성에 맞춰 셔플링 여부를 결정하는 것이 의사결정의 핵심입니다."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 모델의 강건성(Robustness) 확보 전략을 설명한다면?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 특정 클래스가 몰려있는 데이터셋을 학습 전 무작위로 섞어 배치(Batch) 편향을 방지하는 로직을 구현하세요.",
-        pythonSnippets: [
-            { label: '인덱스 섞기', code: 'random.shuffle(indices)', icon: 'Shuffle' },
-            { label: '데이터 재배치', code: '[data[i] for i in indices]', icon: 'Repeat' }
-        ],
-        pythonTemplate: `import random
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(학습|serving).*(다르게|다른|manual|따로).*(가공|처리|logic)/i,
+                        negatives: [/통일|동일|함수|공용|pipeline/i]
+                    },
+                    message: '🚨 치명적 오류: 학습과 서빙의 로직이 다르면 모델이 오작동합니다.',
+                    correctExample: '전처리 로직을 하나의 함수나 파이프라인으로 묶어 공용화하세요.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Training-Serving Skew', 'Feature Store']
+                }
+            ],
+            requiredConcepts: [
+                {
+                    id: 'logic_unification',
+                    name: '로직 통일',
+                    weight: 40,
+                    patterns: [/통일|동일|같은|공용|재사용|하나의/i]
+                },
+                {
+                    id: 'shuffling_check',
+                    name: '배치 다양성 확보',
+                    weight: 20,
+                    patterns: [/셔플|shuffle|무작위|섞기/i]
+                }
+            ],
+            dependencies: [
+                {
+                    name: '전처리 함수 정의 → 학습 적용 → 서빙 적용',
+                    before: 'logic_unification',
+                    after: 'shuffling_check', // 논리적 흐름상 로직 정의가 먼저
+                    points: 15,
+                    strictness: 'RECOMMENDED'
+                }
+            ],
+            scoring: { structure: 20, concepts: 50, flow: 30 }
+        },
+
+        implementation: {
+            title: "Step 3: 셔플링 및 로직 통일 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "prevent_serving_skew",
+                template: `import random
 def prevent_serving_skew(data):
-    indices = list(range(len(data)))
+    # 1) 전체 데이터 인덱스 셔플링
+    # TODO
     
-    # [Step 3-1] 실전 대응: 무작위 셔플링으로 배치 편향 제거
-    # TODO: random.shuffle을 사용하여 indices를 섞으세요
-    random.shuffle(indices)
+    # 2) 섞인 순서대로 데이터 재배열
+    # TODO
     
-    # [Step 3-2] 파이프라인 정규화
-    return [data[i] for i in indices]`,
-        sampleData: ["ClassA", "ClassA", "ClassB", "ClassB"],
-        expectedOutput: ["ClassA", "ClassA", "ClassB", "ClassB"], // 셔플링 결과는 집합으로 검증하거나 길이를 체크함 (현재는 단순 비교 로직이므로 정적 데이터 우선)
-        failHints: {
-            logic_error: "순서가 섞이지 않았거나 데이터가 유실되었습니다. random.shuffle()을 호출했는지 확인하세요.",
-            invalid: "리스트 반환 형식이 올바르지 않습니다."
+    return shuffled_data`
+            },
+            expectedFlow: ["인덱스 생성", "셔플", "재배열"],
+            codeValidation: {
+                requiredCalls: [
+                    { pattern: /shuffle/i, name: 'shuffle 함수 사용' }
+                ]
+            }
         },
-        step4Options: [
-            "저는 학습 환경과 실제 서빙 환경 간의 '전처리 파이프라인 동기화'를 최우선으로 고려합니다. 셔플링을 통한 일반화 성능 확보는 물론, 서빙 단계의 입력값 분포 변화를 추적하는 드리프트 모니터링 체계를 구축하여 모델의 신뢰도를 관리합니다.",
-            "저는 데이터 순서를 무작위로 섞어서 모델이 잘 배우게 만듭니다.",
-            "데이터가 꼬이면 그냥 다시 학습시키는 것이 빠르다고 대답하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 학습-서빙 데이터 규격 통일 확인', color: 'border-indigo-500', icon: '📏' },
-            { id: 'b2', text: 'Step 2: 데이터 무작위 셔플링(Shuffle)', color: 'border-amber-500', icon: '🎲' },
-            { id: 'b3', text: 'Step 3: 일관된 전처리 함수 적용', color: 'border-rose-500', icon: '📝' },
-            { id: 'b4', text: 'Step 4: 강건한 학습 데이터셋 반환', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'prevent_serving_skew',
-        codeValidation: { price: 'random', fee1: 'shuffle', fee2: 'indices' },
-        step4CorrectIdx: 0,
-        step4SuccessFeedback: {
-            title: "⚖️ 심화 분석: 환경 동기화 전문가",
-            desc: "정답입니다! 학습과 서빙 사이의 '유령 리스크'를 관리할 줄 아는 안목을 가지셨군요.",
-            details: "전처리 파이프라인의 형상 관리는 MLOps의 핵심입니다. 드리프트 모니터링까지 언급하신 점이 매우 훌륭합니다."
+        evaluation: {
+            llmRubric: {
+                system: "너는 데이터 편향과 서빙 스큐를 감시하는 시스템 엔지니어이다.",
+                promptTemplate: "학습과 실전의 간극을 줄이기 위한 전략이 포함되었는지 평가하라."
+            }
         },
-        step4FailFeedback: {
-            title: "🤔 심화 분석: 배포 리스크 간과",
-            desc: "데이터를 단순히 섞는 것만으로는 배포 후의 성능 급락을 막을 수 없습니다.",
-            details: "학습 때 아무리 잘해도 서빙 때의 로직이 0.1%만 달라도 모델은 오작동합니다. '일관성'의 관점에서 다시 고민해보세요."
-        },
-        quizOptions: [
-            { text: "A. 스큐를 막으려면 전처리 코드의 공용화가 필요하다.", correct: true },
-            { text: "B. 서빙용 데이터는 학습용보다 더 복잡해야 한다.", correct: false }
-        ],
         mapPos: { x: 380, y: 150 }
     },
+
+    // --- 4. Deployment Policy (Evaluation) ---
     {
         id: 4,
         title: "배포 정책: 임계값 튜너",
@@ -273,82 +718,65 @@ def prevent_serving_skew(data):
         rewardXP: 400,
         subModuleTitle: "DEPLOY_POLICY_MAKER",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 긴급 재난 알림 시스템처럼 '놓치면 치명적인' 문제에서 가장 중요한 메트릭은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "재현율 (Recall: 실제 양성을 얼마나 잘 찾아내는가)", value: "recall", correct: true, requirementToken: "미탐(False Negative) 리스크가 큰 경우 재현율(Recall) 최적화 전략 수립" },
-                    { text: "정밀도 (Precision: 모델이 맞다고 한 것 중 실제는 얼마인가)", value: "precision" }
-                ],
-                coduckComment: "훌륭한 비즈니스 감각입니다! 하나라도 놓치는 것이 더 위험한 상황이니까요."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 암 진단 모델에서 임계값을 0.9로 높게 잡는 '보수적 전략'의 리스크는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "실제 환자를 정상으로 오판(False Negative)하여 골든타임을 놓칠 수 있음", value: "fn", correct: true, requirementToken: "임계값(Threshold) 설정 시 비즈니스 오판 비용(Cost of Error)을 고려" },
-                    { text: "학습 시간이 길어짐", value: "slow" }
-                ],
-                coduckComment: "정답입니다. 기술적 지표 뒤에 숨겨진 '사람의 생명'이나 '비용'을 보는 것이 시니어의 눈이죠."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 비즈니스 요구사항에 따른 임계값(Threshold) 설정 근거를 말한다면?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 예측 점수가 0.8 이하인 모호한 케이스는 '수동 검역(Reject)' 대상으로 자동 분류하는 배포 필터를 구현하세요.",
-        pythonSnippets: [
-            { label: '조건부 필터링', code: 'if p["score"] >= threshold:', icon: 'Check' },
-            { label: '결과 리스트 추가', code: 'results.append(p)', icon: 'Download' }
-        ],
-        pythonTemplate: `def filter_by_threshold(predictions, threshold=0.8):
-    filtered_results = []
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(임계값|threshold).*(항상|언제나).*(0\.5)/i,
+                        negatives: [/조정|리스크|비용|목적|cost/i]
+                    },
+                    message: '⚠️ 주의: 모든 상황에서 0.5를 임계값으로 사용하는 것은 위험합니다.',
+                    correctExample: '암 진단처럼 미탐이 치명적이면 임계값을 낮추어야 합니다.',
+                    severity: 'WARNING',
+                    studyKeywords: ['Decision Threshold', 'Cost-sensitive Evaluation']
+                }
+            ],
+            requiredConcepts: [
+                {
+                    id: 'business_cost',
+                    name: '오판 비용 고려',
+                    weight: 30,
+                    patterns: [/비용|리스크|risk|cost|손실/i]
+                },
+                {
+                    id: 'recall_precision',
+                    name: '지표 트레이드오프',
+                    weight: 30,
+                    patterns: [/재현율|정밀도|recall|precision|트레이드오프/i]
+                }
+            ],
+            scoring: { structure: 15, concepts: 60, flow: 25 }
+        },
+
+        implementation: {
+            title: "Step 3: 임계값 필터링 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "filter_by_threshold",
+                template: `def filter_by_threshold(predictions, threshold=0.8):
+    # 1) 임계값 이상의 예측만 통과시키는 필터
+    # TODO
     
-    for p in predictions:
-        # [Step 3-1] 실무 대응: 비즈니스 하한선 필터링
-        if p['score'] >= threshold:
-            # TODO: 통과된 결과 p를 추가하세요
-            filtered_results.append(p)
-            
-            
-    return filtered_results`,
-        sampleData: [{ "id": 1, "score": 0.95 }, { "id": 2, "score": 0.32 }],
-        expectedOutput: [{ "id": 1, "score": 0.95 }],
-        failHints: {
-            logic_error: "필터링이 제대로 되지 않았습니다. score >= threshold 조건을 확인하세요.",
-            empty: "결과가 비어있습니다. append 로직을 확인하세요."
+    return filtered_results`
+            },
+            expectedFlow: ["조건문 비교", "리스트 적재"],
+            codeValidation: {
+                requiredCalls: [
+                    { pattern: />=|>/, name: '비교 연산자' }
+                ]
+            }
         },
-        step4Options: [
-            "저는 모델의 F1-Score를 넘어 비즈니스 기대 가치(Expected Value)를 극대화하는 임계값 설계를 지향합니다. 오판 시의 비용(Cost of Error)을 수치화하여, 정밀도가 필요한 스팸 필터와 재현율이 중요한 제어판 등 각 도메인에 최적화된 배포 정책을 적용합니다.",
-            "저는 임계값을 조절해서 예측을 정확하게 만듭니다.",
-            "임계값은 무조건 0.5로 설정하는 것이 공평하다고 답변하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 비즈니스 오판 비용 산정', color: 'border-indigo-500', icon: '💰' },
-            { id: 'b2', text: 'Step 2: 모델 예측 Confidence Score 분석', color: 'border-amber-500', icon: '🔢' },
-            { id: 'b3', text: 'Step 3: 도메인 맞춤 임계값(Threshold) 적용', color: 'border-rose-500', icon: '⚖️' },
-            { id: 'b4', text: 'Step 4: 안전한 최종 예측물만 배포 승인', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'filter_by_threshold',
-        codeValidation: { price: 'predictions', fee1: 'threshold', fee2: 'append' },
-        step4CorrectIdx: 0,
-        step4SuccessFeedback: {
-            title: "⚖️ 심화 분석: 비즈니스 가치 최적화",
-            desc: "최고의 답변입니다! 기술적 수치(F1)를 비즈니스 언어(비용/가치)로 번역할 줄 아는 엔지니어시군요.",
-            details: "임계값 튜닝은 모델을 서비스화하는 마지막 단추입니다. 상황에 맞는 트레이드오프 전략이 돋보입니다."
+        evaluation: {
+            llmRubric: {
+                system: "너는 모델의 배포 승인 여부를 결정하는 비즈니스 결정권자이다.",
+                promptTemplate: "기술적 지표가 아닌 비즈니스 가치 관점에서 임계값을 설정했는지 평가하라."
+            }
         },
-        step4FailFeedback: {
-            title: "🤔 심화 분석: 트레이드오프 리스크",
-            desc: "모든 상황에 일관된 임계값(0.5나 0.9)을 적용하는 것은 위험합니다.",
-            details: "오판했을 때 발생하는 리스크 비용이 도메인마다 다르기 때문입니다. 스팸 정보 보존 리스크를 다시 한번 상기해보세요."
-        },
-        quizOptions: [
-            { text: "A. 임계값 결정은 모델링만큼 중요한 의사결정이다.", correct: true },
-            { text: "B. 모든 서비스에는 임계값 0.9가 가장 안전하다.", correct: false }
-        ],
         mapPos: { x: 550, y: 300 }
     },
+
+    // --- 5. Drift Monitor ---
     {
         id: 5,
         title: "개념 드리프트(Drift) 감지",
@@ -358,12 +786,19 @@ def prevent_serving_skew(data):
         rewardXP: 450,
         subModuleTitle: "DRIFT_MONITOR",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
+
+        cards: [
+            { icon: "📊", text: "STEP 1: 로그 분석 (Log Analysis)", coduckMsg: "현장의 데이터 흐름을 실시간으로 감시해야 합니다." },
+            { icon: "📈", text: "STEP 2: 지표 설계 (Metric)", coduckMsg: "변화를 감지할 수 있는 핵심 지표(MSE 등)를 정의하세요." },
+            { icon: "⚖️", text: "STEP 3: 구현 (Monitor)", coduckMsg: "오차가 기준치를 넘으면 경보를 울리는 로직을 작성합니다." },
+            { icon: "🏁", text: "STEP 4: 대응 (Action)", coduckMsg: "드리프트 발생 시 재학습 프로세스로 연결합니다." }
+        ],
+
         interviewQuestions: [
             {
                 id: "q1",
                 question: "Step 1: E2E 뼈대 - 학습 데이터의 분포와 실제 서빙 데이터의 분포가 달라지는 현상을 무엇이라 부릅니까?",
                 options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
                     { text: "개념 드리프트 (Concept Drift) / 데이터 드리프트", value: "drift", correct: true, requirementToken: "데이터 분포 변화를 감지하기 위한 성능 모니터링(Drift Check) 로직 설계" },
                     { text: "메모리 릭 (Memory Leak)", value: "leak" }
                 ],
@@ -373,56 +808,76 @@ def prevent_serving_skew(data):
                 id: "q2",
                 question: "Step 2: 상세화 - 드리프트를 감지했을 때 가장 먼저 실행해야 할 실무적 파이프라인 액션은?",
                 options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
                     { text: "최신 데이터를 포함한 모델 재학습(Retraining) 및 버전 업", value: "retrain", correct: true, requirementToken: "성능 저하 감지 시 최신 데이터 기반 모델 재학습(Retraining) 수행" },
                     { text: "서버를 껐다가 다시 켜기", value: "restart" }
                 ],
                 coduckComment: "정석적인 답변입니다. 모델도 주기적으로 수혈(데이터)이 필요하답니다."
             }
         ],
-        quizTitle: "Step 4: 면접 답변 정제 - 모델의 성능 저하(Degradation)를 어떻게 인지하고 해결하시겠습니까?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 예측 오차(MSE)를 실시간으로 모니터링하여 평소보다 높아지는 구간을 감지하는 로직을 완성하세요.",
-        pythonSnippets: [
-            { label: '오차 제곱', code: '(r - p)**2', icon: 'Zap' },
-            { label: '오차 평균 산출', code: 'sum(errors) / len(real)', icon: 'Sigma' }
-        ],
-        pythonTemplate: `def monitor_drift_loss(real, pred):
+
+        designContext: {
+            title: "Step 2: 모니터링 시스템 설계",
+            currentIncident: "시간이 지나면서 데이터의 트렌드가 바뀌어(Concept Drift), 모델의 예측 정확도가 서서히 떨어지고 있습니다.",
+            engineeringRules: [
+                "실시간 예측 오차(Error)를 모니터링한다.",
+                "평균 오차(MSE)가 임계값을 넘으면 드리프트로 간주한다.",
+                "드리프트 감지 시 재학습(Retrain) 신호를 보낸다."
+            ],
+            writingGuide: "변화하는 데이터 환경에서 모델 성능을 유지하기 위한 모니터링 전략을 서술하세요.",
+            validation: { minChars: 80, mustInclude: ["변화", "오차", "모니터링"] }
+        },
+
+        implementation: {
+            title: "Step 3: 드리프트 감지 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "monitor_drift_loss",
+                template: `def monitor_drift_loss(real, pred):
     errors = []
     
     for r, p in zip(real, pred):
         # [Step 3-1] 모니터링 시스템의 핵심 지표 계산
-        # TODO: r과 p의 차이를 제곱하여 error에 할당하세요
-        error = (r - p)**2
-        errors.append(error)
+        # TODO: 오차 계산
         
-    # [Step 3-2] 드리프트 임계값 체크를 위한 최종 손실값 반환
-    return sum(errors) / len(real)`,
-        sampleData: [[100, 200, 150], [90, 210, 140]],
-        expectedOutput: 100.0,
-        failHints: {
-            logic_error: "오차 계산 방식이 틀렸습니다. (실제-예측)**2 의 평균을 구해야 합니다.",
-            math_error: "나누기(/)를 할 때 데이터의 전체 개수(len)로 나누었는지 확인하세요."
+        # [Step 3-2] 오차 리스트 축적
+        # TODO: 리스트 추가
+        
+    # [Step 3-3] 최종 평균 손실 산출
+    # TODO: MSE 반환
+    `
+            },
+            expectedFlow: ["오차 계산", "평균 산출", "지표 반환"],
+            codeValidation: { mustContain: ["(r - p)**2", "errors.append", "sum(errors) / len(real)"], mustNotContain: [] },
+            snippets: [
+                { id: 1, code: "error = (r - p)**2", label: "Calculate Squared Error" },
+                { id: 2, code: "    errors.append(error)", label: "Collect Error" },
+                { id: 3, code: "return sum(errors) / len(real)", label: "Return MSE" }
+            ]
         },
-        step4Options: [
-            "저는 모델의 정적 정확도에 만족하지 않고, 'Concept Drift'를 추적하는 모니터링 시스템을 구축합니다. 특정 지표(예: MSE)의 이동 평균이 임계값을 상회할 경우 원인 분석 및 자동 재학습 파이프라인이 가동되도록 설계하여 서비스의 지속 가능성을 보장합니다.",
-            "저는 오차가 커지면 모델을 다시 만듭니다.",
-            "드리프트는 자연스러운 현상이니 무시해도 된다고 답변하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 서빙 로그에서 실제값과 예측값 수집', color: 'border-indigo-500', icon: '📊' },
-            { id: 'b2', text: 'Step 2: 최신 윈도우(Window) 구간의 MSE 계산', color: 'border-amber-500', icon: '📈' },
-            { id: 'b3', text: 'Step 3: 과거 평균 손실과 현재치 비교', color: 'border-rose-500', icon: '⚖️' },
-            { id: 'b4', text: 'Step 4: 드리프트 감지 시 재학습 신호 발송', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'monitor_drift_loss',
-        codeValidation: { price: 'zip', fee1: '**2', fee2: 'sum' },
-        quizOptions: [
-            { text: "A. 드리프트 감지는 모델 수명 연장의 필수 요소다.", correct: true },
-            { text: "B. 학습 데이터가 100% 완벽하면 드리프트는 생기지 않는다.", correct: false }
-        ],
+
+        deepDiveQuestion: {
+            question: "드리프트 감지에 대한 설명으로 옳은 것은?",
+            options: [
+                { text: "A. 드리프트 감지는 모델 수명 연장의 필수 요소다.", correct: true },
+                { text: "B. 학습 데이터가 100% 완벽하면 드리프트는 생기지 않는다.", correct: false }
+            ],
+            correctIdx: 0
+        },
+
+        evaluation: {
+            ruleBased: {
+                narrative: { minChars: 50, mustInclude: ["모니터링"] },
+                code: { mustContain: ["**2"] }
+            },
+            llmRubric: {
+                system: "MLOps 모니터링 전문가입니다.",
+                promptTemplate: "사용자의 드리프트 감지 로직이 변화 대응에 적합한지 평가하세요."
+            }
+        },
         mapPos: { x: 720, y: 450 }
     },
+
+    // --- 6. Dimension Reduction (Preprocessing) ---
     {
         id: 6,
         title: "차원의 저주와 인코딩",
@@ -432,70 +887,69 @@ def prevent_serving_skew(data):
         rewardXP: 400,
         subModuleTitle: "DIMENSION_WATCHER",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 카테고리 종류가 수백 개일 때 원-핫 인코딩(One-hot)을 남발하면 파이프라인에 생기는 비극은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "메모리 부족 및 연산 속도 급락 (차원의 저주)", value: "curse", correct: true, requirementToken: "고차원 카테고리 데이터 처리 시 Sparse Matrix 및 메모리 부족 리스크 관리" },
-                    { text: "모델 가중치가 모두 0이 됨", value: "zero" }
-                ],
-                coduckComment: "정확합니다. 불필요하게 늘어난 0(Sparse)이 모델을 멍청하게 만들 수 있죠."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 수백 개의 카테고리를 숫자로 안전하게 바꾸기 위해 실무에서 고려하는 대안은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "차원을 축소하여 정보를 집약하는 임베딩(Embedding) 기법", value: "embed", correct: true, requirementToken: "정보 손실을 줄이면서 차원을 효율적으로 축약하는 인코딩/임베딩 전략 수립" },
-                    { text: "모두 무시하고 삭제하기", value: "delete" }
-                ],
-                coduckComment: "훌륭해요. 복잡도를 제어하면서도 정보를 유지하는 것이 실력입니다."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 대규모 카테고리 데이터 처리 전략을 말한다면?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 존재하지 않는 새로운 카테고리가 입력될 경우 예외 처리([0, 0])를 수행하는 강건한 인코더를 작성하세요.",
-        pythonSnippets: [
-            { label: '안전한 값 조회', code: 'mapping.get(category, [0, 0])', icon: 'Download' },
-            { label: '매핑 정의', code: '{"A": [1, 0], "B": [0, 1]}', icon: 'Database' }
-        ],
-        pythonTemplate: `def robust_encode(category):
-    # [Step 3-1] 예외 상황까지 고려한 전략적 맵
-    mapping = {
-        "NLP": [1, 0],
-        "Vision": [0, 1]
-    }
-    
-    # [Step 3-2] 실무 리스크 대응: 처음 보는 값은 예외 처리
-    # TODO: mapping.get을 사용하여 category에 대한 벡터를 반환하세요
-    return mapping.get(category, [0, 0])`,
-        sampleData: "NLP",
-        expectedOutput: [1, 0],
-        failHints: {
-            logic_error: "매핑 결과가 틀렸습니다. mapping.get() 로직을 확인하세요.",
-            unknown: "정의되지 않은 값에 대한 기본값([0, 0]) 처리가 되어있는지 확인하세요."
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(모든|수천|많은|high).*(카테고리|항목|범주).*(원핫|one-hot|onehot)/i,
+                        negatives: [/압축|임베딩|embedding|제한|pca|제외/i]
+                    },
+                    message: '🚨 치명적 오류: 고차원 카테고리에 무분별한 원-핫 인코딩 사용 금지',
+                    correctExample: 'High-cardinality 변수에는 Embedding이나 Target Encoding을 고려하세요.',
+                    explanation: '원-핫 인코딩은 카테고리 개수만큼 열을 늘립니다. 이는 메모리 부족과 모델 성능 저하(차원의 저주)를 유발합니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Curse of Dimensionality', 'Sparse Matrix', 'High Cardinality']
+                }
+            ],
+            requiredConcepts: [
+                {
+                    id: 'unknown_fallback',
+                    name: '미확인 범주 처리',
+                    weight: 30,
+                    patterns: [/unknown|기본값|fallback|처음|예외/i],
+                    hints: ['학습 때 없던 카테고리가 들어올 경우를 대비해 mapping.get(key, default)를 활용하세요.']
+                },
+                {
+                    id: 'dim_reduction',
+                    name: '차원 효율화',
+                    weight: 20,
+                    patterns: [/압축|임베딩|embedding|축소|집약/i]
+                }
+            ],
+            dependencies: [
+                {
+                    name: '범주 매핑 정의 → Unknown 예외 처리 → 벡터 변환',
+                    before: 'unknown_fallback',
+                    after: 'dim_reduction',
+                    points: 15,
+                    strictness: 'RECOMMENDED'
+                }
+            ],
+            scoring: { structure: 15, concepts: 50, flow: 35 }
         },
-        step4Options: [
-            "저는 카테고리의 농도와 데이터 스케일을 종합적으로 판단합니다. 카테고리 수가 적을 땐 원-핫 인코딩의 명확성을 활용하고, '차원의 저주' 위험이 크면 임베딩이나 해싱(Hashing) 기법을 도입하여 연산 효율과 정보 보전의 균형을 맞춥니다.",
-            "저는 get 메서드로 에러가 안 나게 코딩합니다.",
-            "카테고리가 너무 많으면 그냥 중요한 10개만 남기고 나머지는 버립니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 전체 유니크 카테고리 수 분석', color: 'border-indigo-500', icon: '📑' },
-            { id: 'b2', text: 'Step 2: 차원의 저주 발생 리스크 평가', color: 'border-amber-500', icon: '⚠️' },
-            { id: 'b3', text: 'Step 3: 적정 인코딩 방식(One-hot/Embed) 선택', color: 'border-rose-500', icon: '🎯' },
-            { id: 'b4', text: 'Step 4: 효율적인 수치화 데이터셋 생성', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'robust_encode',
-        codeValidation: { price: 'mapping', fee1: 'get', fee2: 'NLP' },
-        quizOptions: [
-            { text: "A. 원-핫 인코딩은 범주 간의 서열을 만들지 않는다.", correct: true },
-            { text: "B. 카테고리가 많을수록 0이 많아지는 희소 행렬이 생긴다.", correct: true }
-        ],
+
+        implementation: {
+            title: "Step 3: 강건한 인코더 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "robust_encode",
+                template: `def robust_encode(category):
+    mapping = {"A": [1,0], "B": [0,1], "Unknown": [0,0]}
+    # 1) mapping.get()을 사용하여 category가 없을 때 'Unknown'을 반환하게 하세요.
+    # TODO
+    return result`
+            },
+            codeValidation: {
+                requiredCalls: [{ pattern: /\.get\s*\(/, name: 'dict.get() 메서드' }],
+                forbiddenPatterns: [{ pattern: /mapping\[category\]/, message: 'KeyError 위험: mapping[category] 대신 get()을 사용하세요.' }]
+            }
+        },
+        evaluation: { llmRubric: { system: "너는 데이터 전처리 효율성을 심사하는 엔지니어다.", promptTemplate: "Quest 1의 JSON 형식을 유지하여 평가하라." } },
         mapPos: { x: 880, y: 320 }
     },
+
+    // --- 7. Uncertainty (Inference) ---
     {
         id: 7,
         title: "불확실성(Uncertainty) 관리",
@@ -505,66 +959,50 @@ def prevent_serving_skew(data):
         rewardXP: 350,
         subModuleTitle: "FINAL_DECISION_ENGINE",
         character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 확률 [0.35, 0.3, 0.35]처럼 모델이 갈팡질팡할 때 '자동 배포'를 강행하면 생기는 실무 리스크는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "오판 확률이 매우 높아져 서비스 신뢰도 붕괴", value: "fail", correct: true, requirementToken: "모델 예측의 불확실성이 높을 경우 자동 승인을 반려하는 안전 장치 설계" },
-                    { text: "모델 용량이 커짐", value: "size" }
-                ],
-                coduckComment: "빙고! 이때는 '모름'이라고 인정하고 사람에게 검토를 맡기는 것이 진짜 실력이죠."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 1등 확률만 뽑는 것보다, 2등과의 차이(Margin)를 계산해야 하는 이유는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "모델이 얼마나 압도적으로 확신하는지 측정하기 위해", value: "margin", correct: true, requirementToken: "신뢰도 임계값(Margin/Confidence) 미달 시 수동 검토 프로세스 유도" },
-                    { text: "수학을 좋아하는 면접관에게 잘 보이려고", value: "show" }
-                ],
-                coduckComment: "정확합니다. 압도적인 1위가 아니면 의사결정을 유보하는 전략이 필요하죠."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 인공지능의 의사결정 리스크를 어떻게 제어하시겠습니까?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 최댓값의 위치를 정확히 추출하여 최종 레이블을 확정하는 결정 엔진의 기본 로직을 구현하세요.",
-        pythonSnippets: [
-            { label: '최대값 검색', code: 'max(probs)', icon: 'ArrowUp' },
-            { label: '최종 위치 반환', code: 'probs.index(max_val)', icon: 'Target' }
-        ],
-        pythonTemplate: `def get_final_prediction(probs):
-    # [Step 3-1] 실무 대응: 가장 신뢰도 높은 후보 선정
-    max_val = max(probs)
-    
-    # [Step 3-2] 파이프라인 최종 답변 확정
-    # TODO: probs.index를 사용하여 max_val의 위치를 반환하세요
-    return probs.index(max_val)`,
-        sampleData: [0.05, 0.9, 0.05],
-        expectedOutput: 1,
-        failHints: {
-            logic_error: "가장 높은 확률의 인덱스를 찾지 못했습니다. probs.index(max_val)를 확인하세요."
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(낮은|low).*(확률|confidence|score).*(무조건|그대로|승인|accept)/i,
+                        negatives: [/유보|반려|사람|human|reject|필터/i]
+                    },
+                    message: '🚨 치명적 오류: 불확실한 예측을 강제로 승인하면 서비스 신뢰도가 붕괴됩니다.',
+                    correctExample: '신뢰도(Confidence)가 낮으면 Human-in-the-loop를 통해 사람의 검토를 거쳐야 합니다.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Model Confidence', 'Aleatoric Uncertainty', 'Human-in-the-loop']
+                }
+            ],
+            requiredConcepts: [
+                { id: 'prob_analysis', name: '확률 분포 분석', weight: 30, patterns: [/확률|softmax|분포|score/i] },
+                { id: 'rejection_sampling', name: '의사결정 유보', weight: 40, patterns: [/보류|유보|사람|검토|거절|reject/i] }
+            ],
+            dependencies: [
+                { name: '확률값 산출 → 임계값 비교 → 조건부 유보', before: 'prob_analysis', after: 'rejection_sampling', points: 20, strictness: 'REQUIRED' }
+            ],
+            scoring: { structure: 10, concepts: 60, flow: 30 }
         },
-        step4Options: [
-            "저는 모델의 예측 결과에 '신뢰 점수(Confidence Score)'를 병행 표기하는 아키텍처를 선호합니다. 확률적 모호함이 발생할 경우 'Human-in-the-loop' 프로세스로 유도하여 시스템 전체의 안전성을 담보하는 협업 파이프라인을 구축합니다.",
-            "저는 max 함수를 써서 가장 큰 점수를 고를 수 있습니다.",
-            "인공지능은 어차피 틀릴 수도 있으니 다 맞다고 믿어주겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 최종 소프트맥스 확률 데이터 수집', color: 'border-indigo-500', icon: '📊' },
-            { id: 'b2', text: 'Step 2: 상위 후보 간의 격차(Entropy) 분석', color: 'border-amber-500', icon: '🔍' },
-            { id: 'b3', text: 'Step 3: 확신도 기준 미달 시 수동 검토 분류', color: 'border-rose-500', icon: '🧑‍💻' },
-            { id: 'b4', text: 'Step 4: 기준 통과 항목에 한해 Argmax 정답 반환', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'get_final_prediction',
-        codeValidation: { price: 'max', fee1: 'probs', fee2: 'index' },
-        quizOptions: [
-            { text: "A. Argmax는 다중 클래스 분류의 입을 완성한다.", correct: true },
-            { text: "B. 모든 확률의 합이 1보다 크면 오버피팅된 것이다.", correct: false }
-        ],
+
+        implementation: {
+            title: "Step 3: 결정 로직 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "get_final_prediction",
+                template: `def get_final_prediction(probs, threshold=0.7):
+    # 1) 가장 높은 확률값(max) 찾기
+    # 2) 확률이 threshold 미만이면 "REJECT" 반환
+    # TODO
+    return result`
+            },
+            codeValidation: {
+                requiredCalls: [{ pattern: /max\s*\(/, name: 'max() 함수' }, { pattern: /if.*<.*threshold/, name: '임계값 비교 조건문' }]
+            }
+        },
+        evaluation: { llmRubric: { system: "너는 AI의 안전성과 신뢰성을 평가하는 QA 리드다.", promptTemplate: "Quest 1의 JSON 형식을 유지하여 평가하라." } },
         mapPos: { x: 750, y: 150 }
     },
+
+    // --- 8. Early Stopping (Optimization) ---
     {
         id: 8,
         title: "자원 최적화: 얼리 스토핑",
@@ -573,221 +1011,150 @@ def prevent_serving_skew(data):
         desc: "학습 효율과 모델 수명 사이의 균형을 맞추는 저전력/고효율 가드레일 로직을 설계하세요.",
         rewardXP: 500,
         subModuleTitle: "EARLY_STOP_PROTECTOR",
-        character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 학습 세션이 너무 길어져 그래픽 카드(GPU) 자원이 낭비되고 비용이 폭증할 때 필요한 시스템은?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "개선 없을 시 자동 종료하는 얼리 스토핑 (Early Stopping)", value: "stop", correct: true, requirementToken: "자원 낭비 및 오버피팅 전조 현상 발생 시 조기 종료(Early Stopping) 기법 적용" },
-                    { text: "컴퓨터 전원 강제로 끄기", value: "power" }
-                ],
-                coduckComment: "합리적이네요. 에너지와 비용을 아끼는 것도 훌륭한 엔지니어링의 일환입니다."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 얼리 스토핑 기준 손실값이 0.1, 0.11, 0.12처럼 조금씩 '오를 때' 바로 멈추지 않고 좀 더 기다려야 하는 이유는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "모델이 로컬 미니마(Local Minima)를 벗어날 기회를 주기 위해 (인내심)", value: "local", correct: true, requirementToken: "일시적 정체 구간(Patience)을 감안한 유연한 종료 기준 수립" },
-                    { text: "내가 코딩을 덜 하고 싶어서", value: "lazy" }
-                ],
-                coduckComment: "맞습니다. 일시적인 정체를 넘어 진정한 '수렴'인지 판단할 시간을 줘야 하죠."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 대규모 모델 학습 시 자원 관리와 오버피팅 대응 전략은?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 손실값 개선이 없는 에포크가 3회(Patience) 지속되면 학습 중단 신호(True)를 보내는 감시 모듈을 완성하세요.",
-        pythonSnippets: [
-            { label: '실패 카운트 증가', code: 'no_improve_count += 1', icon: 'Plus' },
-            { label: '중단 여부 체크', code: 'if no_improve_count >= patience:', icon: 'Stop' }
-        ],
-        pythonTemplate: `def check_early_stopping(loss_history, patience=3):
-    best_loss = float('inf')
-    no_improve_count = 0
-    
-    for loss in loss_history:
-        if loss < best_loss:
-            best_loss = loss
-            no_improve_count = 0
-        else:
-            # [Step 3-1] 실무 대응: 정체 구간 카운트 개시
-            # TODO: no_improve_count를 1 증가시키세요
-            no_improve_count += 1
-            
-        # [Step 3-2] 파이프라인 중단 신호 조건
-        if no_improve_count >= patience:
-            return True
-            
-    return False`,
-        sampleData: [0.5, 0.4, 0.41, 0.42, 0.43],
-        expectedOutput: true,
-        failHints: {
-            logic_error: "조기 종료 조건이 발동되지 않았습니다. patience 범위를 확인하세요."
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(loss|오차).*(오를|증가|상승).*(계속|무시|무조건)/i,
+                        negatives: [/중단|stop|early|멈춤|patience/i]
+                    },
+                    message: '🚨 치명적 오류: 검증 오차가 오르는데 학습을 계속하면 오버피팅이 발생합니다.',
+                    correctExample: 'Patience(인내심) 파라미터를 설정하여 성능 개선이 없을 때 조기 종료하세요.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Overfitting', 'Generalization Error', 'Early Stopping']
+                }
+            ],
+            requiredConcepts: [
+                { id: 'patience_set', name: '인내심(Patience) 설정', weight: 30, patterns: [/patience|인내심|대기|횟수/i] },
+                { id: 'best_score_save', name: '최적 상태 보존', weight: 20, patterns: [/저장|best|보존|keep/i] }
+            ],
+            dependencies: [
+                { name: '오차 비교 → 카운트 증가 → 임계 횟수 도달 시 중단', before: 'patience_set', after: 'best_score_save', points: 15, strictness: 'RECOMMENDED' }
+            ],
+            scoring: { structure: 15, concepts: 50, flow: 35 }
         },
-        step4Options: [
-            "저는 학습 모델이 스스로 학습 종료 시점을 결정하도록 'Early Stopping'과 'Callback' 구조를 설계합니다. 이를 통해 오버피팅을 방지할 뿐만 아니라, 클라우드 컴퓨팅 비용을 약 20% 절감하는 실무적인 가치를 창출합니다.",
-            "저는 숫자를 세는 변수를 써서 3이 되면 멈추게 합니다.",
-            "학습은 무조건 끝까지 해서 가장 좋은 결과만 남기는 게 최선이라고 답변하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 매 에포크마다 검증 손실(Val Loss) 기록', color: 'border-indigo-500', icon: '📝' },
-            { id: 'b2', text: 'Step 2: 이전 최저치와의 성능 향상 폭 비교', color: 'border-amber-500', icon: '⚖️' },
-            { id: 'b3', text: 'Step 3: 정체 구간 누적 및 인내 한계점(Patience) 체크', color: 'border-rose-500', icon: '⏳' },
-            { id: 'b4', text: 'Step 4: 최적 시점에서 학습 중단 및 모델 덤프', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'check_early_stopping',
-        codeValidation: { price: 'loss', fee1: 'count', fee2: 'patience' },
-        quizOptions: [
-            { text: "A. 얼리 스토핑은 규제화(Regularization) 기법 중 하나다.", correct: true },
-            { text: "B. 손실 함수가 0이 될 때까지 돌리는 게 기본이다.", correct: false }
-        ],
+
+        implementation: {
+            title: "Step 3: 조기 종료 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "check_early_stopping",
+                template: `def check_early_stopping(loss_history, patience=3):
+    # 1) 현재 loss가 역대 최저보다 높으면 count += 1
+    # 2) count가 patience에 도달하면 True 반환
+    # TODO
+    return False`
+            },
+            codeValidation: {
+                requiredCalls: [{ pattern: /patience/, name: 'patience 변수 활용' }, { pattern: /return\s+True/, name: '종료 신호 반환' }]
+            }
+        },
+        evaluation: { llmRubric: { system: "너는 인프라 비용과 모델 품질의 균형을 맞추는 MLOps 엔지니어다.", promptTemplate: "Quest 1의 JSON 형식을 유지하여 평가하라." } },
         mapPos: { x: 550, y: 480 }
     },
+
+    // --- 9. Reinforcement Learning (RL) ---
     {
         id: 9,
         title: "강화학습: 동적 최적화",
         category: "Reinforcement Learning",
         emoji: "🕹️",
-        desc: "주변 환경과 상호작용하며 스스로 정답을 찾아가는 RL 에이전트의 모험과 활용의 법칙을 설계하세요.",
+        desc: "주변 환경과 상호작용하며 스스로 정답을 찾아가는 RL 에이전트의 탐험 법칙을 설계하세요.",
         rewardXP: 600,
-        subModuleTitle: "RL_EXPLORATION_UNIT",
-        character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 정해진 라벨 없이 로봇이 행동하고 '보상(Reward)'을 받는 파이프라인을 무엇이라 합니까?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "강화 학습 (Reinforcement Learning)", value: "rl", correct: true, requirementToken: "환경과의 상호작용 및 보상(Reward) 시스템 기반의 최적 정책 학습 엔진 설계" },
-                    { text: "지도 학습 (Supervised Learning)", value: "supervised" }
-                ],
-                coduckComment: "훌륭한 정의입니다. 스스로 시행착오를 겪으며 성장하는 엔진이죠."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 에이전트가 항상 '최선'이라고 판단한 길로만 가지 않고 가끔 랜덤한 길을 가야 하는 이유는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "현재 모르는 더 큰 보석(Global Optimum)이 숨어있을 수 있기 때문에", value: "explore", correct: true, requirementToken: "탐색(Exploration)과 활용(Exploitation)의 균형을 맞추는 메커니즘 구축" },
-                    { text: "인공지능도 가끔은 쉬고 싶기 때문", value: "rest" }
-                ],
-                coduckComment: "멋집니다! 이 '탐험' 없이는 영원히 지역적인 최선(Local Optima)에 갇히게 됩니다."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 불확실한 환경에서 최적의 전략을 찾아가는 과정을 STAR로 말한다면?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 에이전트가 매너리즘에 빠지지 않도록 epsilon 확률에 따라 무작위로 모험을 떠나는 로직을 완성하세요.",
-        pythonSnippets: [
-            { label: '탐험 (무작위)', code: 'random.randint(0, n-1)', icon: 'Compass' },
-            { label: '활용 (최적)', code: 'q_values.index(max(q_values))', icon: 'Target' }
-        ],
-        pythonTemplate: `import random
-def choose_smart_action(epsilon, q_values):
-    # [Step 3-1] 실무 대응: 확률적 모험(Exploration) 가동
-    if random.random() < epsilon:
-        # TODO: 리스트 q_values 길이 내에서 랜덤 행동 인덱스 반환
-        return random.randint(0, len(q_values)-1)
-        
-    # [Step 3-2] 축적된 지식 기반 활용(Exploitation)
-    return q_values.index(max(q_values))`,
-        sampleData: [[0.0, [0.1, 0.7, 0.2]], [1.0, [0.1, 0.7, 0.2]]], // epsilon=0.0(활용), epsilon=1.0(탐험)
-        expectedOutput: 1, // epsilon=0.0 일 때의 결과 (q_values[1]이 최대)
-        // 실제로는 무작위성이 있어 검증이 어렵지만, epsilon=0일 때를 기준으로 테스트
-        failHints: {
-            logic_error: "조건부 탐험(Exploration) 로직이 부정확합니다."
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(항상|언제나|가장).*(좋은|best|최적).*(행동|길|action)/i,
+                        negatives: [/탐험|랜덤|exploration|epsilon|확률/i]
+                    },
+                    message: '🚨 치명적 오류: 탐험(Exploration)이 없으면 에이전트는 우물 안 개구리가 됩니다.',
+                    correctExample: 'Epsilon-Greedy 기법을 통해 가끔은 무작위 행동을 시도하게 하세요.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['Exploration-Exploitation Trade-off', 'Local Optima', 'Epsilon-Greedy']
+                }
+            ],
+            requiredConcepts: [
+                { id: 'epsilon_greedy', name: 'Epsilon-Greedy 전략', weight: 40, patterns: [/엡실론|epsilon|탐험|모험|확률/i] },
+                { id: 'exploitation', name: '기존 지식 활용', weight: 20, patterns: [/활용|exploitation|최선/i] }
+            ],
+            dependencies: [
+                { name: '확률 생성 → 탐험/활용 분기 → 행동 결정', before: 'epsilon_greedy', after: 'exploitation', points: 20, strictness: 'REQUIRED' }
+            ],
+            scoring: { structure: 10, concepts: 60, flow: 30 }
         },
-        step4Options: [
-            "저는 변화하는 환경 속에서 최적의 결정을 도출하기 위해 'Exploration vs Exploitation'의 균형을 중시합니다. 학습 초반엔 탐험 범위를 넓히는 엡실론-그리디 전략을 통해 잠재적 기회를 발견하고, 점진적으로 지식 우위의 결정을 내려 파이프라인의 수익률을 20% 개선했습니다.",
-            "저는 랜덤 기능을 써서 모델이 모험하게 만들 수 있습니다.",
-            "모험은 초보자만 하는 것이니 학습 후반엔 무조건 최적의 길로만 가라고 답변하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 주변 환경(State) 관찰 및 수집', color: 'border-indigo-500', icon: '👀' },
-            { id: 'b2', text: 'Step 2: 보상 지형도를 그리는 Q-Network 학습', color: 'border-amber-500', icon: '🗺️' },
-            { id: 'b3', text: 'Step 3: 엡실론 확률 기반 모험(Explore) 결정', color: 'border-rose-500', icon: '🌀' },
-            { id: 'b4', text: 'Step 4: 행동 실행 및 보상 피드백 루프 순환', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'choose_smart_action',
-        codeValidation: { price: 'random', fee1: 'epsilon', fee2: 'index' },
-        quizOptions: [
-            { text: "A. RL은 경험을 통해 직접 정책을 학습한다.", correct: true },
-            { text: "B. 강화학습은 항상 정답 데이터셋이 필요하다.", correct: false }
-        ],
+
+        implementation: {
+            title: "Step 3: Epsilon-Greedy 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "choose_smart_action",
+                template: `import random
+def choose_smart_action(epsilon, q_values):
+    # 1) random.random() < epsilon 이면 랜덤 행동 반환
+    # 2) 아니면 가장 높은 q_value의 인덱스 반환
+    # TODO
+    return action`
+            },
+            codeValidation: {
+                requiredCalls: [{ pattern: /random\s*\(/, name: '랜덤 함수' }, { pattern: /max|argmax/i, name: '최댓값 선택' }]
+            }
+        },
+        evaluation: { llmRubric: { system: "너는 강화학습 에이전트의 지능을 평가하는 아키텍트다.", promptTemplate: "Quest 1의 JSON 형식을 유지하여 평가하라." } },
         mapPos: { x: 350, y: 620 }
     },
+
+    // --- 10. PII Tokenizer (NLP) ---
     {
         id: 10,
         title: "개인정보(PII) 정화 토크나이저",
         category: "NLP",
         emoji: "🔒",
-        desc: "실습 데이터를 안전하게 전처리하고 핵심 토큰만 추출하는 고성능 텍스트 파이프라인을 완성하세요.",
+        desc: "데이터를 안전하게 전처리하고 핵심 토큰만 추출하는 보안 텍스트 파이프라인을 완성하세요.",
         rewardXP: 400,
-        subModuleTitle: "SECURE_TEXT_PURIFIER",
-        character: { name: "Coduck", image: "/assets/characters/coduck.png" },
-        interviewQuestions: [
-            {
-                id: "q1",
-                question: "Step 1: E2E 뼈대 - 언어 모델 학습 전, 이메일이나 전화번호 같은 기밀 정보를 처리하는 필수 전처리 단계는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "개인정보 식별 및 마스킹 (De-identification)", value: "masking", correct: true, requirementToken: "민감 정보(PII) 유출 방지를 위한 강력한 데이터 마스킹 전략 수립" },
-                    { text: "크게 읽고 암기하기", value: "read" }
-                ],
-                coduckComment: "훌륭한 보안 의식입니다! 신뢰할 수 있는 데이터 수집이 모델의 토대니까요."
-            },
-            {
-                id: "q2",
-                question: "Step 2: 상세화 - 정규표현식으로 기호를 지울 때 '공백'만 남기고 소문자로 통일하는 이유는?",
-                options: [
-                    /* [수정일: 2026-02-04] 설계 연동을 위한 토큰 추가 */
-                    { text: "Apple, apple, APPLE!? 을 하나의 동일한 의미 단위로 묶기 위해", value: "normalize", correct: true, requirementToken: "의미적 일관성 확보를 위한 텍스트 정규화(Normalization) 전처리 수행" },
-                    { text: "소문자가 더 귀여워서", value: "cute" }
-                ],
-                coduckComment: "정확합니다. 의미적 정규화를 통해 모델의 어휘집(Vocabulary) 효율을 극대화하는 것이죠."
-            }
-        ],
-        quizTitle: "Step 4: 면접 답변 정제 - 자연어 처리 파이프라인의 데이터 보안과 품질 관리 경험을 말한다면?",
-        missionObjective: "Step 3: 실무 리스크 점검 - 정규식을 사용하여 특수문자 노이즈를 제거하고 유효한 단어 토큰만 추출하는 정화 필터를 구현하세요.",
-        pythonSnippets: [
-            { label: '정규식 필터', code: 're.sub(r"[^\\w\\s]", "", text)', icon: 'Scissors' },
-            { label: '공백 제거 및 토큰화', code: 'text.lower().split()', icon: 'Filter' }
-        ],
-        pythonTemplate: `import re
-def secure_tokenize(text):
-    # [Step 3-1] 서비스 노이즈 및 특수기호 일괄 소거
-    # TODO: re.sub를 사용하여 text에서 기호를 빈 문자열로 바꾸세요
-    text = re.sub(r'[^\w\s]', '', text)
-    
-    # [Step 3-2] 언어적 정규화(소문자화)
-    tokens = text.lower().split()
-    
-    # [Step 3-3] 최종 무결성 토큰 리스트 반환
-    return [t for t in tokens if t.strip()]`,
-        sampleData: "Secure AI! 2026...",
-        expectedOutput: ["secure", "ai", "2026"],
-        failHints: {
-            logic_error: "토큰화 결과가 예상과 다릅니다. 정규식과 lower().split()을 확인하세요."
+
+        validation: {
+            criticalPatterns: [
+                {
+                    pattern: {
+                        positive: /(원본|raw|전체).*(텍스트|문장).*(그대로|바로).*(학습|입력)/i,
+                        negatives: [/정제|삭제|제거|clean|mask|마스킹|re\.sub/i]
+                    },
+                    message: '🚨 치명적 오류: 개인정보(PII) 정제 없이 데이터를 사용하는 것은 보안 위반입니다.',
+                    correctExample: '정규표현식을 사용하여 이메일, 전화번호 등을 마스킹하거나 제거하세요.',
+                    severity: 'CRITICAL',
+                    studyKeywords: ['PII Masking', 'Data Privacy in NLP', 'Regex Cleaning']
+                }
+            ],
+            requiredConcepts: [
+                { id: 'regex_cleaning', name: '정규식 기반 정제', weight: 30, patterns: [/re\.sub|정규식|regex|제거/i] },
+                { id: 'text_norm', name: '텍스트 정규화', weight: 20, patterns: [/소문자|lower|normalization|정규화/i] }
+            ],
+            dependencies: [
+                { name: '민감 정보 제거 → 정규화(소문자) → 토큰화', before: 'regex_cleaning', after: 'text_norm', points: 20, strictness: 'REQUIRED' }
+            ],
+            scoring: { structure: 20, concepts: 50, flow: 30 }
         },
-        step4Options: [
-            "저는 텍스트 전처리 단계에서 정규표현식을 활용해 데이터 무결성을 확보합니다. 특히 개인정보(PII) 노출 리스크를 원천 차단하는 마스킹 전략을 최우선으로 하며, 정규화된 토큰 추출을 통해 모델의 수렴 속도를 인덱싱 기준 15% 단축시킨 경험이 있습니다.",
-            "저는 소문자로 바꾸고 기호를 지우는 코드를 잘 짭니다.",
-            "데이터가 지저분하면 모델이 잘 못 배우니까 무조건 깨끗하게 닦는다고 대답하겠습니다."
-        ],
-        cards: [
-            { id: 'b1', text: 'Step 1: 법적 가이드라인에 따른 PII 식별', color: 'border-indigo-500', icon: '📝' },
-            { id: 'b2', text: 'Step 2: 정규식 기반 기호 및 기밀 정보 소거', color: 'border-amber-500', icon: '🧹' },
-            { id: 'b3', text: 'Step 3: 유효 단어별 토큰화 및 어휘집 매핑', color: 'border-rose-500', icon: '✂️' },
-            { id: 'b4', text: 'Step 4: 보안이 강화된 학습용 코퍼스 배포', color: 'border-emerald-500', icon: '🏁' }
-        ],
-        solution: ['b1', 'b2', 'b3', 'b4'],
-        functionName: 'secure_tokenize',
-        codeValidation: { price: 're', fee1: 'sub', fee2: 'lower' },
-        quizOptions: [
-            { text: "A. NLP 전처리는 모델의 언어 이해력을 결정한다.", correct: true },
-            { text: "B. 특수문자가 많을수록 감성 분석이 무조건 쉬워진다.", correct: false }
-        ],
+
+        implementation: {
+            title: "Step 3: 보안 토크나이저 구현",
+            codeFrame: {
+                language: "python",
+                functionName: "secure_tokenize",
+                template: `import re
+def secure_tokenize(text):
+    # 1) re.sub를 사용하여 특수문자/숫자 제거
+    # 2) lower() 및 split()으로 토큰화
+    # TODO
+    return tokens`
+            },
+            codeValidation: {
+                requiredCalls: [{ pattern: /re\.sub/, name: 're.sub() 정규식 교체' }, { pattern: /\.lower\s*\(/, name: 'lower() 메서드' }]
+            }
+        },
+        evaluation: { llmRubric: { system: "너는 언어 모델의 데이터 무결성과 보안을 책임지는 NLP 엔지니어다.", promptTemplate: "Quest 1의 JSON 형식을 유지하여 평가하라." } },
         mapPos: { x: 150, y: 530 }
     }
 ];

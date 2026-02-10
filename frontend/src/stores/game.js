@@ -3,7 +3,7 @@ import axios from 'axios';
 import { aiQuests } from '../features/practice/pseudocode/data/stages.js'; // [수정일: 2026-02-06] 폴더 계층화(data) 반영
 // [수정일: 2026-02-06] 비활성 데이터 임포트 경로 수정 (support -> not_use/support)
 // import { aiDetectiveQuests } from '../features/practice/not_use/support/unit1/logic-mirror/data/aiDetectiveQuests.js';
-import progressiveData from '../features/practice/progressive-problems.json';
+import progressiveData from '../features/practice/bughunt/problem_data/progressive-problems.json';
 // [수정일: 2026-01-31] 비활성 데이터 임포트 주석 처리
 // import forestGameData from '../features/practice/PseudoForestData.js';
 
@@ -35,7 +35,9 @@ export const useGameStore = defineStore('game', {
         // [수정일: 2026-01-28] Unit 1의 현재 모드 확장 (pseudo-practice | ai-detective | pseudo-forest | pseudo-company | pseudo-emergency)
         unit1Mode: 'pseudo-practice',
         selectedQuestIndex: 0,
-        selectedSystemProblemIndex: 0
+        selectedSystemProblemIndex: 0,
+        // [수정일: 2026-02-09] 서버에서 불러온 사용자 해결 문제 기록 저장
+        userSolvedProblems: []
     }),
 
     actions: {
@@ -216,8 +218,9 @@ export const useGameStore = defineStore('game', {
                     id: m.id,
                     missionId: m.id,
                     title: m.project_title,
-                    displayNum: `Campaign ${idx + 1}`,
-                    questIndex: idx
+                    displayNum: `Stage ${idx + 1}`,
+                    questIndex: idx,
+                    mode: m.mode
                 }));
             }
 
@@ -296,6 +299,21 @@ export const useGameStore = defineStore('game', {
 
         setActiveUnit(unit) {
             this.activeUnit = unit;
+        },
+
+        /**
+         * [사용자 해결 문제 기록 조회]
+         * [수정일: 2026-02-09] 유닛별 사고 과정 및 코드 복구를 위해 해결 기록을 서버에서 가져옵니다.
+         */
+        async fetchUserSolvedProblems() {
+            try {
+                const response = await axios.get('/api/core/activity/solved-problems/', {
+                    withCredentials: true
+                });
+                this.userSolvedProblems = response.data;
+            } catch (error) {
+                console.error("[GameStore] Failed to fetch solved problems:", error);
+            }
         }
     },
 

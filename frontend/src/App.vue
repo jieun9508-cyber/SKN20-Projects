@@ -14,6 +14,9 @@
       :userProteinShakes="auth.userProteinShakes"
       :chapters="game.chapters"
       :leaderboard="leaderboard"
+      :leaderboardCurrentPage="leaderboardCurrentPage"
+      :leaderboardTotalPages="leaderboardTotalPages"
+      @change-page="fetchLeaderboard"
       @go-to-playground="handleGoToPlayground"
       @open-unit="openUnitPopup"
     >
@@ -27,9 +30,13 @@
             <span class="user-name-v2">{{ auth.sessionNickname }}</span>
             <span class="user-rank-v2">{{ auth.userRank }}</span>
           </div>
-          <div class="user-avatar-header" v-if="auth.userAvatarUrl">
-             <img :src="auth.userAvatarUrl" class="header-avatar-img">
-          </div>
+          <AvatarFrame 
+            :src="auth.userAvatarUrl" 
+            :rank="auth.userRank" 
+            size="40px" 
+            class="user-avatar-header" 
+            v-if="auth.isLoggedIn"
+          />
           <button class="btn-history" @click="router.push('/my-records')">My Records</button>
           <button v-if="auth.user?.is_superuser" class="btn-mgmt" @click="router.push('/management/progress')">Management</button>
           <button class="btn-profile-settings" @click="ui.isProfileSettingsModalOpen = true">Setting</button>
@@ -63,7 +70,7 @@
                   </template>
                 </h2>
               </div>
-              <div style="display: flex; align-items: center;">
+              <div class="header-actions-v3">
                 <button class="guidebook-btn-v3" @click="handleGuidebookClick">
                   <span class="btn-icon-wrapper"><i data-lucide="book-open"></i></span>
                   GUIDEBOOK
@@ -89,9 +96,13 @@
 
                 <div class="platform-circle-v3">
                   <template v-if="game.currentUnitProgress.includes(problem.questIndex)">
-                    <img v-if="problem.questIndex === currentMaxIdx"
-                         :src="auth.userAvatarUrl || '/image/unit_duck.png'"
-                         class="duck-on-node-v3 user-avatar-on-node">
+                    <AvatarFrame 
+                      v-if="problem.questIndex === currentMaxIdx"
+                      :src="auth.userAvatarUrl" 
+                      :rank="auth.userRank" 
+                      size="50px" 
+                      class="duck-on-node-v3 user-avatar-on-node"
+                    />
                     <div style="width: 20px; height: 20px; background: #b6ff40; border-radius: 50%; box-shadow: 0 0 10px #b6ff40;"></div>
                   </template>
                   <template v-else>
@@ -148,8 +159,9 @@ import { useUiStore } from '@/stores/ui';
 
 import './style.css';
 import LandingView from './features/home/LandingView.vue';
+import AvatarFrame from '@/components/AvatarFrame.vue';
 import GlobalModals from './components/GlobalModals.vue';
-import progressiveData from './features/practice/progressive-problems.json';
+import progressiveData from './features/practice/bughunt/problem_data/progressive-problems.json';
 
 // Stores
 const auth = useAuthStore();
@@ -162,12 +174,16 @@ const router = useRouter();
 
 // Local State
 const leaderboard = ref([]);
+const leaderboardCurrentPage = ref(1);
+const leaderboardTotalPages = ref(1);
 
-// [수정일: 2026-02-06] 리더보드 실시간 연동
-const fetchLeaderboard = async () => {
+// [수정일: 2026-02-09] 리더보드 페이징 연동
+const fetchLeaderboard = async (page = 1) => {
     try {
-        const response = await axios.get('/api/core/activity/leaderboard/');
+        const response = await axios.get(`/api/core/activity/leaderboard/?page=${page}`);
         leaderboard.value = response.data.leaderboard;
+        leaderboardCurrentPage.value = response.data.current_page;
+        leaderboardTotalPages.value = response.data.total_pages;
     } catch (error) {
         console.error("Failed to fetch leaderboard:", error);
     }
@@ -202,7 +218,7 @@ const displayProblems = computed(() => {
 
 const displayLabelsCount = computed(() => {
   const currentCount = displayProblems.value?.length || 0;
-  const targetCount = game.activeUnit?.name === 'Debug Practice' ? 7 : 10;
+  const targetCount = game.activeUnit?.name === 'Debug Practice' ? 8 : 10;
   return Math.max(0, targetCount - currentCount);
 });
 
@@ -246,8 +262,9 @@ function syncDebugProgress() {
             const progress = [0]; // 캠페인 1은 기본 해금
             
             progressiveData.progressiveProblems.forEach((m, idx) => {
-                // 미션의 마지막 단계(step 3)가 완료되었는지 확인
-                const missionCompleted = completed.includes(`progressive_${m.id}_step3`);
+                // 미션의 마지막 단계(totalSteps 동적)가 완료되었는지 확인
+                const lastStep = m.totalSteps || 3;
+                const missionCompleted = completed.includes(`progressive_${m.id}_step${lastStep}`);
                 if (missionCompleted) {
                     progress.push(idx + 1);
                 }

@@ -1,14 +1,18 @@
+<!--
+수정일: 2026-02-10
+수정 내용: 이전 작업 버전(SKN20-FINAL-5TEAM_before)으로 pseudocode 프론트엔드 코드 복구
+-->
 <template>
   <div class="coduck-wars-container">
     <!-- BACKGROUND WATERMARK -->
-    <div class="bg-watermark">시스템 오류</div>
+    <div class="bg-watermark">CODUCK WARS</div>
     <div class="scan-line"></div>
 
     <!-- HEADER -->
     <header class="war-room-header">
       <div class="chapter-info">
-        <span class="chapter-title">CHAPTER 1: 각성 (튜토리얼 존)</span>
-        <span class="sub-info">프로토콜: AI 사고법 입문 [BOOT_PROTOCOL]</span>
+        <span class="chapter-title">CHAPTER {{ gameState.currentStageId }}: {{ currentMission.title || '로딩 중...' }}</span>
+        <span class="sub-info">{{ currentMission.subModuleTitle || 'BOOT_PROTOCOL' }}</span>
       </div>
       <div class="integrity-monitor">
         <span class="integrity-label">정화 무결성</span>
@@ -21,7 +25,45 @@
 
     <!-- MAIN VIEWPORT -->
     <main class="viewport">
-      
+        
+      <!-- GUIDE FLOATING BUTTON (Toggle) -->
+      <button class="btn-guide-floating" @click="toggleGuide" :class="{ 'is-open': isGuideOpen }">
+          <span class="icon">?</span>
+          <span class="label">CHAPTER</span>
+      </button>
+
+      <!-- GUIDE SLIDE PANEL -->
+      <div class="guide-sidebar" :class="{ 'sidebar-open': isGuideOpen }">
+          <div class="sidebar-header">
+              <span class="sh-title">MISSION CHAPTERS</span>
+              <button class="sh-close" @click="toggleGuide">×</button>
+          </div>
+          <div class="sidebar-content">
+              <div 
+                  v-for="(card, idx) in currentMission.cards" 
+                  :key="idx"
+                  class="guide-step-card"
+                  :class="{ 'g-active': idx === selectedGuideIdx }"
+                  @click="handleGuideClick(idx)"
+              >
+                  <div class="gs-header-row">
+                      <div class="gs-icon">{{ card.icon }}</div>
+                      <div class="gs-info">
+                          <div class="gs-step">STEP {{ idx + 1 }}</div>
+                          <div class="gs-text">{{ card.text.split(':')[1] || card.text }}</div>
+                      </div>
+                  </div>
+                  
+                  <!-- EXPANDED HINT AREA -->
+                  <div class="gs-hint-content" v-if="idx === selectedGuideIdx">
+                      <div class="hint-label">💡 TACTICAL ADVICE</div>
+                      <p class="hint-body">"{{ card.coduckMsg }}"</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+
       <!-- PHASE: DIAGNOSTIC 1 & 2 (Shared Layout) -->
       <section v-if="gameState.phase.startsWith('DIAGNOSTIC')" class="combat-grid">
          <!-- LEFT: Entity Card -->
@@ -114,7 +156,11 @@
                 <div class="disconnect-tag">! 분석 대기 !</div>
              </div>
 
-
+             <!-- ADDED: Dialogue Box for Real-time Feedback -->
+             <div class="dialogue-box">
+                <span class="speaker">Coduck</span>
+                <p class="dialogue-text">"{{ gameState.coduckMessage }}"</p>
+             </div>
 
              <!-- 3. Mission Box -->
              <div class="mission-problem-box">
@@ -131,14 +177,44 @@
           <div class="panel decision-panel full-width-panel">
              <div class="panel-header-row">
                  <span class="p-title-small">아키텍처 설계 (자연어 서술 모드)</span>
-                 <span class="p-sub-small badge-natural">Python 코드 금지</span>
+                 <div class="header-controls">
+                     <span class="p-sub-small badge-natural">Python 코드 금지</span>
+                     <button class="btn-writing-guide" @click="toggleWritingGuide">
+                        <span class="wg-icon">📝</span> GUIDE
+                     </button>
+                 </div>
              </div>
 
-             <!-- Top Briefing Zone (Incident + Rules) -->
+             <!-- WRITING GUIDE OVERLAY -->
+             <div class="writing-guide-overlay" v-if="isWritingGuideOpen">
+                <div class="wg-header">
+                    <span class="wg-title">✍️ 서술 가이드라인</span>
+                    <button class="wg-close" @click="toggleWritingGuide">×</button>
+                </div>
+                <div class="wg-content">
+                    <div class="wg-section">
+                        <div class="wg-label">💡 작성 팁</div>
+                        <ul class="wg-list">
+                            <li>코드가 아닌 <strong>'사람의 언어'</strong>로 작성하세요.</li>
+                            <li><strong>"무엇을", "왜", "어떻게"</strong> 할 것인지 명확히 밝히세요.</li>
+                            <li>단계별로 번호를 매기면 더 좋습니다. (1., 2. ...)</li>
+                        </ul>
+                    </div>
+                    <div class="wg-section">
+                        <div class="wg-label">🔍 예시 (Example)</div>
+                        <div class="wg-example">
+                            "1. 먼저 결측치를 확인한다.<br>
+                            2. 평균값으로 대체할지 삭제할지 결정한다.<br>
+                            3. 최종적으로 데이터를 정규화한다."
+                        </div>
+                    </div>
+                </div>
+             </div>
+
              <div class="top-briefing-zone">
                 <div class="briefing-section">
                     <div class="briefing-label"><span class="b-icon">🚨</span> 제약 사건 (Current Incident)</div>
-                    <p class="incident-text">{{ gameState.missionContext }}</p>
+                    <p class="incident-text">{{ missionContext }}</p>
                 </div>
                 
                 <div class="briefing-divider"></div>
@@ -147,7 +223,7 @@
                     <div class="briefing-label"><span class="b-icon">⚙️</span> 핵심 설계 원칙 (Engineering Rules)</div>
                     <p class="briefing-sub">아래 원칙을 반드시 준수하여 설계 리포트를 작성하십시오.</p>
                     <ul class="briefing-list">
-                        <li v-for="(cons, i) in gameState.constraints" :key="i">{{ cons }}</li>
+                        <li v-for="(cons, i) in constraints" :key="i">{{ cons }}</li>
                     </ul>
                 </div>
              </div>
@@ -160,17 +236,15 @@
                     :value="gameState.phase3Reasoning"
                     @input="handlePseudoInput"
                     class="monaco-textarea"
-                    placeholder="여기에 한글이나 영어로 본인의 사고 과정을 서술하세요. (예: 1. 먼저 스케일러를...)"
+                    placeholder="여기에 한글이나 영어로 본인의 사고 과정을 서술하세요.&#10;(예: 1. 먼저 스케일러를 생성한다&#10;     2. 학습 데이터로만 fit을 수행한다&#10;     3. 테스트 데이터는 transform만 한다)"
                     spellcheck="false"
                 ></textarea>
              </div>
 
-
-
              <div class="editor-action-bar">
-                <div class="writing-notice">※ 코드가 아닌 '말(설명)'로 적어주세요.</div>
+                <div class="writing-notice">※ 코드가 아닌 '말(설명)'로 적어주세요. 다음 단계에서 Python 코드로 작성합니다.</div>
                 <button class="btn-execute-large" @click="submitPseudo">
-                    <span class="btn-text">설계 확정 및 AI 제출</span>
+                    <span class="btn-text">다음 (Python 작성)</span>
                     <span class="btn-icon">→</span>
                 </button>
              </div>
@@ -203,85 +277,56 @@
                 <span class="p-sub">참조: 3단계 로직</span>
             </div>
             
-            <div class="split-view">
-                <!-- Column 1: Commented Logic (Guide) -->
-                <div class="logic-viewer">
-                    <div class="viewer-header">/// 로직 추적 ///</div>
-                    <div class="commented-content">
+            <!-- 3열 레이아웃: 자연어(25%) + 에디터(60%) + 모듈(15%) -->
+            <div class="phase4-tri-panel">
+                <!-- 1. 자연어 참조 -->
+                <div class="natural-lang-col">
+                    <div class="panel-subheader">
+                        <span class="sub-icon">📋</span>
+                        <span class="sub-title">설계 참조</span>
+                    </div>
+                    <div class="commented-content-scroll">
                         <div v-for="(line, i) in commentedLogicLines" :key="i" class="code-line comment-style">{{ line }}</div>
                     </div>
                 </div>
 
-                <!-- Column 2: Code Editor -->
-                <div class="code-editor-area">
-                    <div class="code-header">def leakage_free_scaling(train_df, test_df):</div>
-                    
-                    <!-- Slot 1 -->
-                    <div class="code-block">
-                        <div class="comment-line"># 1. 학습 데이터(train) 기준으로 스케일러 생성</div>
-                        <div 
-                            class="drop-zone"
-                            :class="{ 'filled': gameState.codeSlots.slot1.content }"
-                            @dragover.prevent
-                            @drop="onDrop('slot1', $event)"
-                        >
-                            {{ gameState.codeSlots.slot1.content || "▼ [ 스케일러 생성 코드를 드래그 ] ▼" }}
-                        </div>
+                <!-- 2. Python Monaco Editor -->
+                <div 
+                    class="python-editor-col"
+                    @dragover.prevent
+                    @drop.prevent="handleEditorDrop"
+                >
+                    <div class="panel-subheader">
+                        <span class="sub-icon">🐍</span>
+                        <span class="sub-title">Python 구현</span>
+                        <span class="lang-badge">Python</span>
                     </div>
-
-                    <!-- Slot 2 -->
-                    <div class="code-block">
-                        <div class="comment-line"># 2. 학습 데이터로만 기준 학습 (fit)</div>
-                        <div 
-                            class="drop-zone"
-                            :class="{ 'filled': gameState.codeSlots.slot2.content }"
-                            @dragover.prevent
-                            @drop="onDrop('slot2', $event)"
-                        >
-                             {{ gameState.codeSlots.slot2.content || "▼ [ 기준 학습(fit) 코드를 드래그 ] ▼" }}
-                        </div>
+                    <vue-monaco-editor
+                        v-model:value="runnerState.userCode"
+                        language="python"
+                        theme="vs-dark"
+                        :options="monacoOptions"
+                        @mount="handleMonacoMount"
+                        class="monaco-editor-main"
+                    />
+                    <div class="editor-bottom-hint">
+                        💡 오른쪽 모듈을 에디터로 드래그하거나 직접 코드를 작성하세요!
                     </div>
-
-                    <!-- Slot 3 -->
-                    <div class="code-block">
-                        <div class="comment-line"># 3. 동일한 기준을 학습 데이터에 적용 (transform)</div>
-                        <div 
-                            class="drop-zone"
-                            :class="{ 'filled': gameState.codeSlots.slot3.content }"
-                            @dragover.prevent
-                            @drop="onDrop('slot3', $event)"
-                        >
-                             {{ gameState.codeSlots.slot3.content || "▼ [ 학습 데이터 반환 코드를 드래그 ] ▼" }}
-                        </div>
-                    </div>
-
-                    <!-- Slot 4 -->
-                    <div class="code-block">
-                        <div class="comment-line"># 4. 동일한 기준을 테스트 데이터에 적용 (transform)</div>
-                         <div 
-                            class="drop-zone"
-                            :class="{ 'filled': gameState.codeSlots.slot4.content }"
-                            @dragover.prevent
-                            @drop="onDrop('slot4', $event)"
-                        >
-                             {{ gameState.codeSlots.slot4.content || "▼ [ 테스트 데이터 반환 코드를 드래그 ] ▼" }}
-                        </div>
-                    </div>
-
-                    <div class="code-footer">return train_scaled, test_scaled</div>
                 </div>
 
-                <!-- Column 3: Snippets (Draggable Modules) -->
-                <div class="modules-sidebar">
-                    <div class="phase-header-green-small">모듈 (MODULES)</div>
+                <!-- 3. 모듈 (드래그 가능) -->
+                <div class="modules-col">
+                    <div class="panel-subheader">
+                        <span class="sub-icon">📦</span>
+                        <span class="sub-title">모듈 (Drag)</span>
+                    </div>
                     <div class="snippet-list-scroll">
                         <div 
                             v-for="(snip, idx) in pythonSnippets" 
                             :key="idx" 
-                            class="snippet-block" 
+                            class="snippet-block-draggable"
                             draggable="true"
-                            @dragstart="handleDragStart($event, snip.code)"
-                            @click="insertSnippet(snip.code)"
+                            @dragstart="onDragStart($event, snip.code)"
                         >
                             <span class="s-icon">::</span>
                             <span class="s-label">{{ snip.label }}</span>
@@ -298,8 +343,13 @@
                  <div v-else style="flex:1"></div>
 
                  <div class="btn-group">
-                      <button class="btn-reset" @click="initPhase4Scaffolding">초기화</button>
-                      <button class="btn-execute" @click="submitPythonFill">코드 배포</button>
+                      <button class="btn-reset-large" @click="initPhase4Scaffolding">
+                          <span class="btn-text">다시 하기</span>
+                      </button>
+                      <button class="btn-execute-large" @click="submitPythonFill">
+                          <span class="btn-text">코드 배포</span>
+                          <span class="btn-icon">→</span>
+                      </button>
                  </div>
             </div>
          </div>
@@ -331,107 +381,180 @@
          </div>
       </section>
       
-      <!-- PHASE: EVALUATION (Refined with 2nd/3rd Reference Style) -->
-      <section v-if="gameState.phase === 'EVALUATION'" class="panel evaluation-view">
-         <div class="report-card">
-            <!-- Header Stamp -->
-            <div class="report-header">
-                <span class="report-title">시스템 복구 리포트</span>
-                <div class="stamp-box" :class="{ 'stamp-success': evaluationResult.finalScore >= 50, 'stamp-fail': evaluationResult.finalScore < 50 }">
-                    {{ evaluationResult.verdict }}
-                </div>
-            </div>
+       <!-- PHASE: EVALUATION (Refined AI Report System) -->
+       <section v-if="gameState.phase === 'EVALUATION'" class="panel evaluation-view">
+          <div class="report-card">
+             <!-- Top Philosophy Banner -->
+             <div class="philosophy-banner">
+                <span class="p-badge">평가 철학</span>
+                <span class="p-text">정답 채점 ❌ → AI 기반 사고력(Metrics) 평가 ✅</span>
+             </div>
 
-            <div class="report-meta">
-                <span>날짜: 2026.02.05</span>
-                <span>담당 AI: CODUCK_AI</span>
-                <span>미션: 데이터 파이프라인 복구</span>
-            </div>
+             <!-- Header Stamp -->
+             <div class="report-header">
+                 <span class="report-title">아키텍처 인텔리전스 리포트</span>
+                 <div class="stamp-box" :class="{ 'stamp-success': evaluationResult.finalScore >= 50, 'stamp-fail': evaluationResult.finalScore < 50 }">
+                     {{ evaluationResult.verdict }}
+                 </div>
+             </div>
 
-            <!-- Score Circle -->
-            <div class="score-section">
-                <div class="score-circle">
-                    <svg viewBox="0 0 36 36" class="circular-chart">
-                        <path class="circle-bg"
-                            d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path class="circle"
-                            :stroke-dasharray="evaluationResult.finalScore + ', 100'"
-                            d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <text x="18" y="20.35" class="percentage">{{ evaluationResult.finalScore }}</text>
+             <div class="report-meta">
+                 <span>DATE: 2026.02.09</span>
+                 <span>INSPECTED_BY: CODUCK_ARCHITECT</span>
+                 <span>MISSION: {{ currentMission?.title || 'System Recovery' }}</span>
+             </div>
+
+              <!-- 5D Radar Chart (Pentagon Visualization) -->
+              <div class="radar-chart-section">
+                <div class="chart-container">
+                    <svg viewBox="0 0 200 200" class="radar-svg">
+                        <!-- Background Pentagons (Grid) -->
+                        <polygon v-for="level in 5" :key="level"
+                                 :points="calculatePentagonPoints(level * 20)"
+                                 class="radar-grid" />
+                        
+                        <!-- Axis Lines -->
+                        <line v-for="i in 5" :key="'line-'+i"
+                              x1="100" y1="100"
+                              :x2="calculatePoint(i-1, 80).x"
+                              :y2="calculatePoint(i-1, 80).y"
+                              class="radar-axis" />
+
+                        <!-- Labels -->
+                        <text v-for="(metric, i) in evaluationResult.details" :key="'label-'+i"
+                              :x="calculatePoint(i, 95).x"
+                              :y="calculatePoint(i, 95).y"
+                              class="radar-label-text">
+                            {{ metric.category }}
+                        </text>
+
+                        <!-- The Data Polygon -->
+                        <polygon :points="radarPoints" class="radar-data-poly" />
                     </svg>
                 </div>
-                <div class="score-label">아키텍트 등급: {{ evaluationResult.scoreTier }}</div>
-            </div>
-
-            <!-- Evaluation Areas (Accordion) -->
-            <div class="evaluation-areas">
-                <div class="area-header">평가 영역 (클릭하여 상세 보기)</div>
-                <div class="area-list">
-                    <div 
-                        v-for="(detail, idx) in evaluationResult.details" 
-                        :key="idx" 
-                        class="area-item"
-                        :class="{ 'area-expanded': activeDetail === idx }"
-                        @click="toggleDetail(idx)"
-                    >
-                        <div class="area-summary">
-                            <span class="area-name">{{ detail.category }}</span>
-                            <span class="area-score">{{ detail.score }} / 100</span>
-                            <span class="area-arrow">▼</span>
+                <div class="score-summary">
+                    <div class="score-main-group">
+                        <span class="score-main">{{ evaluationResult.finalScore }}</span>
+                        <span class="score-tier">{{ evaluationResult.scoreTier }}</span>
+                    </div>
+                    <!-- Score Formula Visualization -->
+                    <div class="score-breakdown">
+                        <div class="formula-item">
+                            <span class="f-label">Game (40%)</span>
+                            <span class="f-val">{{ evaluationResult.gameScore }}</span>
                         </div>
-                        <div class="area-detail-content" v-if="activeDetail === idx">
-                             <div class="detail-row">
-                                 <span class="detail-label">분석 결과</span>
-                                 <p class="detail-text">"{{ detail.comment }}"</p>
-                             </div>
-                             <div class="detail-row">
-                                 <span class="detail-label">개선 제안</span>
-                                 <ul class="detail-list">
-                                     <li v-for="(imp, i) in detail.improvements" :key="i">- {{ imp }}</li>
-                                 </ul>
-                             </div>
+                        <div class="formula-plus">+</div>
+                        <div class="formula-item">
+                            <span class="f-label">AI Logic (60%)</span>
+                            <span class="f-val">{{ evaluationResult.aiScore }}</span>
                         </div>
                     </div>
                 </div>
-            </div>
+              </div>
 
-            <!-- Analysis Box (Bottom) -->
-            <div class="analysis-box">
-                <div class="coduck-avatar-small">
-                    <img src="/assets/characters/coduck_sad.png" />
-                </div>
-                <div class="analysis-text-wrapper">
-                    <p class="ai-comment" v-if="!isEvaluating">"{{ evaluationResult.aiAnalysis }}"</p>
-                    <p class="ai-comment" v-else>장치 정밀 분석 중...</p>
-                    <p class="senior-tip" v-if="!isEvaluating">조언: {{ evaluationResult.seniorAdvice }}</p>
-                </div>
-            </div>
+              <!-- Metric Definitions (Evaluation Criteria) -->
+              <div class="criterion-notice">
+                <span class="cn-icon">🔍</span>
+                <span class="cn-text">각 지표를 클릭하여 <b>AI 아키텍트의 상세 비평</b>을 확인하세요.</span>
+              </div>
 
-            <!-- New: LLM Supplementary Topics -->
-            <div v-if="evaluationResult.supplementary && evaluationResult.supplementary.length > 0" class="supplement-section">
-                <div class="s-header">
-                    <span class="s-icon">📘</span>
-                    <span class="s-title">LLM 추천 보충 학습 리스트</span>
-                </div>
-                <div class="s-grid">
-                    <div v-for="(item, i) in evaluationResult.supplementary" :key="i" class="s-card">
-                        <div class="s-card-title">{{ item.title }}</div>
-                        <div class="s-card-desc">{{ item.desc }}</div>
+              <!-- 5D Metrics Grid (Interactive) -->
+              <div class="metrics-grid">
+                  <div v-for="(metric, i) in evaluationResult.details" 
+                       :key="i" 
+                       class="metric-card"
+                       :class="{ 'card-active': activeDetail === i }"
+                       @click="toggleDetail(i)">
+                      <span class="m-label">{{ metric.category }}</span>
+                      <span class="m-value">{{ metric.score }}</span>
+                      <!-- Metric Description Mini -->
+                      <span class="m-desc-mini">
+                        {{ 
+                            metric.category === '정합성' ? '요구사항 충실도' :
+                            metric.category === '추상화' ? '로직 간결성' :
+                            metric.category === '예외처리' ? '위험 대응력' :
+                            metric.category === '구현력' ? '코드 정확도' : '구조 확장성'
+                        }}
+                      </span>
+                  </div>
+              </div>
+
+             <!-- Metric Detail Expansion -->
+             <div v-for="(metric, i) in evaluationResult.details" :key="'detail-'+i">
+                <div v-if="activeDetail === i" class="metric-detail-box">
+                    <div class="detail-row">
+                        <span class="detail-label">상세 분석</span>
+                        <p class="detail-text">"{{ metric.comment }}"</p>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">아키텍트 권고</span>
+                        <ul class="detail-list">
+                            <li v-for="(imp, idx) in metric.improvements" :key="idx">• {{ imp }}</li>
+                        </ul>
                     </div>
                 </div>
-            </div>
+             </div>
 
-            <button class="btn-next-report" @click="exitToHub" :disabled="isEvaluating">징검다리로 돌아가기</button>
-         </div>
-      </section>
+             <!-- Analysis Box (Senior Advice) -->
+             <div class="analysis-box">
+                 <div class="coduck-avatar-small">
+                     <img src="/assets/characters/coduck.png" />
+                 </div>
+                 <div class="analysis-text-wrapper">
+                     <p class="detail-label">AI 아키텍트 분석</p>
+                     <p class="ai-comment">"{{ evaluationResult.aiAnalysis }}"</p>
+                     <p class="senior-tip">💡 Senior Advice: {{ evaluationResult.seniorAdvice }}</p>
+                 </div>
+             </div>
 
-      <!-- PHASE: DEFEAT -->
+             <!-- Tail Question Section (Deep Dive) -->
+             <div v-if="evaluationResult.tailQuestion" class="tail-question-area">
+                <div class="tq-header">
+                    <span class="tq-icon">🎯</span>
+                    <span class="tq-title">Architect's Tail Question (논리 허점 탐색)</span>
+                </div>
+                <div class="tq-content">
+                    {{ evaluationResult.tailQuestion.question }}
+                </div>
+                <div class="tq-options">
+                    <button v-for="(opt, idx) in evaluationResult.tailQuestion.options" 
+                            :key="idx" 
+                            class="btn-tq-option"
+                            @click="handleTailQuestion(opt)">
+                        {{ opt.text }}
+                    </button>
+                </div>
+             </div>
+
+             <!-- YouTube Video Recommendations -->
+             <div v-if="evaluationResult.supplementaryVideos && evaluationResult.supplementaryVideos.length > 0" class="supplement-section">
+                 <div class="s-header">
+                     <span class="s-icon">🎥</span>
+                     <span class="s-title">YouTube Study Session (부족한 개념 보완)</span>
+                 </div>
+                 <div class="s-grid">
+                     <a v-for="(item, i) in evaluationResult.supplementaryVideos" 
+                        :key="i" 
+                        class="s-card youtube-card"
+                        :href="'https://www.youtube.com/results?search_query=' + encodeURIComponent(item.search_query)"
+                        target="_blank">
+                         <div class="yt-thumb">
+                             <span class="yt-play">▶</span>
+                         </div>
+                         <div class="s-card-content">
+                             <div class="s-card-title">{{ item.title }}</div>
+                             <div class="s-card-desc">{{ item.desc }}</div>
+                             <div class="yt-search-tag">Search: {{ item.search_query }}</div>
+                         </div>
+                     </a>
+                 </div>
+             </div>
+
+             <button class="btn-next-report" @click="exitToHub" :disabled="isEvaluating">미션 완료 및 징검다리로 귀환</button>
+          </div>
+       </section>
+
+       <!-- PHASE: DEFEAT -->
       <section v-if="gameState.phase === 'DEFEAT'" class="panel defeat-view">
             <h1 class="glitch-text">시스템 실패</h1>
             <p>치명적인 무결성 손실</p>
@@ -455,16 +578,38 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
-import { useCoduckWars } from './composables/useCoduckWars.js'; // [수정일: 2026-02-06] 폴더 계층화(composables) 반영 및 로직 통합
+import { useCoduckWars } from './composables/useCoduckWars.js';
+import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
+import { useMonacoEditor } from './composables/useMonacoEditor.js';
 
 const router = useRouter();
 const gameStore = useGameStore();
 
+const isGuideOpen = ref(false);
+const selectedGuideIdx = ref(0); // Track which guide card is expanded
+
+const toggleGuide = () => {
+    isGuideOpen.value = !isGuideOpen.value;
+};
+
+// Wrapper to handle both local expansion and game logic
+const handleGuideClick = (idx) => {
+    selectedGuideIdx.value = idx;
+    explainStep(idx);
+};
+
+// Writing Guide Toggle (Phase 3)
+const isWritingGuideOpen = ref(false);
+const toggleWritingGuide = () => {
+    isWritingGuideOpen.value = !isWritingGuideOpen.value;
+};
+
 const { 
     gameState, 
+    runnerState, // ✅ CRITICAL FIX: Extract runnerState
     diagnosticQuestion1, 
     diagnosticQuestion2, 
     deepQuizQuestion,
@@ -483,8 +628,72 @@ const {
     restartMission,
     initPhase4Scaffolding,
     handlePseudoInput,
-    addLogicBlock // Add this
+    addLogicBlock, // Add this
+    explainStep,
+    handleTailQuestion, // ✅ 추가
+    currentMission,
+    missionContext,
+    constraints,
+    selectStage // ✅ 추가: 단계 선택 기능
 } = useCoduckWars();
+
+// Monaco Editor 설정 - ✅ CRITICAL FIX: Pass runnerState instead of gameState
+const { monacoOptions, handleMonacoMount, insertCodeSnippet } = useMonacoEditor(currentMission, runnerState);
+
+// [안전장치 제거] useMonacoEditor 내부에서 이미 템플릿 로드 로직이 통합되어 있으므로 중복 제거 (루프 방지)
+onMounted(() => {
+    // 필요한 초기화 작업만 수행 (현재는 없음)
+});
+
+const activeStepIndex = computed(() => {
+    switch (gameState.phase) {
+        case 'DIAGNOSTIC_1': 
+        case 'DIAGNOSTIC_2': return 0;
+        case 'PSEUDO_WRITE': return 1;
+        case 'PYTHON_FILL': return 2;
+        case 'DEEP_QUIZ': 
+        case 'EVALUATION': 
+        case 'CAMPAIGN_END': return 3;
+        default: return 0;
+    }
+});
+
+// --- Radar Chart Logic (Pentagon) ---
+const radarPoints = computed(() => {
+    if (!evaluationResult.details || evaluationResult.details.length === 0) return "";
+    
+    const center = 100; // Center of SVG (200x200)
+    const radius = 80;  // Max radius for score 100
+    const points = [];
+    
+    evaluationResult.details.forEach((metric, i) => {
+        const angle = (Math.PI * 2 / 5) * i - (Math.PI / 2); // Start from top
+        const r = (metric.score / 100) * radius;
+        const x = center + r * Math.cos(angle);
+        const y = center + r * Math.sin(angle);
+        points.push(`${x},${y}`);
+    });
+    
+    return points.join(" ");
+});
+
+// --- Radar Chart Helpers ---
+const calculatePoint = (i, r) => {
+    const angle = (Math.PI * 2 / 5) * i - (Math.PI / 2);
+    return {
+        x: 100 + r * Math.cos(angle),
+        y: 100 + r * Math.sin(angle)
+    };
+};
+
+const calculatePentagonPoints = (r) => {
+    const pts = [];
+    for (let i = 0; i < 5; i++) {
+        const p = calculatePoint(i, r);
+        pts.push(`${p.x},${p.y}`);
+    }
+    return pts.join(" ");
+};
 
 // Helper to switch questions based on diagnostic phase
 const currentDiagnosticQuestion = computed(() => {
@@ -505,11 +714,12 @@ const commentedLogicLines = computed(() => {
     return gameState.phase3Reasoning.split('\n').map(line => `# ${line}`);
 });
 
-const handleDragStart = (evt, code) => {
-    if (evt.dataTransfer) {
-        evt.dataTransfer.setData('text/plain', code);
-        evt.dataTransfer.effectAllowed = 'copy';
-    }
+
+
+// --- Evaluation 상세 보기 제어 ---
+const activeDetail = ref(null);
+const toggleDetail = (idx) => {
+    activeDetail.value = activeDetail.value === idx ? null : idx;
 };
 
 const exitToHub = () => {
@@ -523,25 +733,27 @@ const exitToHub = () => {
 };
 
 // Drag and Drop Logic
+const onDragStart = (evt, code) => {
+    evt.dataTransfer.dropEffect = 'copy';
+    evt.dataTransfer.effectAllowed = 'copy';
+    evt.dataTransfer.setData('text/plain', code);
+};
+
 const onDrop = (slotKey, evt) => {
     const code = evt.dataTransfer.getData('text/plain');
     if (code) {
-        // Direct update since we might not have exported a helper yet, 
-        // or just use the helper if we export it.
-        // Let's assume we need to update state directly if helper is missing, 
-        // but `handleSlotDrop` is better. 
-        // I will check if `handleSlotDrop` is available in `useCoduckWars` return.
-        // For now, let's update directly to be safe as `gameState` is reactive.
         if (gameState.codeSlots[slotKey]) {
             gameState.codeSlots[slotKey].content = code;
         }
     }
 };
 
-// Evaluation Detail Toggle
-const activeDetail = ref(null);
-const toggleDetail = (idx) => {
-    activeDetail.value = activeDetail.value === idx ? null : idx;
+// Editor Custom Drop Handler
+const handleEditorDrop = (evt) => {
+    const code = evt.dataTransfer.getData('text/plain');
+    if (code) {
+        insertCodeSnippet(code);
+    }
 };
 
 // --- LOGGING HELPERS ---
@@ -568,18 +780,27 @@ const getLogLabel = (type) => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+@import './monaco-styles.css';
 
 /* GLOBAL CONTAINER */
 .coduck-wars-container {
-  width: 100vw;
+  width: 100%; /* [2026-02-09] 100vw → 100%로 변경하여 스크롤바 너비 고려 */
   height: 100vh;
   background-color: #050505; /* Pitch Black */
   color: #E5E7EB;
   font-family: 'Inter', sans-serif;
-  overflow: hidden;
+  overflow: hidden; /* Prevent scroll */
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+/* [2026-02-09] 반응형 레이아웃 강제 적용 - 모든 요소가 화면 너비를 초과하지 않도록 */
+.coduck-wars-container *,
+.coduck-wars-container *::before,
+.coduck-wars-container *::after {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 /* BACKGROUND WATERMARK */
@@ -638,36 +859,51 @@ const getLogLabel = (type) => {
 .integrity-monitor {
     display: flex;
     align-items: center;
-    gap: 20px; /* Wider gap */
-    font-family: 'JetBrains Mono', monospace;
+    gap: 20px; /* LAYOUT GRID */
 }
-.integrity-label { color: #4ade80; font-size: 0.9rem; font-weight: bold; }
+.viewport { flex: 1; position: relative; z-index: 50; padding: 0; display: flex; }
+.combat-grid {
+    display: flex;
+    flex-wrap: nowrap; /* CRITICAL: Force side-by-side */
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevent scroll */
+}
+
+/* LEFT PANEL - ENTITY CARD */
+.entity-card {
+    /* Fixed width to preserve "Coduck" card ratio */
+    flex: 0 0 450px; 
+    max-width: 450px;
+    height: 100%; /* Fill Text/Image Logic Height */
+    background: #0a0a0a;
+    border-right: 1px solid #333;
+    padding: 30px; /* Fixed padding for consistent look */
+    display: flex;
+    flex-direction: column;
+}
+
+/* ... existing styles ... */
+
 .hp-bar-bg {
-    width: 250px; /* Wider bar */
+    width: 15vw; /* Relative width */
+    max-width: 250px;
+    min-width: 100px;
     height: 10px;
     background: #1f2937;
     border-radius: 4px;
     overflow: hidden;
 }
-.hp-bar-fill { height: 100%; background: #4ade80; transition: width 0.3s; }
-.integrity-val { color: #fff; font-weight: bold; font-size: 1.1rem; }
 
-/* LAYOUT GRID */
-.viewport { flex: 1; position: relative; z-index: 50; padding: 0; display: flex; }
-.combat-grid {
-    display: flex;
-    width: 100%;
-    height: 100%;
-}
+/* ... existing styles ... */
 
-/* LEFT PANEL - ENTITY CARD */
-.entity-card {
-    width: 500px; /* Wider Left Panel */
-    background: #0a0a0a;
-    border-right: 1px solid #333;
-    padding: 50px;
-    display: flex;
-    flex-direction: column;
+.snippet-panel { 
+    flex: 0 0 25%; /* Replaces fixed 350px */
+    min-width: 280px;
+    background:#111; 
+    padding:30px; 
+    display:flex; 
+    flex-direction:column; 
 }
 .entity-header {
     display: flex;
@@ -727,11 +963,13 @@ const getLogLabel = (type) => {
 /* RIGHT PANEL - DECISION ENGINE */
 .decision-panel {
     flex: 1;
-    padding: 60px 100px; /* Big padding */
+    min-width: 0; /* CRITICAL: Allow shrinking */
+    padding: 4vw 6vw; /* Responsive padding (was 60px 100px) */
     display: flex;
     flex-direction: column;
     justify-content: center; /* Center Vertically */
     background: rgba(10, 10, 10, 0.3); /* Slight tint */
+    overflow-y: auto;
 }
 .system-status-text {
     color: #6b7280;
@@ -793,6 +1031,187 @@ const getLogLabel = (type) => {
     background: #4ade80; /* Neon Green on Hover */
     color: #000;
 }
+/* --- GUIDE FLOATING BUTTON & SIDEBAR --- */
+.btn-guide-floating {
+    position: fixed;
+    left: 0;
+    top: 20%;
+    z-index: 2000;
+    background: #000;
+    border: 1px solid #333;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    padding: 15px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+    transition: all 0.3s;
+}
+.btn-guide-floating:hover {
+    background: #111;
+    border-color: #4ade80;
+    transform: translateX(5px);
+}
+.btn-guide-floating .icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #222;
+    color: #4ade80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border: 1px solid #333;
+}
+.btn-guide-floating .label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    color: #fff;
+    font-weight: 900;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+}
+.btn-guide-floating.is-open {
+    transform: translateX(320px); /* Move button with sidebar */
+    border-color: #4ade80;
+    background: #000;
+}
+
+.guide-sidebar {
+    position: fixed;
+    top: 0;
+    left: -320px; /* Hidden */
+    width: 320px;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid #333;
+    z-index: 1999;
+    padding: 30px 20px;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.8);
+}
+.guide-sidebar.sidebar-open {
+    transform: translateX(320px); /* Slide in */
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+.sh-title {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #4ade80;
+    letter-spacing: 2px;
+}
+.sh-close {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.sh-close:hover { color: #fff; }
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+}
+
+.guide-step-card {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    gap: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    align-items: flex-start; /* Align top */
+    flex-direction: column; /* Changed to column for expansion */
+    gap: 0;
+}
+.gs-header-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    width: 100%;
+}
+.guide-step-card:hover {
+    background: #27272a;
+    border-color: #52525b;
+}
+.guide-step-card.g-active {
+    background: rgba(74, 222, 128, 0.05);
+    border-color: #4ade80;
+}
+.gs-icon {
+    font-size: 1.5rem;
+    background: #222;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.gs-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.gs-step {
+    font-size: 0.75rem;
+    color: #4ade80;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+.gs-text {
+    font-size: 0.9rem;
+    color: #d4d4d4;
+    line-height: 1.4;
+}
+/* Expanded Hint Styles */
+.gs-hint-content {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #333;
+    width: 100%;
+    animation: fadeIn 0.3s ease;
+}
+.hint-label {
+    font-size: 0.7rem;
+    color: #4ade80;
+    font-weight: 900;
+    margin-bottom: 5px;
+    display: block;
+}
+.hint-body {
+    font-size: 0.9rem;
+    color: #a1a1aa;
+    line-height: 1.6;
+    font-style: italic;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .opt-content {
     flex: 1;
     padding: 0 40px;
@@ -960,7 +1379,32 @@ const getLogLabel = (type) => {
 
 .editor-action-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between; /* Changed to space-between to align notice left, button right */
+    align-items: center;
+    padding-top: 10px;
+}
+
+.btn-execute-large {
+    background: #4ade80; /* Neon Green */
+    color: #000;
+    font-weight: 900;
+    padding: 10px 30px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-execute-large:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+    background: #22c55e;
 }
 
 
@@ -987,17 +1431,57 @@ const getLogLabel = (type) => {
 .snippet-list { flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto; margin-bottom:20px; }
 .snippet-btn { background:#222; border:1px solid #333; color:#eee; padding:15px; text-align:left; cursor:pointer; display:flex; align-items:center; gap:10px; z-index:60; position:relative; }
 .snippet-btn:hover { border-color:#4ade80; color:#4ade80; }
-.command-box { display:flex; flex-direction:column; gap:10px; }
-.btn-reset { background:transparent; border:1px solid #666; color:#666; padding:10px; cursor:pointer; z-index:60; position:relative; }
+/* Button Group Spacing */
+.btn-group { 
+    display: flex; 
+    gap: 15px; 
+    align-items: center; 
+    z-index: 500; 
+    position: relative;
+}
+
+.action-bar-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+    margin-top: auto;
+}
+
+.btn-reset-large {
+    background: transparent;
+    color: #ef4444; /* Red Text */
+    font-weight: 900;
+    padding: 10px 30px;
+    border: 2px solid #ef4444; /* Red Border */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    height: 44px; /* Fixed Height matching execute */
+}
+
+.btn-reset-large:hover {
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    transform: translateY(-2px);
+}
 
 /* PHASE 5 & RESULT */
-.centered-layout { justify-content:center; align-items:center; height:100vh; }
-.center-panel { width:100%; max-width:1000px; text-align:center; } /* Wider */
+.centered-layout { justify-content:center; align-items:center; height:100%; width: 100%; position: relative; z-index: 100; pointer-events: auto; }
+.center-panel { width:100%; max-width:1000px; text-align:center; position: relative; z-index: 110; } /* Wider */
 .big-question-center { font-size:3rem; font-weight:900; margin-bottom:60px; color:#fff; }
-.gold-hover:hover { background:rgba(251, 191, 36, 0.1); border-color:#fbbf24; }
+.gold-hover { cursor: pointer !important; pointer-events: auto !important; }
+.gold-hover:hover { background:rgba(251, 191, 36, 0.15) !important; border-color:#fbbf24 !important; }
 .gold-idx { background:#fbbf24; color: black; }
 .phase-header-gold { color:#fbbf24; font-weight:900; font-size:1.4rem; margin-bottom:40px; text-align:center; display:block;}
-.options-wide { gap: 20px; display:flex; flex-direction:column; } /* Ensure gap */
+.options-wide { gap: 20px; display:flex; flex-direction:column; width: 100%; } /* Ensure gap */
 
 
 .evaluation-view { 
@@ -1081,6 +1565,168 @@ const getLogLabel = (type) => {
 .circle { fill: none; stroke-width: 2.5; stroke-linecap: round; animation: progress 1s ease-out forwards; stroke: #4ade80; }
 .percentage { fill: #fff; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.8em; text-anchor: middle; dominant-baseline: middle; }
 .score-label { font-weight: bold; color: #4ade80; font-size: 1.1rem; }
+
+/* Philosophy Banner */
+.philosophy-banner {
+    background: linear-gradient(90deg, #111 0%, #0a1f12 50%, #111 100%);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+.p-badge { background: #4ade80; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900; font-size: 0.75rem; }
+.p-text { color: #4ade80; font-weight: bold; font-size: 0.9rem; letter-spacing: 0.5px; }
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.metric-card {
+    background: #111;
+    border: 1px solid #333;
+    padding: 15px 10px;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s;
+}
+.metric-card:hover { border-color: #4ade80; transform: translateY(-3px); }
+.m-label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+.m-value { display: block; font-family: 'JetBrains Mono'; font-size: 1.4rem; font-weight: 900; color: #4ade80; }
+/* Radar Chart Styles */
+.radar-chart-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 40px;
+    border: 1px solid #30363d;
+}
+.chart-container { width: 220px; height: 220px; }
+.radar-svg { width: 100%; height: 100%; overflow: visible; }
+.radar-grid { fill: none; stroke: #30363d; stroke-width: 1; }
+.radar-axis { stroke: #30363d; stroke-width: 1; stroke-dasharray: 2,2; }
+.radar-label-text { fill: #8b949e; font-size: 10px; text-anchor: middle; font-weight: bold; }
+.radar-data-poly { fill: rgba(74, 222, 128, 0.2); stroke: #4ade80; stroke-width: 2; filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.4)); }
+.score-summary { display: flex; flex-direction: column; align-items: flex-start; }
+.score-main { font-size: 4.5rem; font-weight: 900; color: #4ade80; line-height: 1; font-family: 'JetBrains Mono'; }
+.score-tier { font-size: 1rem; color: #8b949e; margin-top: 8px; border-left: 3px solid #4ade80; padding-left: 10px; }
+
+/* YouTube Study Cards */
+.youtube-card {
+    display: flex !important;
+    gap: 15px;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: 1px solid #30363d !important;
+    background: #161b22 !important;
+    padding: 15px;
+    border-radius: 8px;
+}
+.youtube-card:hover { 
+    transform: scale(1.02); 
+    border-color: #ff0000 !important; 
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+}
+.yt-thumb {
+    width: 110px;
+    height: 70px;
+    background: #000;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+}
+.yt-play { color: #ff0000; font-size: 1.8rem; }
+.yt-search-tag { 
+    font-size: 0.75rem; 
+    color: #ff0000; 
+    margin-top: 8px; 
+    font-family: 'JetBrains Mono';
+    font-weight: bold;
+}
+.s-card-title { color: #f0f6fc; font-weight: bold; margin-bottom: 5px; }
+.s-card-desc { color: #8b949e; font-size: 0.85rem; line-height: 1.4; }
+
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.metric-card {
+    background: #111;
+    border: 1px solid #333;
+    padding: 15px 10px;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+.metric-card:hover { border-color: #4ade80; transform: translateY(-3px); }
+.metric-card.card-active { border-color: #4ade80; background: #0a1f12; }
+.m-label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+.m-value { display: block; font-family: 'JetBrains Mono'; font-size: 1.4rem; font-weight: 900; color: #4ade80; }
+.m-arrow { font-size: 0.6rem; color: #4ade80; margin-top: 5px; opacity: 0.6; }
+
+/* Metric Detail Box */
+.metric-detail-box {
+    background: #0a1f12;
+    border: 1px solid #4ade80;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    text-align: left;
+    animation: slideDown 0.3s ease-out;
+}
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.detail-row { margin-bottom: 15px; }
+.detail-label { display: block; font-size: 0.7rem; color: #4ade80; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: bold; }
+.detail-text { color: #c9d1d9; font-size: 0.95rem; line-height: 1.5; margin: 0; }
+.detail-list { list-style: none; padding: 0; margin: 0; }
+.detail-list li { color: #888; font-size: 0.9rem; margin-bottom: 4px; }
+
+/* Tail Question Area */
+.tail-question-area {
+    margin-top: 30px;
+    background: #0d1117;
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: left;
+    margin-bottom: 30px;
+}
+.tq-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.tq-icon { font-size: 1.5rem; }
+.tq-title { color: #60a5fa; font-weight: bold; font-size: 1.1rem; }
+.tq-content { font-size: 1rem; color: #c9d1d9; line-height: 1.6; margin-bottom: 25px; border-left: 3px solid #3b82f6; padding-left: 15px; }
+.tq-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-tq-option {
+    background: #161b22;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+.btn-tq-option:hover { border-color: #3b82f6; background: #1c2128; }
 
 @keyframes progress { 0% { stroke-dasharray: 0 100; } }
 
@@ -1224,18 +1870,25 @@ const getLogLabel = (type) => {
 }
 
 /* Code Editor (Middle Col - 60%) */
+/* Code Editor (Middle Col - Flexible) */
+/* Code Editor (Middle Col - Flexible) */
 .code-editor-area {
-    flex: 6;
+    flex: 6; /* Ratio 4:6 with logic-viewer */
+    min-width: 0; /* Prevent overflow */
     background: #1e1e1e;
     border: 1px solid #444;
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow-x: hidden; /* Prevent horizontal scrolling logic */
 }
 
-/* Modules Sidebar (Right Col) */
+/* Modules Sidebar (Right Col - Fixed Width -> Fluid) */
 .modules-sidebar {
-    width: 220px;
+    flex: 0 0 20%; /* Replaces fixed 280px */
+    min-width: 200px;
+    max-width: 300px;
+    flex-shrink: 0;
     background: #0a0a0a;
     border: 1px solid #333;
     display: flex;
@@ -1400,6 +2053,23 @@ const getLogLabel = (type) => {
     padding-left: 15px;
 }
 
+/* Added for Row Layout */
+.code-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.var-name {
+    color: #9cdcfe; /* Light Blue Variable Color */
+    font-weight: bold;
+    min-width: 60px;
+    text-align: right;
+}
+.code-row .drop-zone {
+    flex: 1; /* Take remaining space */
+}
+
 
 /* LLM SUPPLEMENT SECTION */
 .supplement-section {
@@ -1537,6 +2207,71 @@ const getLogLabel = (type) => {
     font-size: 0.75rem;
     color: #94a3b8;
     margin-right: auto;
+}
+
+/* WRITING GUIDE BUTTON & PANEL */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.btn-writing-guide {
+    background: #27272a;
+    border: 1px solid #4ade80;
+    color: #4ade80;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+.btn-writing-guide:hover {
+    background: #4ade80;
+    color: #000;
+}
+
+.writing-guide-overlay {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    width: 300px;
+    background: #18181b;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 100;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    animation: fadeIn 0.2s ease-out;
+}
+.wg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #27272a;
+    padding-bottom: 10px;
+}
+.wg-title { font-weight: bold; color: #fff; }
+.wg-close { background: none; border: none; color: #71717a; cursor: pointer; font-size: 1.2rem; }
+.wg-close:hover { color: #fff; }
+
+.wg-section { margin-bottom: 15px; }
+.wg-label { font-size: 0.8rem; color: #4ade80; font-weight: bold; margin-bottom: 5px; }
+.wg-list { padding-left: 20px; font-size: 0.85rem; color: #d4d4d8; line-height: 1.5; }
+.wg-list li { margin-bottom: 5px; }
+.wg-example {
+    background: #111;
+    border: 1px dashed #3f3f46;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #a1a1aa;
+    line-height: 1.5;
+    font-style: italic;
 }
 
 </style>

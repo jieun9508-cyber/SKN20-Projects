@@ -13,8 +13,10 @@
     font-family: 'Outfit', sans-serif;
     overflow-x: hidden;
     height: 100vh;
+    /* [수정일: 2026-02-09] 스냅 활성화를 위해 고정 높이 설정 */
     overflow-y: auto;
     scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -22,6 +24,8 @@
 .hero-playground-premium {
     position: relative;
     height: 100vh;
+    /* [수정일: 2026-02-09] 1개 섹션 점유 강제 */
+    padding: clamp(60px, 10vh, 120px) 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -29,6 +33,8 @@
     overflow: hidden;
     background-color: #0c0e14;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+    /* [수정일: 2026-02-09] 휠 1회에 1개씩 */
     will-change: transform;
 }
 
@@ -122,11 +128,11 @@
 }
 
 .playground-title-v2 {
-    font-size: 6.5rem;
+    font-size: clamp(3rem, 10vw, 6.5rem);
     font-weight: 950;
-    line-height: 0.85;
-    margin-bottom: 2.5rem;
-    letter-spacing: -2px;
+    line-height: 0.9;
+    margin-bottom: 2rem;
+    letter-spacing: -0.02em;
 }
 
 .text-glow-premium {
@@ -151,14 +157,14 @@
 }
 
 .playground-subtitle-v2 {
-    font-size: 1.6rem;
+    font-size: clamp(1rem, 2vw, 1.6rem);
     color: #cbd5e1;
-    margin-bottom: 4rem;
+    margin-bottom: 3rem;
     font-weight: 300;
-    max-width: 800px;
+    max-width: 90%;
     margin-left: auto;
     margin-right: auto;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .hero-action-group-v2 {
@@ -298,6 +304,7 @@
     gap: 12px;
     color: #b6ff40;
     transition: all 0.5s;
+    flex-shrink: 0;
 }
 
 .logo-icon {
@@ -310,6 +317,7 @@
     font-weight: 950;
     font-size: 1.6rem;
     letter-spacing: 2px;
+    white-space: nowrap;
 }
 
 .nav-links-v2 {
@@ -328,6 +336,8 @@
     transition: all 0.3s ease;
     padding: 0.5rem 1rem;
     border-radius: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .nav-item:hover {
@@ -553,6 +563,7 @@
 .playground-section-premium {
     position: relative;
     height: 100vh;
+    /* [수정일: 2026-02-09] 1개 섹션 점유 강제 */
     padding: 0 2rem;
     max-width: 1400px;
     margin: 0 auto;
@@ -561,6 +572,7 @@
     flex-direction: column;
     justify-content: center;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
     will-change: transform;
 }
 
@@ -1000,16 +1012,17 @@
 */
 .lb-section-premium {
     position: relative;
-    height: 100vh;
+    min-height: 100vh;
+    /* [수정일: 2026-02-09] 내용이 많을 경우 확장을 허용하되 최소 100vh 유지 */
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    background: #06070a;
-    overflow: hidden;
+    justify-content: flex-start;
+    padding: clamp(3rem, 8vh, 6rem) 2rem 4rem 2rem;
+    /* [수정일: 2026-02-09] 하단 조절 */
+    background: #0c0e14;
     scroll-snap-align: start;
-    will-change: transform;
+    scroll-snap-stop: always;
 }
 
 .lb-energy-pulse {
@@ -1039,8 +1052,11 @@
 }
 
 .lb-header-v2 {
+    position: relative;
+    z-index: 10;
     text-align: center;
-    margin-bottom: 5rem;
+    margin-bottom: clamp(1rem, 3vh, 2rem);
+    /* [수정일: 2026-02-09] 여백 더 축소 */
 }
 
 .lb-subtitle {
@@ -1053,7 +1069,7 @@
 }
 
 .lb-header-v2 h2 {
-    font-size: 3.5rem;
+    font-size: clamp(2rem, 6vw, 3.5rem);
     font-weight: 950;
     color: #fff;
     margin-bottom: 1.5rem;
@@ -1065,13 +1081,16 @@
 }
 
 .lb-glass-table-v2 {
+    position: relative;
+    z-index: 10;
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(40px);
     border-radius: 40px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 1.5rem;
-    width: 95%;
-    max-width: 1200px;
+    padding: clamp(0.5rem, 2vh, 1.5rem);
+    /* [수정일: 2026-02-09] 내부 패딩 축소 */
+    width: 92%;
+    max-width: 1400px;
     margin: 0 auto;
     box-shadow:
         0 40px 100px rgba(0, 0, 0, 0.6),
@@ -1092,13 +1111,16 @@
 .lb-row-v2 {
     display: grid;
     grid-template-columns: 120px 1fr 200px 200px;
-    padding: 1.8rem 2.5rem;
+    padding: clamp(0.8rem, 1.5vh, 1.2rem) 2.5rem;
+    /* [수정일: 2026-02-09] 행 간격 축소 */
     align-items: center;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.4rem;
+    /* [수정일: 2026-02-09] 마진 축소 */
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.015);
-    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
     border: 1px solid transparent;
+    position: relative;
+    /* z-index 작동을 위해 추가 */
 }
 
 .lb-row-v2:hover {
@@ -1106,6 +1128,8 @@
     transform: scale(1.02) translateX(10px);
     border-color: rgba(99, 102, 241, 0.3);
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    /* 인접 행보다 위로 */
 }
 
 .rank-box {
@@ -1162,31 +1186,18 @@
 }
 
 .user-avatar-mini {
-    width: 45px;
-    height: 45px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: zoom-in;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     z-index: 1;
 }
 
 .user-avatar-mini:hover {
-    transform: scale(5.0);
     background: rgba(182, 255, 64, 0.15);
     border-color: #b6ff40;
     box-shadow: 0 0 20px rgba(182, 255, 64, 0.6), 0 0 40px rgba(182, 255, 64, 0.3);
-    z-index: 100;
 }
 
-.user-avatar-mini img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
 
 .username-premium {
     font-size: 1.25rem;
@@ -1297,4 +1308,79 @@
 .home-pop-leave-to {
     opacity: 0;
     transform: translateY(30px) scale(0.5);
+}
+
+/* [수정일: 2026-02-09] 리더보드 페이징 컨트롤 스타일 */
+.lb-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin-top: clamp(10px, 3vh, 30px);
+    /* [수정일: 2026-02-09] 마진 축소 */
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.btn-pg {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-pg:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: #6366f1;
+    color: #6366f1;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-pg:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.pg-numbers {
+    display: flex;
+    gap: 12px;
+}
+
+.pg-num {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #64748b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.pg-num:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pg-num.active {
+    color: #b6ff40;
+    background: rgba(182, 255, 64, 0.1);
+    border-color: rgba(182, 255, 64, 0.3);
+    box-shadow: 0 0 15px rgba(182, 255, 64, 0.2);
 }

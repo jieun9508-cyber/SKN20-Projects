@@ -9,3 +9,6 @@ from .ai_view import AIEvaluationView, BugHuntEvaluationView
 from .code_execution_view import CodeExecutionView, BehaviorVerificationView
 from .management_view import OverallProgressView, UserAnswersView
 from . import activity_view
+from .ai_proxy_view import AIProxyView
+from .pseudocode_execution import execute_python_code
+from .pseudocode_agent_view import PseudocodeAgentView

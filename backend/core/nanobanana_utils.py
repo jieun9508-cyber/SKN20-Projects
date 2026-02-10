@@ -1,49 +1,64 @@
 # 수정일: 2026-02-06
-# 수정내용: 나노바나나(Gemini API)를 활용한 아바타 생성 유틸리티 구현 및 Supabase Storage 연동
+# 수정내용: 나노바나나(Gemini API)를 활용한 아바타 생성 유틸리티 구현 및 AWS S3 연동
 
 import os
 import uuid
-import requests
 import io
+import boto3
+from botocore.exceptions import ClientError
 from PIL import Image
 from django.conf import settings
 from google import genai
 from google.genai import types
 
-def upload_to_supabase(file_data, bucket_name='avatars', file_path=None):
+def upload_to_s3(file_data, bucket_name=None, file_path=None):
     """
-    Supabase Storage에 파일을 업로드합니다.
+    AWS S3에 파일을 업로드합니다.
+    [수정일: 2026-02-09] (Antigravity)
     """
-    supabase_url = os.environ.get("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_KEY") # Service Role Key 필요
-    
-    if not supabase_url or not supabase_key:
-        print("DEBUG: Supabase credentials missing (SUPABASE_URL/SUPABASE_KEY)")
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    region = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-2")
+    bucket = bucket_name or os.environ.get("AWS_STORAGE_BUCKET_NAME")
+
+    if not all([access_key, secret_key, bucket]):
+        print("DEBUG: AWS S3 credentials missing (KEY/SECRET/BUCKET)")
         return None
 
     if not file_path:
-        file_path = f"avatar_{uuid.uuid4().hex}.png"
-
-    # Supabase Storage API Endpoint
-    # URL 형식: https://[PROJECT_ID].supabase.co/storage/v1/object/[BUCKET]/[PATH]
-    url = f"{supabase_url.rstrip('/')}/storage/v1/object/{bucket_name}/{file_path}"
-    
-    headers = {
-        "Authorization": f"Bearer {supabase_key}",
-        "Content-Type": "image/png"
-    }
+        file_path = f"avatars/avatar_{uuid.uuid4().hex}.webp"
 
     try:
-        response = requests.post(url, headers=headers, data=file_data)
-        if response.status_code == 200:
-            # 퍼블릭 URL 반환
-            return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket_name}/{file_path}"
-        else:
-            print(f"DEBUG: Supabase upload failed ({response.status_code}): {response.text}")
-            return None
-    except Exception as e:
-        print(f"DEBUG: Supabase upload exception: {e}")
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region
+        )
+        
+        # S3 업로드 (ACL 없이 기본 업로드 - 버킷의 '퍼블릭 액세스 차단' 설정에 따라 ACL이 허용 안 될 수 있음)
+        extra_args = {'ContentType': 'image/webp'}
+        
+        # [참고] 버킷 정책에서 퍼블릭 읽기가 허용되어 있다면 ACL 없이도 URL 접근 가능
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=file_path,
+            Body=file_data,
+            **extra_args
+        )
+        
+        # S3 URL 생성 (Virtual-hosted–style URL)
+        url = f"https://{bucket}.s3.{region}.amazonaws.com/{file_path}"
+        print(f"DEBUG: S3 Upload success: {url}")
+        return url
+        
+    except ClientError as e:
+        print(f"DEBUG: S3 upload failed (ClientError): {e}")
         return None
+    except Exception as e:
+        print(f"DEBUG: S3 upload exception: {e}")
+        return None
+
 
 def optimize_image(image_bytes, size=(512, 512), quality=80):
     """
@@ -133,16 +148,28 @@ def generate_nano_banana_avatar(prompt, seed=None, save_local=True):
                             'model_used': model_id
                         }
 
-                    # 고유 파일명 생성 및 저장 (.webp 확장자 권장)
+                    # [수정일: 2026-02-10] S3를 메인 저장소로 사용 (통합 A안)
+                    # S3 업로드 시도
+                    s3_url = upload_to_s3(image_data)
+                    
+                    if s3_url:
+                        print(f"DEBUG: SUCCESSful AI generation & S3 Promotion with {model_id}", flush=True)
+                        return {
+                            'url': s3_url,
+                            'seed': seed,
+                            'ai_generated': True,
+                            'model_used': model_id
+                        }
+                    
+                    # S3 실패 시만 로컬 저장소 활용 (안정성 확보)
                     filename = f"avatar_{uuid.uuid4().hex}.webp"
                     media_path = os.path.join('avatars', filename)
                     abs_path = os.path.join(settings.MEDIA_ROOT, media_path)
-                    
                     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
                     with open(abs_path, 'wb') as f:
                         f.write(image_data)
                     
-                    print(f"DEBUG: SUCCESSful AI generation with {model_id}", flush=True)
+                    print(f"DEBUG: AI generation success but S3 failed. Using local storage: {media_path}", flush=True)
                     return {
                         'url': f"{settings.MEDIA_URL}{media_path}",
                         'seed': seed,

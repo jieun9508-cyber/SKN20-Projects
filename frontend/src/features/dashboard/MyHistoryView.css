@@ -180,6 +180,62 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* [수정일: 2026-02-09] 구조화된 로그 스타일 추가 */
+.structured-log {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.log-section {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.log-section-header {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-icon {
+    font-size: 1.1rem;
+}
+
+.section-title {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--primary);
+    letter-spacing: 0.5px;
+}
+
+.section-content {
+    padding: 15px;
+    color: #cbd5e1;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.section-content.code-mode {
+    padding: 0;
+}
+
+.section-content.code-mode pre {
+    background: #000;
+    margin: 0;
+    padding: 1.25rem;
+    color: #10b981;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+}
+
 .log-date {
     text-align: right;
     font-size: 0.8rem;

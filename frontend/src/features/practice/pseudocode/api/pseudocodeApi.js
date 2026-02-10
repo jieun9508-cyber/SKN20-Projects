@@ -1,244 +1,533 @@
 /**
- * Pseudocode Practice API Service (Deep Dive Evaluation)
- * SystemArchitecture 스타일의 면접관 페르소나 평가 방식 적용
+ * Pseudocode Practice API Service (v2)
+ * 
+ * 개선 사항:
+ * 1. JSON 파싱 안정성 (safeJSONParse 사용)
+ * 4. AI 캐싱 (중복 호출 방지)
+ * 7. 레이스 컨디션 방지 (요청 중복 차단)
+ * 
+ * [2026-02-09] 완전 개선 (Antigravity + Claude)
  */
 
-const getApiKey = () => import.meta.env.VITE_OPENAI_API_KEY;
+import { PseudocodeValidator } from '../utils/PseudocodeValidator.js';
+import { safeJSONParse } from '../utils/jsonParser.js';
+import { handleAIEvaluationError } from '../utils/errorHandler.js';
+import axios from 'axios';
+
+// ✨ 4번 해결: AI 결과 캐시
+const aiCache = new Map();
+const MAX_CACHE_SIZE = 100;
+const CACHE_TTL = 1000 * 60 * 30; // 30분
+
+// ✨ 7번 해결: 요청 중복 방지
+const ongoingRequests = new Map();
 
 /**
- * OpenAI API 호출 기본 함수
+ * 캐시 키 생성
+ */
+function getCacheKey(type, data) {
+    return `${type}:${JSON.stringify(data)}`;
+}
+
+/**
+ * 캐시 관리 (LRU)
+ */
+function setCache(key, value) {
+    // 캐시 크기 제한
+    if (aiCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = aiCache.keys().next().value;
+        aiCache.delete(firstKey);
+    }
+
+    aiCache.set(key, {
+        value,
+        timestamp: Date.now()
+    });
+}
+
+function getCache(key) {
+    const cached = aiCache.get(key);
+    
+    if (!cached) return null;
+
+    // TTL 체크
+    if (Date.now() - cached.timestamp > CACHE_TTL) {
+        aiCache.delete(key);
+        return null;
+    }
+
+    return cached.value;
+}
+
+/**
+ * OpenAI API 호출 (개선 버전)
  */
 async function callOpenAI(prompt, options = {}) {
-  const {
-    model = 'gpt-4o-mini',
-    maxTokens = 1500,
-    temperature = 0.4,
-    systemMessage = null
-  } = options;
+    const {
+        model = 'gpt-4o-mini',
+        maxTokens = 500,
+        temperature = 0.7,
+        systemMessage = null,
+        maxRetries = 2
+    } = options;
 
-  const messages = [];
-  if (systemMessage) {
-    messages.push({ role: 'system', content: systemMessage });
-  }
-  messages.push({ role: 'user', content: prompt });
+    const messages = [];
+    if (systemMessage) {
+        messages.push({ role: 'system', content: systemMessage });
+    }
+    messages.push({ role: 'user', content: prompt });
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getApiKey()}`
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: maxTokens,
-        temperature
-      })
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await axios.post('/api/core/ai-proxy/', {
+                model,
+                messages,
+                max_tokens: maxTokens,
+                temperature
+            });
+
+            return response.data.content.trim();
+        } catch (error) {
+            if (attempt < maxRetries) {
+                console.warn(`Retry ${attempt + 1}/${maxRetries}:`, error.message);
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                continue;
+            }
+            throw error;
+        }
+    }
+}
+
+/**
+ * ✨ 4번 해결: AI 튜터 피드백 (캐싱 적용)
+ */
+async function getTutorFeedback(problem, pseudocode, validationResult) {
+    // 캐시 키 생성 (문제 ID + 점수 기반)
+    const cacheKey = getCacheKey('tutor', {
+        problemId: problem.id,
+        score: validationResult.score,
+        conceptsFound: validationResult.details.concepts.length
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
+    // 캐시 확인
+    const cached = getCache(cacheKey);
+    if (cached) {
+        console.log('[AI Cache] Tutor feedback from cache');
+        return cached;
+    }
+
+    const systemPrompt = `You are a patient, encouraging computer science tutor.
+
+Your role:
+- Help students understand WHY, not just WHAT
+- Ask thought-provoking questions
+- Provide specific, actionable guidance
+- Be encouraging even when correcting mistakes
+
+Never:
+- Give scores or grades
+- Be condescending
+- Provide complete solutions
+- Use phrases like "you should have" or "you forgot"`;
+
+    const userPrompt = `Problem: ${problem.title || 'Algorithm Design'}
+
+Student's pseudocode:
+${pseudocode}
+
+Current understanding:
+- Found concepts: ${validationResult.details.concepts.join(', ') || 'none'}
+- Structure score: ${validationResult.score}/100
+${validationResult.criticalErrors.length > 0 ? `- Critical errors: ${validationResult.criticalErrors.map(e => e.message).join('; ')}` : ''}
+
+Provide brief, conversational feedback (max 100 words):
+1. One specific thing they did well
+2. One key concept to strengthen (with a guiding question, not an answer)
+3. One actionable next step
+
+Keep it warm and encouraging.`;
+
+    try {
+        const response = await callOpenAI(userPrompt, {
+            systemMessage: systemPrompt,
+            maxTokens: 250,
+            temperature: 0.7
+        });
+
+        const result = {
+            feedback: response,
+            encouragement: validationResult.score >= 70 
+                ? "You're on the right track! 🎯" 
+                : validationResult.score >= 40
+                ? "Good foundation, let's refine it together! 💪"
+                : "Let's work through this step by step! 🤝"
+        };
+
+        // 캐시 저장
+        setCache(cacheKey, result);
+
+        return result;
+    } catch (error) {
+        console.warn('Tutor feedback failed:', error.message);
+        return {
+            feedback: "Great effort on your pseudocode! Focus on the core logic flow and make sure each step builds on the previous one.",
+            encouragement: "Keep going! 🚀"
+        };
+    }
+}
+
+/**
+ * ✨ 7번 해결: Phase 3 의사코드 즉시 평가 (레이스 컨디션 방지)
+ */
+export async function quickCheckPseudocode(problem, pseudocode) {
+    // ✨ 레이스 컨디션 방지: 동일 요청 중복 체크
+    const requestKey = `quick:${problem.id}:${pseudocode.substring(0, 50)}`;
+    
+    if (ongoingRequests.has(requestKey)) {
+        console.warn('[Race Prevention] Duplicate request blocked:', requestKey);
+        // 진행 중인 요청 재사용
+        return await ongoingRequests.get(requestKey);
+    }
+
+    // 요청 Promise 저장
+    const evaluationPromise = (async () => {
+        try {
+            // 1. 규칙 기반 검증 (즉시)
+            const validator = new PseudocodeValidator(problem);
+            const validationResult = validator.validate(pseudocode);
+
+            // 2. 치명적 오류가 있으면 AI 없이 즉시 반환
+            if (!validationResult.passed) {
+                return {
+                    passed: false,
+                    score: Math.min(validationResult.score, 40),
+                    grade: 'needs-major-revision',
+                    criticalErrors: validationResult.criticalErrors,
+                    feedback: validationResult.criticalErrors[0].message,
+                    why: validationResult.criticalErrors[0].why,
+                    correctExample: validationResult.criticalErrors[0].example,
+                    improvements: validationResult.warnings,
+                    details: validationResult.details,
+                    aiTutorAvailable: false
+                };
+            }
+
+            // 3. 치명적 오류 없음 → AI 튜터 피드백 요청 (캐싱됨)
+            let tutorFeedback = null;
+            try {
+                tutorFeedback = await getTutorFeedback(problem, pseudocode, validationResult);
+            } catch (error) {
+                console.warn('AI tutor unavailable:', error.message);
+                // AI 실패해도 규칙 기반 결과는 유지
+            }
+
+            // 4. 등급 결정 (규칙 기반 점수로만)
+            let grade;
+            if (validationResult.score >= 85) {
+                grade = 'excellent';
+            } else if (validationResult.score >= 70) {
+                grade = 'good';
+            } else if (validationResult.score >= 50) {
+                grade = 'fair';
+            } else {
+                grade = 'needs-improvement';
+            }
+
+            return {
+                passed: true,
+                score: validationResult.score,
+                grade,
+                criticalErrors: [],
+                feedback: tutorFeedback?.feedback || validationResult.details.structure.feedback.join('\n'),
+                encouragement: tutorFeedback?.encouragement || '잘하고 있습니다! 👍',
+                improvements: validationResult.warnings,
+                details: validationResult.details,
+                aiTutorAvailable: tutorFeedback !== null
+            };
+        } finally {
+            // 요청 완료 후 제거
+            ongoingRequests.delete(requestKey);
+        }
+    })();
+
+    // 진행 중인 요청 등록
+    ongoingRequests.set(requestKey, evaluationPromise);
+
+    return await evaluationPromise;
+}
+
+/**
+ * ✨ 1번, 4번 해결: Pseudocode 심화 질문 생성 (JSON 파싱 개선 + 캐싱)
+ */
+export async function generatePseudocodeDeepDiveQuestions(problem, pseudocode) {
+    // 캐시 확인
+    const cacheKey = getCacheKey('questions', {
+        problemId: problem.id,
+        pseudocodeHash: pseudocode.substring(0, 100)
+    });
+
+    const cached = getCache(cacheKey);
+    if (cached) {
+        console.log('[AI Cache] Questions from cache');
+        return cached;
+    }
+
+    const systemPrompt = `You are an experienced technical interviewer.
+Generate 3 insightful follow-up questions to assess deeper understanding.
+
+Categories:
+1. Logic Understanding - why they chose this approach
+2. Edge Cases - how they handle exceptions
+3. Optimization - time/space complexity awareness`;
+
+    const userPrompt = `Problem: ${problem?.title || 'Algorithm Problem'}
+Student's pseudocode:
+${pseudocode}
+
+Generate 3 questions (one per category).
+Format as JSON array:
+[
+  {"category": "Logic Understanding", "question": "..."},
+  {"category": "Edge Cases", "question": "..."},
+  {"category": "Optimization", "question": "..."}
+]`;
+
+    try {
+        const response = await callOpenAI(userPrompt, {
+            systemMessage: systemPrompt,
+            maxTokens: 400,
+            temperature: 0.8
+        });
+
+        // ✨ 1번 해결: 안전한 JSON 파싱
+        const questions = safeJSONParse(response, null);
+
+        if (Array.isArray(questions) && questions.length > 0) {
+            // 캐시 저장
+            setCache(cacheKey, questions);
+            return questions;
+        }
+
+        throw new Error('Invalid JSON response');
+
+    } catch (error) {
+        console.error('Question generation failed:', error.message);
+        
+        // Fallback 질문
+        const fallback = [
+            {
+                category: 'Logic Understanding',
+                question: '이 알고리즘의 핵심 아이디어를 한 문장으로 설명해주세요.'
+            },
+            {
+                category: 'Edge Cases',
+                question: '입력 데이터가 비어있거나 예상과 다른 형식일 때 어떻게 처리하나요?'
+            },
+            {
+                category: 'Optimization',
+                question: '이 알고리즘의 시간 복잡도는 어떻게 되며, 개선할 수 있는 부분이 있나요?'
+            }
+        ];
+
+        return fallback;
+    }
+}
+
+/**
+ * [NEW] 백엔드 지능형 에이전트 호출 (Coduck Wizard)
+ * 사용자의 전략과 제약사항을 포함하여 정밀 분석을 수행합니다.
+ */
+export async function runPseudocodeAgent(params) {
+  const {
+    user_logic,
+    quest_title,
+    quest_description,
+    selected_strategy,
+    constraints
+  } = params;
+
+  try {
+    const response = await axios.post('/api/core/pseudo-agent/', {
+      user_logic,
+      quest_title,
+      quest_description,
+      selected_strategy,
+      constraints
+    });
+    return response.data;
   } catch (error) {
-    console.error('OpenAI Call Error:', error);
+    console.error('Pseudocode Agent Error:', error);
     throw error;
   }
 }
 
 /**
- * Pseudocode 심층 질문 3개 생성
- * - 의사코드를 기반으로 면접관이 추가로 확인할 내용 질문
+ * 최종 종합 평가 (의사코드 + 면접 답변)
+ * ✨ 4번 해결: Phase 3 결과 재사용 (캐싱)
  */
-export async function generatePseudocodeDeepDiveQuestions(problem, pseudocode) {
-  const prompt = `당신은 알고리즘 및 의사코드 작성 능력을 평가하는 면접관입니다.
-
-## 문제 정보
-- 제목: ${problem?.title || '알고리즘 문제'}
-- 설명: ${problem?.description || ''}
-
-## 학생이 작성한 의사코드
-${pseudocode}
-
-## 질문 생성 기준
-학생의 의사코드를 보고 다음 3가지 관점에서 심화 질문을 생성해주세요:
-
-1. **논리 이해도**: 학생이 이 알고리즘을 제대로 이해하고 작성했는지 확인
-   - 예: "왜 이런 순서로 처리하도록 설계했나요?"
-   - 예: "이 부분에서 다른 접근 방법은 고려해보셨나요?"
-
-2. **예외 처리**: 엣지 케이스나 예외 상황에 대한 이해도
-   - 예: "입력값이 비어있거나 음수일 때는 어떻게 처리하나요?"
-   - 예: "이 로직에서 무한루프가 발생할 가능성은 없나요?"
-
-3. **최적화**: 시간/공간 복잡도 및 개선 가능성
-   - 예: "이 알고리즘의 시간 복잡도는 어떻게 되나요?"
-   - 예: "더 효율적인 자료구조를 사용할 수 있을까요?"
-
-## 출력 형식 (JSON만):
-{
-  "questions": [
-    {"category": "논리 이해도", "question": "질문1"},
-    {"category": "예외 처리", "question": "질문2"},
-    {"category": "최적화", "question": "질문3"}
-  ]
-}`;
-
-  try {
-    const response = await callOpenAI(prompt, { maxTokens: 600, temperature: 0.7 });
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return parsed.questions || [];
+export async function evaluatePseudocode(problem, pseudocode, deepDiveQnA, phase3Result = null) {
+    // ✨ Phase 3 결과 재사용 (중복 AI 호출 방지)
+    let validationResult;
+    
+    if (phase3Result) {
+        console.log('[Cache] Reusing Phase 3 validation result');
+        validationResult = {
+            score: phase3Result.score,
+            passed: phase3Result.passed,
+            criticalErrors: phase3Result.criticalErrors,
+            details: phase3Result.details,
+            warnings: phase3Result.improvements
+        };
+    } else {
+        // Phase 3 없이 직접 호출된 경우
+        const validator = new PseudocodeValidator(problem);
+        validationResult = validator.validate(pseudocode);
     }
-    throw new Error('Invalid JSON');
-  } catch (error) {
-    console.error('Deep dive questions generation error:', error);
-    // Fallback 질문
-    return [
-      { category: '논리 이해도', question: '작성하신 의사코드의 핵심 로직과 그렇게 설계한 이유를 설명해주세요.' },
-      { category: '예외 처리', question: '입력값이 예상과 다르거나 엣지 케이스가 발생할 때 어떻게 처리하나요?' },
-      { category: '최적화', question: '이 알고리즘의 시간 복잡도는 어떻게 되며, 더 개선할 방법이 있을까요?' }
-    ];
-  }
+    
+    // 의사코드 점수: 50점 만점으로 환산
+    const pseudocodeScore = Math.round(validationResult.score * 0.5);
+
+    // 2. 면접 답변 평가 (간단한 휴리스틱)
+    const deepDiveArray = Array.isArray(deepDiveQnA) ? deepDiveQnA : [];
+    
+    let interviewScore = 0;
+    const questionAnalysis = [];
+
+    for (const qa of deepDiveArray) {
+        const answer = qa.answer || '';
+        const wordCount = answer.split(/\s+/).length;
+        
+        let qScore = 0;
+        let feedback = '';
+
+        if (wordCount === 0) {
+            qScore = 0;
+            feedback = '답변이 없습니다.';
+        } else if (wordCount < 10) {
+            qScore = 5;
+            feedback = '너무 짧습니다. 더 구체적으로 설명해보세요.';
+        } else if (wordCount < 30) {
+            qScore = 10;
+            feedback = '기본 개념은 있지만 더 자세한 설명이 필요합니다.';
+        } else {
+            const hasTechTerms = /(알고리즘|복잡도|최적화|데이터구조|시간|공간|효율|성능)/i.test(answer);
+            qScore = hasTechTerms ? 15 : 12;
+            feedback = hasTechTerms 
+                ? '구체적이고 기술적인 답변입니다!' 
+                : '좋은 답변입니다. 기술 용어를 추가하면 더 좋겠습니다.';
+        }
+
+        interviewScore += qScore;
+        questionAnalysis.push({
+            question: qa.question,
+            category: qa.category,
+            userAnswer: answer,
+            score: qScore,
+            feedback
+        });
+    }
+
+    interviewScore = Math.min(50, interviewScore);
+
+    // 3. 최종 통합
+    const totalScore = pseudocodeScore + interviewScore;
+
+    let grade;
+    if (totalScore >= 85) {
+        grade = 'excellent';
+    } else if (totalScore >= 70) {
+        grade = 'good';
+    } else if (totalScore >= 50) {
+        grade = 'needs-improvement';
+    } else {
+        grade = 'poor';
+    }
+
+    return {
+        totalScore,
+        grade,
+        summary: `의사코드: ${pseudocodeScore}/50점 | 면접 답변: ${interviewScore}/50점`,
+
+        pseudocodeEvaluation: {
+            score: pseudocodeScore,
+            passed: validationResult.passed,
+            criticalErrors: validationResult.criticalErrors,
+            details: validationResult.details?.structure?.feedback || [],
+            strengths: validationResult.score >= 70 ? ['규칙 준수 우수'] : [],
+            weaknesses: validationResult.warnings
+        },
+
+        interviewEvaluation: {
+            score: interviewScore,
+            questionAnalysis
+        },
+
+        suggestions: [
+            ...validationResult.warnings,
+            '면접 답변에서는 구체적인 예시와 기술 용어를 활용하세요.'
+        ],
+
+        // ✨ 캐싱 여부 표시
+        usedCache: phase3Result !== null
+    };
 }
 
 /**
- * Pseudocode 종합 평가
- * - 의사코드 자체 평가 (50점) + 면접 답변 평가 (50점)
- * 
- * @param {Object} problem - 문제 데이터
- * @param {string} pseudocode - 학생이 작성한 의사코드
- * @param {Array} deepDiveQnA - 심화 질문/답변 [{category, question, answer}]
+ * 의사코드 ↔ 실제 코드 정합성 체크
+ * ✨ 6번 해결: 주석 제거 후 검증
  */
-export async function evaluatePseudocode(problem, pseudocode, deepDiveQnA) {
-  const deepDiveArray = Array.isArray(deepDiveQnA) ? deepDiveQnA : [];
-  const deepDiveQnAText = deepDiveArray.length > 0
-    ? deepDiveArray.map((item, idx) =>
-        `[질문 ${idx + 1} - ${item.category || '일반'}]\nQ: ${item.question}\nA: ${item.answer || '(답변 없음)'}`
-      ).join('\n\n')
-    : '(심화 질문에 답변하지 않음)';
+export async function checkConsistency(pseudocode, actualCode, problemType = 'dataLeakage') {
+    // ✨ 주석 제거
+    const cleanCode = actualCode
+        .replace(/#.*$/gm, '')         // Python comments
+        .replace(/"""[\s\S]*?"""/g, '') // Docstrings
+        .replace(/'''[\s\S]*?'''/g, '');
 
-  const answeredCount = deepDiveArray.filter(item => item.answer && item.answer.length > 0).length;
-  const totalAnswerLength = deepDiveArray.reduce((sum, item) => sum + (item.answer || '').length, 0);
+    const gaps = [];
 
-  // 모범 답안 (있다면)
-  const modelPseudocode = problem?.pseudocode || problem?.model_pseudocode || '';
-  const solutionCode = problem?.solution_code || '';
+    if (problemType === 'dataLeakage') {
+        // 의사코드 체크
+        if (!/fit/i.test(pseudocode)) {
+            gaps.push('의사코드에 "fit" 개념 누락');
+        }
+        if (!/transform/i.test(pseudocode)) {
+            gaps.push('의사코드에 "transform" 개념 누락');
+        }
 
-  const prompt = `당신은 알고리즘 및 의사코드 평가 전문가입니다.
+        // ✨ 주석 제거된 코드에서만 체크
+        if (!/\.fit\s*\(/i.test(cleanCode)) {
+            gaps.push('실제 코드에 .fit() 메서드 없음');
+        }
+        if (!/\.transform\s*\(/i.test(cleanCode)) {
+            gaps.push('실제 코드에 .transform() 메서드 없음');
+        }
 
-## 문제 정보
-- 제목: ${problem?.title || '알고리즘 문제'}
-- 설명: ${problem?.description || ''}
-${modelPseudocode ? `\n### 모범 의사코드 (참고용)\n${modelPseudocode}` : ''}
-${solutionCode ? `\n### 정답 코드 (참고용)\n\`\`\`python\n${solutionCode}\n\`\`\`\n` : ''}
-
-## 학생이 작성한 의사코드
-${pseudocode}
-
-## 심화 질문 및 답변 (${deepDiveArray.length}개 중 ${answeredCount}개 답변)
-${deepDiveQnAText}
-
-## 채점 규칙
-
-### Pseudocode Score (50점 만점)
-- **논리 정확성 (25점)**: 알고리즘이 문제를 올바르게 해결하는가?
-- **구조 명확성 (15점)**: 단계별 흐름이 명확하고 이해하기 쉬운가?
-- **완성도 (10점)**: 필요한 단계들이 모두 포함되어 있는가?
-
-### Interview Score (50점 만점)
-- **답변이 없거나 의미 없음**: 최대 10점
-- **답변이 짧지만 개념적으로 타당 (30~100자)**: 최대 30점
-- **핵심 개념은 맞으나 설명 부족**: 30~40점
-- **구체적 설명 + 기술 용어 포함**: 40~45점
-- **구체적 설명 + 트레이드오프/최적화 명시**: 45~50점
-
-### 총점 계산
-totalScore = pseudocodeScore + interviewScore (100점 만점)
-
-## 출력 형식 (JSON만 출력!)
-{
-  "totalScore": 0,
-  "grade": "excellent(80+)" | "good(60-79)" | "needs-improvement(40-59)" | "poor(0-39)",
-  "summary": "총평 2-3문장",
-
-  "pseudocodeEvaluation": {
-    "score": 0,
-    "details": [
-      {"item": "논리 정확성", "score": 0, "basis": "평가 근거"},
-      {"item": "구조 명확성", "score": 0, "basis": "평가 근거"},
-      {"item": "완성도", "score": 0, "basis": "평가 근거"}
-    ],
-    "strengths": ["강점1", "강점2"],
-    "weaknesses": ["약점1"]
-  },
-
-  "interviewEvaluation": {
-    "score": 0,
-    "answerAnalysis": {
-      "length": ${totalAnswerLength},
-      "hasKeyTerms": true/false,
-      "keyTermsFound": ["발견된 기술 용어"],
-      "keyTermsMissing": ["누락된 핵심 키워드"]
-    },
-    "questionAnalysis": [
-      {
-        "question": "실제 질문 내용",
-        "category": "질문 카테고리",
-        "userAnswer": "학생 답변",
-        "modelAnswer": "모범 답안",
-        "matchStatus": "match/partial/mismatch",
-        "deductionReason": "감점 사유 (있으면)",
-        "score": 0,
-        "feedback": "피드백"
-      }
-    ]
-  },
-
-  "suggestions": ["학습 제안1", "제안2"]
-}`;
-
-  try {
-    const response = await callOpenAI(prompt, { maxTokens: 2000, temperature: 0.3 });
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]);
-      result.score = result.totalScore; // 호환성
-      return result;
+        // 치명적 패턴
+        if (/fit\s*\(.*test/i.test(cleanCode)) {
+            gaps.push('🚨 실제 코드에서 테스트 데이터로 fit 수행');
+        }
     }
-    throw new Error('Invalid JSON response');
-  } catch (error) {
-    console.error('Evaluation error:', error);
-    // Fallback 응답
-    const fallbackQuestionAnalysis = deepDiveArray.map(item => ({
-      question: item.question,
-      category: item.category || '일반',
-      userAnswer: item.answer || '',
-      modelAnswer: '평가 오류',
-      matchStatus: 'mismatch',
-      deductionReason: '평가 오류',
-      score: 0,
-      feedback: '다시 시도해주세요.'
-    }));
 
+    const score = Math.max(0, 100 - (gaps.length * 20));
+    const comment = gaps.length === 0
+        ? '✅ 의사코드와 구현이 일치합니다'
+        : `⚠️ ${gaps.length}개 불일치 발견`;
+
+    return { score, comment, gaps };
+}
+
+/**
+ * ✨ 캐시 관리 함수
+ */
+export function clearAICache() {
+    aiCache.clear();
+    console.log('[AI Cache] Cleared');
+}
+
+export function getAICacheStats() {
     return {
-      totalScore: 30,
-      score: 30,
-      grade: 'poor',
-      summary: '평가 중 오류가 발생했습니다.',
-      pseudocodeEvaluation: {
-        score: 15,
-        details: [],
-        strengths: [],
-        weaknesses: ['평가 오류']
-      },
-      interviewEvaluation: {
-        score: 15,
-        answerAnalysis: { length: totalAnswerLength, hasKeyTerms: false, keyTermsFound: [], keyTermsMissing: [] },
-        questionAnalysis: fallbackQuestionAnalysis
-      },
-      suggestions: ['다시 시도해주세요']
+        size: aiCache.size,
+        maxSize: MAX_CACHE_SIZE,
+        ttl: CACHE_TTL
     };
-  }
 }
