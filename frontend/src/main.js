@@ -14,14 +14,14 @@ axios.defaults.xsrfHeaderName = 'X-CSRFToken'
 
 // 새로운 퀘스트 기반 Logic Mirror 임포트
 import CoduckWars from './features/practice/pseudocode/CoduckWars.vue'
-import SystemArchitecturePractice from './features/practice/SystemArchitecturePractice.vue'
+import SystemArchitecturePractice from './features/practice/architecture/SystemArchitecturePractice.vue'
 import BugHunt from './features/practice/BugHunt.vue'
 // import OpsPractice from './features/practice/OpsPractice.vue'
 import ManagementView from './features/dashboard/ManagementView.vue'
 import MyHistoryView from './features/dashboard/MyHistoryView.vue'
 
 // [2026-02-09] Phase 0: 데이터 검증 테스트 페이지
-import DataValidationTest from './features/practice/components/DataValidationTest.vue'
+import DataValidationTest from './features/practice/architecture/components/DataValidationTest.vue'
 
 // [수정일: 2026-01-31] 사용하지 않는 구버전/비활성 컴포넌트 임포트 주석 처리
 // import AiDetectivePractice from './features/practice/AiDetectivePractice.vue'

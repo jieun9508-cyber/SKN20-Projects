@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 6대 기둥 txt 파일 경로
-const TXT_DIR = path.join(__dirname, '../frontend/src/data');
+const TXT_DIR = path.join(__dirname, '../../../../../data');
 
 // txt 파일 읽기
 const reliabilityTxt = fs.readFileSync(path.join(TXT_DIR, '신뢰성.txt'), 'utf8');

@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 면접 데이터 디렉토리
-const INTERVIEW_DIR = path.join(__dirname, '../frontend/src/data/interview');
+const INTERVIEW_DIR = path.join(__dirname, '../../../../../data/interview');
 
 /**
  * 모든 면접 JSON 파일 로드
