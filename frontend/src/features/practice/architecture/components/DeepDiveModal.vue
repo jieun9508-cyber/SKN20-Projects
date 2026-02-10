@@ -176,6 +176,10 @@ export default {
     question(newVal) {
       if (newVal) {
         this.answer = '';
+        // 질문이 변경될 때마다 다이어그램 다시 렌더링
+        this.$nextTick(() => {
+          this.renderMermaid();
+        });
       }
     },
     isActive(newVal) {
@@ -188,6 +192,14 @@ export default {
     },
     isGenerating(newVal) {
       if (!newVal && this.mermaidCode) {
+        this.$nextTick(() => {
+          this.renderMermaid();
+        });
+      }
+    },
+    // mermaidCode가 변경될 때도 다시 렌더링
+    mermaidCode(newVal) {
+      if (newVal && this.isActive && !this.isGenerating) {
         this.$nextTick(() => {
           this.renderMermaid();
         });
