@@ -18,7 +18,7 @@ export const useGameStore = defineStore('game', {
             'Pseudo Practice': [0],
             // [수정일: 2026-01-28] 난이도별(초/중/고) 첫 문제를 기본 해금하여 즉시 선택 가능하도록 설정
             'Debug Practice': [0],
-            'System Practice': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'System Practice': [0], // [수정: 2026-02-10] 다른 practice와 동일하게 1단계부터 시작
             'Ops Practice': [0],
             'Agent Practice': [0],
             // [수정일: 2026-01-28] Pseudo Forest 전용 진행도 초기값 추가
@@ -325,7 +325,7 @@ export const useGameStore = defineStore('game', {
             }
 
             if (unitTitle === 'systempractice') {
-                return state.unitProgress['System Practice'] || [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                return state.unitProgress['System Practice'] || [0]; // [수정: 2026-02-10] 1단계부터 시작
             }
 
             return state.unitProgress[state.activeUnit.name] || [0];

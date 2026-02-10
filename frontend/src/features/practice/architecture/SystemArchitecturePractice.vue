@@ -23,7 +23,10 @@
       :result="evaluationResult"
       :problem="currentProblem"
       :is-loading="isEvaluating"
+      :total-problems="problems.length"
+      :current-problem-index="currentProblemIndex"
       @retry="handleRetry"
+      @next="handleNext"
     />
 
     <!-- 메인 게임 화면 -->
@@ -135,6 +138,9 @@ import { useEvaluation } from './composables/useEvaluation';
 // Services & Utils
 import { fetchProblems } from './services/architectureQuestionApi';
 import { transformProblems } from './utils/architectureUtils';
+
+// Store
+import { useGameStore } from '@/stores/game';
 
 export default {
   name: 'SystemArchitectureChallenge',
@@ -396,6 +402,26 @@ export default {
     handleRetry() {
       this.handleRetryComposable();
       this.clearCanvas();
+    },
+
+    // === Next Problem ===
+    handleNext() {
+      const gameStore = useGameStore();
+
+      // 다음 단계 해금
+      gameStore.unlockNextStage('System Practice', this.currentProblemIndex + 1);
+
+      // 다음 문제로 이동
+      if (this.currentProblemIndex < this.problems.length - 1) {
+        this.currentProblemIndex++;
+        // 상태 초기화
+        this.handleRetryComposable();
+        this.clearCanvas();
+        this.showToastMessage(
+          `[MISSION ${this.currentProblemIndex + 1}] ${this.currentProblem?.title || '새로운 미션'}을 시작합니다. 꽥!`,
+          'guide'
+        );
+      }
     }
   }
 };

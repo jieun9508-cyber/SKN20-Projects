@@ -151,8 +151,12 @@
 
         <!-- 버튼 -->
         <div class="action-buttons">
+          <button v-if="showNextButton" class="btn-next" @click="$emit('next')">
+            <span class="btn-text">NEXT MISSION</span>
+            <span class="btn-glow"></span>
+          </button>
           <button class="btn-retry" @click="$emit('retry')">
-            <span class="btn-text">TRY AGAIN</span>
+            <span class="btn-text">{{ isPassed ? 'TRY AGAIN' : 'RETRY MISSION' }}</span>
             <span class="btn-glow"></span>
           </button>
         </div>
@@ -176,9 +180,17 @@ export default {
     isLoading: {
       type: Boolean,
       default: false
+    },
+    totalProblems: {
+      type: Number,
+      default: 10
+    },
+    currentProblemIndex: {
+      type: Number,
+      default: 0
     }
   },
-  emits: ['retry'],
+  emits: ['retry', 'next'],
   data() {
     return {
       showStamp: false,
@@ -222,6 +234,15 @@ export default {
         score: qEval.score
       }));
     },
+    isPassed() {
+      return this.result?.score >= 50;
+    },
+    isLastProblem() {
+      return this.currentProblemIndex >= this.totalProblems - 1;
+    },
+    showNextButton() {
+      return this.isPassed && !this.isLastProblem;
+    }
   },
   watch: {
     result: {
@@ -884,17 +905,19 @@ export default {
 
 /* Button */
 .action-buttons {
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
   margin-top: 30px;
+  flex-wrap: wrap;
 }
 
-.btn-retry {
+.btn-retry, .btn-next {
   position: relative;
   font-family: 'Orbitron', sans-serif;
   font-size: 0.8rem;
   font-weight: 700;
   padding: 16px 40px;
-  background: linear-gradient(135deg, var(--nebula-purple), var(--nebula-blue));
   color: white;
   border: none;
   border-radius: 30px;
@@ -902,6 +925,14 @@ export default {
   transition: all 0.3s ease;
   letter-spacing: 2px;
   overflow: hidden;
+}
+
+.btn-next {
+  background: linear-gradient(135deg, var(--nebula-blue), #4caf50);
+}
+
+.btn-retry {
+  background: linear-gradient(135deg, var(--nebula-purple), var(--nebula-blue));
 }
 
 .btn-text {
@@ -919,11 +950,17 @@ export default {
   transition: left 0.5s ease;
 }
 
+.btn-next:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(79, 195, 247, 0.5);
+}
+
 .btn-retry:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 30px rgba(107, 92, 231, 0.4);
 }
 
+.btn-next:hover .btn-glow,
 .btn-retry:hover .btn-glow {
   left: 100%;
 }
