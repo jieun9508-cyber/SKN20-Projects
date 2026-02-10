@@ -141,7 +141,8 @@ export async function loadAllInterviewsAsync(options = {}) {
  * - 효과적인 후속 질문(probing) 패턴
  */
 export function extractPillarInsights() {
-  const interviews = loadAllInterviews();
+  // ✅ 구조 분해 할당으로 interviews 배열 추출
+  const { interviews } = loadAllInterviews();
 
   const insights = {
     reliability: {

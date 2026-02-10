@@ -179,10 +179,25 @@ export function useEvaluation() {
         deepDiveQuestion.value = result.questions[0].question;
         evaluationPhase.value = 'questioning';
       } else {
-        // 질문이 없으면 바로 평가로
-        evaluationPhase.value = 'evaluating';
-        isDeepDiveModalActive.value = false;
-        return true; // 평가 진행 가능
+        // ❌ 질문이 없으면 fallback 질문 사용 (바로 평가 안 함)
+        console.warn('[평가] 질문 생성 실패 - fallback 질문 사용');
+        deepDiveQuestions.value = [
+          {
+            category: '신뢰성',
+            question: '만약 이 시스템의 핵심 서버가 갑자기 다운된다면, 서비스 전체가 멈추나요? 아니면 다른 경로로 우회할 수 있는 구조인가요?'
+          },
+          {
+            category: '성능',
+            question: '갑자기 사용자가 10배로 늘어나는 이벤트 상황이 발생하면, 이 시스템이 자동으로 대응하나요?'
+          },
+          {
+            category: '운영',
+            question: '서비스에 장애가 났을 때, 관리자가 알기 전에 시스템이 먼저 알려주는 알람 기능이 있나요?'
+          }
+        ];
+        currentQuestionIndex.value = 0;
+        deepDiveQuestion.value = deepDiveQuestions.value[0].question;
+        evaluationPhase.value = 'questioning';
       }
     } catch (error) {
       console.error('Failed to generate follow-up questions:', error);
@@ -246,6 +261,13 @@ export function useEvaluation() {
         answer: item.answer
       }));
 
+    // ✅ 질문/답변이 없으면 경고 (디버깅용)
+    if (deepDiveQnA.length === 0) {
+      console.warn('[평가] 질문/답변 없음 - collectedDeepDiveAnswers:', collectedDeepDiveAnswers.value);
+    }
+
+    console.log(`[평가] 평가 시작 - 질문 ${deepDiveQnA.length}개, 설명: ${userExplanation.value ? '있음' : '없음'}`);
+
     try {
       // 마스터 에이전트 기반 6대 기둥 평가
       evaluationResult.value = await evaluateWithMasterAgent(
@@ -255,6 +277,8 @@ export function useEvaluation() {
         userExplanation.value, // 사용자 설명 전달
         deepDiveQnA
       );
+
+      console.log('[평가] 평가 완료 - questionEvaluations:', evaluationResult.value?.questionEvaluations?.length || 0);
     } catch (error) {
       console.error('Master Agent Evaluation error:', error);
       evaluationResult.value = generateMockEvaluation(problem, droppedComponents);
