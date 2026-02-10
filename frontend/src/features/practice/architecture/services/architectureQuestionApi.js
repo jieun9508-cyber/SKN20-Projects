@@ -224,36 +224,55 @@ async function generateSinglePillarQuestion(pillarKey, pillar, context, weakPill
 당신은 Google, Facebook 등에서 수백 건의 시스템 디자인 면접을 진행한 경험이 있습니다.
 
 ## 임무
-이미 파악된 취약점을 바탕으로,
-**실제 면접에서 효과적이었던 스타일의 구체적이고 상황 기반의 질문 1개**를 생성하세요.
+분석 에이전트가 파악한 취약점을 참고하여,
+**이 아키텍처에서 ${pillar.name} 관점의 구체적이고 상황 기반의 질문 1개**를 생성하세요.
 
 ## 시나리오
 ${context.scenario || '시스템 아키텍처 설계'}
 
-## 아키텍처 요약
-컴포넌트: ${context.componentList || '(없음)'}
-연결: ${context.connectionList || '(없음)'}
+## 미션
+${context.missions.length > 0 ? context.missions.map((m, i) => `${i + 1}. ${m}`).join('\n') : '없음'}
 
-## 파악된 취약점 (이미 분석 완료)
+## 제약조건
+${context.constraints.length > 0 ? context.constraints.map((c, i) => `${i + 1}. ${c}`).join('\n') : '없음'}
+
+## 아키텍처
+컴포넌트:
+${context.componentList || '(없음)'}
+
+연결:
+${context.connectionList || '(없음)'}
+
+## 지원자 설명
+"${context.userExplanation || '(설명 없음)'}"
+
+## 분석 에이전트가 파악한 취약점 (참고용)
 ${weakPillarInfo.specificGap}
+→ 이 방향으로 질문하되, 위 아키텍처의 구체적인 컴포넌트/연결을 언급하여 상황 기반 질문을 만드세요.
 
 ## ${pillar.name} 핵심 원칙 + 실제 면접 인사이트
 ${enhancedPrinciples}
 
-## 질문 스타일 (실제 면접에서 효과적이었던 방식)
-- ❌ 나쁜 예: "eviction policy는 뭘 쓰시겠습니까?" (답을 요구, 심문형)
-- ✅ 좋은 예: "Redis 메모리가 꽉 차면 어떻게 될까요?" (상황 제시, 사고 유도)
-- ✅ 좋은 예: "주 데이터센터가 다운되면 사용자는 어떤 경험을 하게 되나요?" (구체적 영향)
-- "~한 상황이 발생하면 어떻게 되나요?" / "~는 어떻게 처리하시겠어요?" 형태 권장
+## 질문 스타일 (다양한 접근 방식)
+좋은 질문 예시:
+- "Redis 메모리가 꽉 차면 어떻게 될까요?" (상황 제시형)
+- "주 데이터센터가 다운되면 사용자는 어떤 경험을 하게 되나요?" (영향 질문형)
+- "동시 접속자가 10배 증가하면 이 구조에서 어떤 부분이 먼저 문제가 될까요?" (병목 파악형)
+- "이 데이터베이스 선택의 가장 큰 이유가 뭔가요?" (의도 탐색형)
+
+피해야 할 스타일:
+- "eviction policy는 뭘 쓰시겠습니까?" (답 요구, 심문형)
+- "캐시를 사용하시나요?" (Yes/No 질문)
+
+규칙:
 - 배치된 컴포넌트만 언급
-- Yes/No가 아닌 설계 의도를 묻는 개방형 질문
 - 지원자가 이미 설명한 내용은 재질문 금지
-- 위에 파악된 취약점을 자연스럽게 탐색할 수 있는 질문
+- 위 취약점 방향을 자연스럽게 탐색할 수 있는 질문
 
 ## JSON 출력 (반드시 이 형식만)
-{ "category": "${categoryName}", "gap": "${weakPillarInfo.specificGap}", "question": "질문" }`;
+{ "category": "${categoryName}", "gap": "구체적인 부족한 점", "question": "질문" }`;
 
-  const response = await callOpenAI(prompt, { maxTokens: 400, temperature: 0.4 });
+  const response = await callOpenAI(prompt, { maxTokens: 400, temperature: 0.6 });
   const jsonMatch = response.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     const parsed = JSON.parse(jsonMatch[0]);
