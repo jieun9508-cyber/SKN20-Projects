@@ -1,22 +1,18 @@
 """
 orchestrator.py — WarsOrchestrator (LangGraph 버전)
 
-기존 단순 조건 분기 Orchestrator에서 LangGraph Agent로 전면 교체.
-
-[기존]
-  on_canvas_update → can_trigger_coach? → CoachAgent.generate()
-                   → can_trigger_chaos? → ChaosAgent.generate()
-
-[신규]
-  on_canvas_update → OrchestratorAgent(LangGraph) →
+[흐름]
+  on_canvas_update → OrchestratorAgent(LangGraph, 비동기 실행) →
     observe_game_state → decide_action(LLM) → dispatch → done
 
-  LLM이 전체 맥락을 보고 "지금 무엇을 해야 하는가"를 직접 판단.
-  StateMachine은 하드 가드로만 유지 (무효 전환 차단).
+  EvalAgent 호출은 on_both_submitted 에서 직접 실행 — Orchestrator 외부.
 
-[EvalAgent 호출은 on_both_submitted에서 직접 실행 — Orchestrator 외부]
+[수정 이력]
+  2026-03-02  on_canvas_update → asyncio.to_thread 래핑으로 이벤트 루프 블로킹 해결
+              StateMachine에서 can_trigger_* 제거 → trigger_policy 모듈로 이전 반영
 """
 
+import asyncio
 import logging
 import time
 from typing import Dict, Any, Optional
@@ -57,11 +53,7 @@ class WarsOrchestrator:
         room_state.chaos_event_id     = None
         room_state.player_designs     = {}
         room_state.hint_history       = {}
-        # 이번 라운드 발동된 이벤트 ID 초기화
-        if not hasattr(room_state, "past_event_ids"):
-            room_state.past_event_ids = []
-        else:
-            room_state.past_event_ids = []
+        room_state.past_event_ids     = []
 
         return self.state_machine.transition(room_state, GameState.PLAYING)
 
@@ -69,10 +61,15 @@ class WarsOrchestrator:
     # 캔버스 업데이트 → OrchestratorAgent 실행
     # ──────────────────────────────────────────────────────────
 
-    # [수정일: 2026-03-01] 캔버스 업데이트마다 AI 호출 방지용 쿨다운 (초)
-    AGENT_CALL_COOLDOWN = 3.0
+    # AI 호출 과부하 방지용 쿨다운 (초)
+    AGENT_CALL_COOLDOWN = 2.0
 
-    def on_canvas_update(
+    # [수정일: 2026-03-02] LLM 직렬 호출 경고 임계값 (초)
+    # dispatch 노드는 Orchestrator LLM + Coach LLM + Chaos LLM을 직렬로 호출할 수 있어
+    # 최악의 경우 수실 30초 대기가 발생할 수 있다. 이 시간을 초과하면 주의를 로깅한다.
+    DISPATCH_SLOW_WARN_SEC = 10.0
+
+    async def on_canvas_update(
         self,
         room_state: DrawRoomState,
         sid: str,
@@ -83,23 +80,24 @@ class WarsOrchestrator:
         플레이어 캔버스 변경 시 호출.
         OrchestratorAgent(LangGraph)가 전체 맥락을 보고 행동을 결정한다.
 
+        LangGraph graph.invoke()는 동기 블로킹 함수이므로
+        asyncio.to_thread()로 별도 스레드에서 실행하여
+        Socket.IO 이벤트 루프가 블로킹되지 않도록 보장한다.
+
         Returns:
-            {
-                "coach_hint": {...} | None,
-                "chaos_event": {...} | None,
-            }
+            {"coach_hint": {...} | None, "chaos_event": {...} | None}
         """
         # 1. 설계 스냅샷 갱신
-        room_state.update_design(sid, nodes, arrows)
+        room_state.update_design(sid, nodes or [], arrows or [])
 
-        # [수정일: 2026-03-01] 쿨다운 체크 — 너무 자주 AI 호출하지 않도록 방지
+        # 2. 쿨다운 체크 — 너무 자주 AI 호출하지 않도록 방지
         now = time.time()
         last_called = getattr(room_state, '_last_agent_call', 0)
         if now - last_called < self.AGENT_CALL_COOLDOWN:
             return {"coach_hint": None, "chaos_event": None}
         room_state._last_agent_call = now
 
-        # 2. OrchestratorAgent에 넘길 player_snapshots 빌드
+        # 3. OrchestratorAgent에 넘길 player_snapshots 빌드
         player_snapshots = {}
         for player_sid, design in room_state.player_designs.items():
             player_snapshots[player_sid] = {
@@ -112,8 +110,8 @@ class WarsOrchestrator:
                 "seconds_inactive": room_state.seconds_since_last_update(player_sid),
             }
 
-        # 3. OrchestratorAgent 실행
-        graph = get_orchestrator_graph()
+        # 4. LangGraph graph.invoke() — 동기 함수 → asyncio.to_thread 로 실행
+        #    이벤트 루프 블로킹 없이 백그라운드 스레드에서 처리됨
         initial_state = {
             "room_id": room_state.room_id,
             "game_state_name": room_state.state.value,
@@ -133,17 +131,27 @@ class WarsOrchestrator:
             "actions_taken": [],
         }
 
-        final_state = graph.invoke(initial_state)
+        graph = get_orchestrator_graph()
+        # [수정일: 2026-03-02] LLM 직렬 호출 시간 측정
+        # dispatch가 Orchestrator + Coach + Chaos LLM을 직렬로 호출하면 최대 30초 소요 가능
+        _invoke_start = time.time()
+        final_state = await asyncio.to_thread(graph.invoke, initial_state)
+        _invoke_elapsed = time.time() - _invoke_start
+        if _invoke_elapsed > self.DISPATCH_SLOW_WARN_SEC:
+            logger.warning(
+                f"[Orchestrator] ⚠️ LLM 직렬 호출 지연 감지: {_invoke_elapsed:.1f}s "
+                f"(room={room_state.room_id}) "
+                f"— actions={final_state.get('actions_taken', [])}"
+            )
 
         result = {"coach_hint": None, "chaos_event": None}
 
-        # 4. CoachAgent 결과 처리
+        # 5. CoachAgent 결과 처리
         coach_hint = final_state.get("coach_hint")
         if coach_hint and coach_hint.get("message"):
             target_sid = coach_hint.pop("_target_sid", sid)
             room_state.coach_triggered_at = time.time()
 
-            # 힌트 이력 저장
             if target_sid not in room_state.hint_history:
                 room_state.hint_history[target_sid] = []
             room_state.hint_history[target_sid].append({
@@ -152,6 +160,7 @@ class WarsOrchestrator:
                 "level": coach_hint.get("level", 1),
                 "_time": time.time(),
             })
+            # 힌트 이력 최대 5개 유지
             if len(room_state.hint_history[target_sid]) > 5:
                 room_state.hint_history[target_sid].pop(0)
 
@@ -161,18 +170,16 @@ class WarsOrchestrator:
                 f"sid={target_sid[:8]}, level={coach_hint.get('level')}"
             )
 
-        # 5. ChaosAgent 결과 처리
+        # 6. ChaosAgent 결과 처리
         chaos_event = final_state.get("chaos_event")
         if chaos_event and chaos_event.get("event_id"):
             room_state.chaos_triggered_at = time.time()
             room_state.chaos_event_id = chaos_event.get("event_id")
 
-            # 이벤트 ID 이력 저장
             if not hasattr(room_state, "past_event_ids"):
                 room_state.past_event_ids = []
             room_state.past_event_ids.append(chaos_event["event_id"])
 
-            # StateMachine: PLAYING → IN_BASKET
             self.state_machine.transition(room_state, GameState.IN_BASKET)
             result["chaos_event"] = chaos_event
             logger.info(

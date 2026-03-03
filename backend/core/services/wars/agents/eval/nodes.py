@@ -30,6 +30,41 @@ logger = logging.getLogger(__name__)
 
 _evaluator = ArchEvaluator()
 
+# ─────────────────────────────────────────────────────────
+# 공통 상수 / 헬퍼 — 모듈 상단에 한 번만 선언 (DRY)
+# ─────────────────────────────────────────────────────────
+
+_COMP_NAMES: Dict[str, str] = {
+    'lb':       'Load Balancer',
+    'db':       'Database',
+    'cdn':      'CDN',
+    'server':   'App Server',
+    'client':   'Client',
+    'user':     'User',
+    'cache':    'Cache',
+    'api':      'API Gateway',
+    'apigw':    'API Gateway',
+    'auth':     'Auth Service',
+    'queue':    'Message Queue',
+    'producer': 'Producer',
+    'consumer': 'Consumer',
+    'writesvc': 'Write Service',
+    'readsvc':  'Read Service',
+    'writedb':  'Write DB',
+    'readdb':   'Read DB',
+    'order':    'Order Service',
+    'payment':  'Payment Service',
+    'waf':      'WAF',
+    'dns':      'DNS',
+    'origin':   'Origin Server',
+}
+
+
+def _node_label(node: Dict[str, Any]) -> str:
+    """node dict → 사람이 읽기 좋은 컴포넌트 이름으로 변환"""
+    comp_id = node.get('compId', '')
+    return _COMP_NAMES.get(comp_id, node.get('name', comp_id) or comp_id)
+
 
 def _get_client():
     if openai and getattr(settings, "OPENAI_API_KEY", None):
@@ -82,7 +117,6 @@ def self_critique(state: EvalAgentState) -> EvalAgentState:
     logger.info("[EvalAgent] ▶ self_critique 노드 실행")
 
     client = _get_client()
-    # 현재 평가 대상: 수정본이 있으면 수정본, 없으면 1차
     current = state.get("revised_result") or state.get("raw_result")
 
     if not client or not current:
@@ -91,22 +125,6 @@ def self_critique(state: EvalAgentState) -> EvalAgentState:
 
     p1_name = state["p1_data"].get("name", "Player1")
     p2_name = state["p2_data"].get("name", "Player2")
-    # [수정: compId를 풀네임으로 변환 — 약어(LB, DB)만 넘기면 LLM 품질 저하]
-    COMP_NAMES = {
-        'lb': 'Load Balancer', 'db': 'Database', 'cdn': 'CDN',
-        'server': 'App Server', 'client': 'Client', 'user': 'User',
-        'cache': 'Cache', 'api': 'API Gateway', 'apigw': 'API Gateway',
-        'auth': 'Auth Service', 'queue': 'Message Queue',
-        'producer': 'Producer', 'consumer': 'Consumer',
-        'writesvc': 'Write Service', 'readsvc': 'Read Service',
-        'writedb': 'Write DB', 'readdb': 'Read DB',
-        'order': 'Order Service', 'payment': 'Payment Service',
-        'waf': 'WAF', 'dns': 'DNS', 'origin': 'Origin Server',
-    }
-    def _node_label(n):
-        comp_id = n.get('compId', '')
-        return COMP_NAMES.get(comp_id, n.get('name', comp_id) or comp_id)
-
     p1_nodes = [_node_label(n) for n in state["p1_data"].get("nodes", [])]
     p2_nodes = [_node_label(n) for n in state["p2_data"].get("nodes", [])]
 
@@ -171,20 +189,6 @@ def revise(state: EvalAgentState) -> EvalAgentState:
 
     p1_name = state["p1_data"].get("name", "Player1")
     p2_name = state["p2_data"].get("name", "Player2")
-    COMP_NAMES = {
-        'lb': 'Load Balancer', 'db': 'Database', 'cdn': 'CDN',
-        'server': 'App Server', 'client': 'Client', 'user': 'User',
-        'cache': 'Cache', 'api': 'API Gateway', 'apigw': 'API Gateway',
-        'auth': 'Auth Service', 'queue': 'Message Queue',
-        'producer': 'Producer', 'consumer': 'Consumer',
-        'writesvc': 'Write Service', 'readsvc': 'Read Service',
-        'writedb': 'Write DB', 'readdb': 'Read DB',
-        'order': 'Order Service', 'payment': 'Payment Service',
-        'waf': 'WAF', 'dns': 'DNS', 'origin': 'Origin Server',
-    }
-    def _node_label(n):
-        comp_id = n.get('compId', '')
-        return COMP_NAMES.get(comp_id, n.get('name', comp_id) or comp_id)
     p1_nodes = [_node_label(n) for n in state["p1_data"].get("nodes", [])]
     p2_nodes = [_node_label(n) for n in state["p2_data"].get("nodes", [])]
 
@@ -229,8 +233,17 @@ def revise(state: EvalAgentState) -> EvalAgentState:
             temperature=0.5,
             timeout=15,
         )
-        revised = json.loads(response.choices[0].message.content)
-        logger.info("[EvalAgent] ✅ 수정 평가 완료")
+        patch = json.loads(response.choices[0].message.content)
+        # [수정일: 2026-03-02] 딥카피 merge 방식으로 수정
+        # revise()는 player1/player2의 my_analysis, versus만 반환하며
+        # raw_result에 있던 score, winner 등 나머지 필드는 그대로 보존된다.
+        revised = dict(current)  # 원본 복사
+        for player_key in ("player1", "player2"):
+            if player_key in patch and isinstance(patch[player_key], dict):
+                player_block = dict(revised.get(player_key, {}))
+                player_block.update(patch[player_key])  # my_analysis, versus만 덮어쓰기
+                revised[player_key] = player_block
+        logger.info("[EvalAgent] ✅ 수정 평가 완료 (merge 방식)")
     except Exception as e:
         logger.error(f"[EvalAgent] revise 실패: {e} → 기존 결과 유지")
         revised = current

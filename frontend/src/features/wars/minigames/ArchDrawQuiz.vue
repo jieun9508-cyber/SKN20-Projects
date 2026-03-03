@@ -405,7 +405,7 @@ const userName = ref('Player_' + Math.floor(Math.random() * 1000))
 const phase = ref('lobby')
 const round = ref(0)
 const maxRounds = 1 // [수정일: 2026-02-25] 1단원(1라운드) 단판 승부로 변경
-const timeLeft = ref(45)
+const timeLeft = ref(90)
 const myScore = ref(0)
 const oppScore = ref(0)
 const combo = ref(0)
@@ -463,7 +463,7 @@ const canvasArea = ref(null)
 let dragComp = null
 let nodeId = 0
 
-const timerPct = computed(() => (timeLeft.value / 45) * 100)
+const timerPct = computed(() => (timeLeft.value / 90) * 100)
 
 // judging 캔버스: 노드 위치 기반 동적 높이 + 상대 노드 안전 참조
 const judgeOppNodes = computed(() => 
@@ -585,10 +585,15 @@ onMounted(() => {
   }
 })
 
-// Agent 트리거용 실시간 설계 동기화
+// Agent 트리거용 실시간 설계 동기화 (디바운스 적용)
+// [수정일: 2026-03-03] mousemove마다 emit하던 문제 해결 — 300ms 디바운스
+let _canvasSyncTimer = null
 function syncMyDesign() {
   if (phase.value !== 'play') return
-  ds.emitCanvasSync(currentRoomId.value, userName.value, nodes.value, arrows.value)
+  if (_canvasSyncTimer) clearTimeout(_canvasSyncTimer)
+  _canvasSyncTimer = setTimeout(() => {
+    ds.emitCanvasSync(currentRoomId.value, userName.value, nodes.value, arrows.value)
+  }, 300)
 }
 
 function handleCanvasChange() {
@@ -900,7 +905,7 @@ ds.onRoundStart.value = (data) => {
   else round.value++;
   
   phase.value = 'play';
-  timeLeft.value = 45;
+  timeLeft.value = 90;
   coachMsg.value = '';
   nodes.value = [];
   arrows.value = [];
@@ -1037,13 +1042,16 @@ function submitDraw() {
     }
     
     // DB rubric에 화살표(flow) 검증 기준이 있다면 추가
+    // [수정일: 2026-03-03] required_flows 실제 검증 로직 구현
     if (curQ.value && curQ.value.rubric && curQ.value.rubric.required_flows) {
       curQ.value.rubric.required_flows.forEach(flow => {
-        // 흐름은 from, to, reason 구조임. 현재 컴포넌트 이름과 매핑해야 함.
-        // allComps는 id를 가지고 있음 (예: 'client', 'server', 'db')
-        // DB의 from/to는 "API Server", "Cache" 형태일 수 있으므로 유연하게 처리.
-        // 간단히 arrows.value.some()을 쓸 수 있지만 id 매핑이 까다로울 수 있음.
-        // 일단 UI상에는 명시하고 현재는 배치 컴포넌트만 필수 체크하는 방향 유지 (복잡도 회피)
+        // flow = { from: "client", to: "lb", reason: "..." }
+        const fromName = allComps.find(c => c.id === flow.from)?.name || flow.from
+        const toName = allComps.find(c => c.id === flow.to)?.name || flow.to
+        checks.push({
+          label: `${fromName} → ${toName} 연결`,
+          ok: snapArrows.some(a => a.fc === flow.from && a.tc === flow.to)
+        })
       })
     } else if (curQ.value && curQ.value.required && curQ.value.required.length >= 2) {
       for (let i = 0; i < curQ.value.required.length - 1; i++) {
@@ -1057,16 +1065,19 @@ function submitDraw() {
     }
     checkItems.value = checks
     
-    const hit = checks.filter(c => c.ok).length, ratio = hit / checks.length
-    const pts = hit * 40 + (ratio >= 0.8 ? 100 : 0) + timeLeft.value * 2 + combo.value * 20
-    lastMyPts.value = pts; myScore.value += pts
+    // [수정일: 2026-03-03] 클라이언트 점수 계산 제거 — 서버(onRoundResult)에서 받은 값만 사용
+    // 기존: lastMyPts.value = pts; myScore.value += pts → 서버와 이중계산 문제 발생
+    // 대신 80% 달성 여부만 로컬에서 판단하여 콤보/이펙트만 처리
+    const hit = checks.filter(c => c.ok).length
+    const ratio = checks.length > 0 ? hit / checks.length : 0
     
     if (ratio >= 0.8) { 
-      combo.value++; bestCombo.value = Math.max(bestCombo.value, combo.value); flashOk.value = true; setTimeout(() => flashOk.value = false, 400); spawnPop(pts) 
+      combo.value++; bestCombo.value = Math.max(bestCombo.value, combo.value); flashOk.value = true; setTimeout(() => flashOk.value = false, 400)
       gainRandomItem()
     }
     
-    ds.emitSubmit(currentRoomId.value, pts, checks.map(c => ({ label: c.label, ok: c.ok })), {
+    // pts는 서버가 계산하므로 여기선 0으로 전달 (서버가 직접 재계산)
+    ds.emitSubmit(currentRoomId.value, 0, checks.map(c => ({ label: c.label, ok: c.ok })), {
       nodes: snapNodes,
       arrows: snapArrows
     }, timeLeft.value, combo.value)  // [수정: 서버 점수 검증용 time_left, combo 전달]

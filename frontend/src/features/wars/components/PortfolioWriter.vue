@@ -22,8 +22,8 @@
         <!-- Step 1: 형식 선택 -->
         <div v-if="!generated && !loading" class="pw-intro">
           <p class="pw-intro-desc">
-            이 경험을 바탕으로 <strong>LinkedIn 포스팅</strong>,
-            <strong>포트폴리오 설명</strong>, <strong>이력서 한 줄</strong>을
+            이 경험을 바탕으로 <strong>LinkedIn 포스팅</strong>과
+            <strong>포트폴리오 설명</strong>을
             AI가 직접 써드려요.
           </p>
           <div class="pw-format-select">
@@ -131,10 +131,9 @@ const regenLoading = ref('')
 const formats = [
   { id: 'linkedin',  icon: '💼', label: 'LinkedIn',     desc: '200~300자 감성 포스팅 + 해시태그' },
   { id: 'portfolio', icon: '📂', label: '포트폴리오',   desc: '기술 중심 프로젝트 설명 3~5문장' },
-  { id: 'resume',    icon: '📄', label: '이력서',       desc: '이력서용 bullet point 1~2줄' },
 ]
 
-const selectedFormats = ref(['linkedin', 'portfolio', 'resume'])
+const selectedFormats = ref(['linkedin', 'portfolio'])
 const resultTabs = computed(() => formats.filter(f => selectedFormats.value.includes(f.id)))
 
 function toggleFormat(id) {
@@ -191,8 +190,9 @@ ${ctx}
 
 요구사항:
 - 200~300자 내외
-- "CoduckWars", "미니게임", "1620pt", "등급", "배틀" 같은 게임 용어나 수치는 절대 사용 금지.
+- "CoduckWars", "미니게임", "1620pt", "등급", "배틀" 같은 게임 용어는 지양.
 - 대신 "실시간 시스템 아키텍처 설계 훈련", "제한 시간 내 비즈니스 로직(의사코드) 구조화 챌린지" 등의 전문적인 용어로 포장할 것.
+- 특히 유저가 작성한 [설계한 컴포넌트]나 [의사코드], 그리고 [AI 피드백]에 나타난 개별적인 특징을 반드시 반영하여 유저마다 차별화된 내용을 작성할 것.
 - 어떤 시나리오(문제)가 주어졌고, 이를 해결하기 위해 어떤 논리적 사고 과정을 거쳤는지를 중심으로 작성.
 - 기술 내용은 비개발자도 맥락을 이해할 수 있게 쉽게 풀어서 설명.
 - 이모지 3~5개 적절히 사용.
@@ -202,20 +202,10 @@ ${ctx}
 
 요구사항:
 - [핵심 경험]: "실시간 시스템 시나리오 기반 아키텍처/논리 설계 훈련"으로 명시.
-- [문제 해결 과정]: 주어진 시나리오를 분석하여 어떻게 구조화/의사코드를 작성했는지 2문장.
-- [습득 역량]: 코드 리뷰나 실시간 압박 수비(답변) 과정에서 배운 확장성/성능/보안 관련 역량 1~2문장.
+- [문제 해결 과정]: 유저가 실제로 작성한 데이터(아키텍처 컴포넌트 또는 의사코드)의 특장점을 반영하여 어떻게 구조화했는지 구체적으로 2문장. (시나리오만 나열하지 말 것)
+- [습득 역량]: AI 피드백에서 언급된 [강점]이나 [개선점]을 바탕으로 실제 실무에서 어떤 역량을 발휘할 수 있을지 1~2문장.
 - 총 4~6문장, 전문적이고 진지한 어조의 한국어.
 - "게임", "합격", "점수", "등급" 절대 언급 금지.`,
-
-    resume: base + `이 경험을 이력서의 활동 항목에 들어갈 bullet point로 작성해주세요.
-
-요구사항:
-- 정확히 1~2개의 bullet point만 작성 (• 기호 사용).
-- "• [해결한 문제/시나리오]를 분석하여 [설계한 기술/컴포넌트/흐름]을 기반으로 시스템 아키텍처/비즈니스 로직을 설계함" 형식 유지.
-- "게임", "점수", "등급", "pt" 절대 사용 금지!
-- 50자 이내로 매우 간결하고 임팩트 있게.
-- 전문적인 개발자 이력서에 들어갈 수 있는 진지한 한국어.
-예시: • 대규모 트래픽 시나리오를 분석하고 로드밸런서와 읽기/쓰기 분리 DB 구조를 반영한 시스템 아키텍처 도출`,
   }
 
   return instructions[formatId]

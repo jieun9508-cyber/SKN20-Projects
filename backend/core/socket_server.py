@@ -2,7 +2,6 @@ import socketio
 import asyncio
 import random
 from core.services.pseudocode_evaluator import PseudocodeEvaluator, EvaluationRequest, EvaluationMode
-from asgiref.sync import sync_to_async
 
 # [Multi-Agent] 임포트
 from core.services.wars.orchestrator import WarsOrchestrator
@@ -51,14 +50,15 @@ async def disconnect(sid):
                 await sio.emit('leader_info', {"leader_sid": remaining[0]}, room=mission_id)
 
     # 2. Draw Room 정리
-    draw_room_id = session.get('draw_room')
+    draw_room_id = session.get('draw_room')  # 세션 저장 시 이미 strip된 값
     if draw_room_id in draw_rooms:
         room = draw_rooms[draw_room_id]
         room['players'] = [p for p in room['players'] if p['sid'] != sid]
         if not room['players']:
             del draw_rooms[draw_room_id]
             # [수정: draw_room_states 도 함께 정리 — 메모리 누수 방지]
-            if draw_room_id in draw_room_states: del draw_room_states[draw_room_id]
+            if draw_room_id in draw_room_states:
+                del draw_room_states[draw_room_id]
             print(f"🗑️ [ArchDraw] Room {draw_room_id} fully cleaned up (empty)")
         else:
             players_data = [{'name': p['name'], 'sid': p['sid']} for p in room['players']]
@@ -199,7 +199,7 @@ async def draw_submit(sid, data):
         ratio = hit / total
         # 점수 공식: 체크 40점 + 달성보너스 100점 + (남은시간 × 2) + (콤보 × 20)
         # 단, 클라이언트가 보낸 timeLeft·combo 는 참고값 — 최대치 클램핑으로 어뷰징 방지
-        time_bonus = min(data.get('time_left', 0), 45) * 2  # 최대 90점
+        time_bonus = min(data.get('time_left', 0), 90) * 2  # 최대 180점 (90초 기준)
         combo_bonus = min(data.get('combo', 0), 10) * 20    # 최대 200점 (콤보 10x 상한)
         pts = hit * 40 + (100 if ratio >= 0.8 else 0) + time_bonus + combo_bonus
         
@@ -318,14 +318,15 @@ async def draw_canvas_sync(sid, data):
     await sio.emit('draw_canvas_update', {'sender_sid': sid, 'nodes': data.get('nodes'), 'arrows': data.get('arrows')}, room=room_id, skip_sid=sid)
     room_state = draw_room_states.get(room_id)
     if room_state:
-        # [수정일: 2026-03-01] sync_to_async로 감싸서 WebSocket 이벤트 루프 블로킹 방지
-        run_agent = sync_to_async(wars_orchestrator.on_canvas_update)
-        res = await run_agent(room_state, sid, data.get('nodes'), data.get('arrows'))
+        # on_canvas_update는 내부적으로 asyncio.to_thread를 사용하므로
+        # 직접 await — 이벤트 루프 블로킹 없음
+        res = await wars_orchestrator.on_canvas_update(room_state, sid, data.get('nodes'), data.get('arrows'))
         if res.get('coach_hint'):
-            # [수정일: 2026-03-01] _target_sid 사용 — 실제 코칭이 필요한 플레이어에게 전송
+            # [수정일: 2026-03-02] _target_sid를 payload에서 제거 후 전송 (프론트 노출 방지)
+            hint_payload = {k: v for k, v in res['coach_hint'].items() if k != '_target_sid'}
             target_sid = res['coach_hint'].get('_target_sid', sid)
-            print(f"💡 [ArchDraw] Hint Sent to {target_sid[:8]}: {res['coach_hint']['message'][:20]}...")
-            await sio.emit('coach_hint', res['coach_hint'], room=target_sid)
+            print(f"💡 [ArchDraw] Hint Sent to {target_sid[:8]}: {hint_payload.get('message', '')[:20]}...")
+            await sio.emit('coach_hint', hint_payload, to=target_sid)  # [수정일: 2026-03-03] room= → to= (개인 전송)
         if res.get('chaos_event'): 
             print(f"🔥 [ArchDraw] Chaos Event in Room: {room_id}")
             await sio.emit('chaos_event', res['chaos_event'], room=room_id)

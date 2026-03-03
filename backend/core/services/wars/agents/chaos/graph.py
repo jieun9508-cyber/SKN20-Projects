@@ -18,6 +18,7 @@ chaos/graph.py — ChaosAgent LangGraph 그래프 정의
 """
 
 import logging
+import threading
 from langgraph.graph import StateGraph, END
 
 from core.services.wars.agents.chaos.state import ChaosAgentState
@@ -31,6 +32,9 @@ from core.services.wars.agents.chaos.nodes import (
 )
 
 logger = logging.getLogger(__name__)
+
+_chaos_graph = None
+_chaos_graph_lock = threading.Lock()
 
 
 def build_chaos_graph() -> StateGraph:
@@ -61,12 +65,12 @@ def build_chaos_graph() -> StateGraph:
     return builder.compile()
 
 
-_chaos_graph = None
-
-
 def get_chaos_graph():
+    """Thread-safe 싱글톤 — DCL(Double-Checked Locking) 패턴"""
     global _chaos_graph
     if _chaos_graph is None:
-        _chaos_graph = build_chaos_graph()
-        logger.info("[ChaosAgent] LangGraph 컴파일 완료")
+        with _chaos_graph_lock:
+            if _chaos_graph is None:
+                _chaos_graph = build_chaos_graph()
+                logger.info("[ChaosAgent] LangGraph 컴파일 완료")
     return _chaos_graph

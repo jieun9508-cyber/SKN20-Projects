@@ -1,14 +1,13 @@
 """
 eval_agent.py — EvalAgent (LangGraph 버전)
 
-기존 단순 LLM 래퍼에서 진짜 Agent로 교체.
 [흐름] evaluate → self_critique → (revise 루프) → finalize
 """
 
+import asyncio
 import logging
 from typing import Dict, Any
 
-from asgiref.sync import sync_to_async
 from core.services.wars.agents.eval.graph import get_eval_graph
 
 logger = logging.getLogger(__name__)
@@ -44,9 +43,9 @@ class EvalAgent:
 
         graph = get_eval_graph()
 
-        # LangGraph는 동기 실행 → sync_to_async로 래핑
-        run_graph = sync_to_async(graph.invoke)
-        final_state = await run_graph(initial_state)
+        # LangGraph graph.invoke()는 동기 블로킹 함수
+        # asyncio.to_thread()로 실행하여 이벤트 루프 블로킹 방지
+        final_state = await asyncio.to_thread(graph.invoke, initial_state)
 
         result = final_state.get("final_result")
         if not result:
