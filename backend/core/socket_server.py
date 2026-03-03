@@ -6,7 +6,35 @@ from core.services.pseudocode_evaluator import PseudocodeEvaluator, EvaluationRe
 # [Multi-Agent] 임포트
 from core.services.wars.orchestrator import WarsOrchestrator
 from core.services.wars.state_machine import DrawRoomState, GameState
-from core.utils.architecture_missions import MISSIONS # [추가 2026-02-27] 미션 데이터셋
+# [수정일: 2026-03-03] architecture_missions.py 하드코딩 제거 → DB(unit03) 동적 로드
+# 모듈 임포트 시점에 DB 쿼리하면 Django 초기화 전이라 실패 → 런타임에 lazy 로드
+from core.views.wars.wars_mission_view import _transform_to_wars_mission
+from core.models import PracticeDetail
+
+_MISSIONS_CACHE: list = []  # 첫 게임 시작 시 캐싱
+
+def _load_missions_sync() -> list:
+    """동기 DB 쿼리 — sync_to_async 래퍼에서 호출"""
+    details = (
+        PracticeDetail.objects
+        .filter(practice_id='unit03', detail_type='PROBLEM', is_active=True)
+        .order_by('display_order')
+    )
+    return [_transform_to_wars_mission(d) for d in details]
+
+async def _get_missions() -> list:
+    """Wars 미션 lazy 로드 — async 컨텍스트에서 안전하게 DB 쿼리"""
+    global _MISSIONS_CACHE
+    if _MISSIONS_CACHE:
+        return _MISSIONS_CACHE
+    try:
+        from asgiref.sync import sync_to_async
+        _MISSIONS_CACHE = await sync_to_async(_load_missions_sync)()
+        print(f"✅ [Wars] DB에서 {len(_MISSIONS_CACHE)}개 미션 로드 완료")
+    except Exception as e:
+        print(f"⚠️ [Wars] DB 미션 로드 실패: {e}")
+        _MISSIONS_CACHE = []
+    return _MISSIONS_CACHE
 
 # 전역 객체 및 상태 관리
 wars_orchestrator = WarsOrchestrator()
@@ -158,10 +186,14 @@ async def draw_start(sid, data):
         print(f"🚀 [ArchDraw] Game Start in Room: {room_id}")
         draw_rooms[room_id]['phase'] = 'playing'
         
-        # [수정일: 2026-03-01] 미션 데이터셋에서 무작위 선택 + 팔레트 서버 생성
-        question = random.choice(MISSIONS).copy()
+        # [수정일: 2026-03-03] DB(unit03) 미션 lazy 로드
+        missions = await _get_missions()
+        if not missions:
+            print(f"⚠️ [ArchDraw] 미션 없음 — unit03 DB를 확인하세요")
+            return
+        question = random.choice(missions).copy()
         question['round'] = 1
-        # 팔레트: required 컴포넌트 + 랜덤 extra 4개 (서버에서 결정 → 양측 동일 보장)
+        # 팔레트: required + 랜덤 extra 4개 (서버에서 결정 → 양측 동일 보장)
         all_comp_ids = ['client','user','lb','server','cdn','origin','cache','db',
                         'producer','queue','consumer','api','apigw','writesvc','readsvc',
                         'writedb','readdb','auth','order','payment','waf','dns']
@@ -285,7 +317,7 @@ async def draw_next_round(sid, data):
             room_state.player_designs = {}
         
         # 새로운 무작위 문제 선택 + 팔레트 서버 생성
-        question = random.choice(MISSIONS).copy()
+        question = random.choice(await _get_missions()).copy()
         question['round'] = data.get('round', 2)
         all_comp_ids = ['client','user','lb','server','cdn','origin','cache','db',
                         'producer','queue','consumer','api','apigw','writesvc','readsvc',

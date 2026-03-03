@@ -149,7 +149,11 @@ class WarsOrchestrator:
         # 5. CoachAgent 결과 처리
         coach_hint = final_state.get("coach_hint")
         if coach_hint and coach_hint.get("message"):
-            target_sid = coach_hint.pop("_target_sid", sid)
+            # [수정일: 2026-03-03] pop() 전에 target_sid 먼저 보존
+            # 기존: pop() 후 result에 담기면 socket_server에서 _target_sid 꼽아도 None 반환 → 나한테 전송
+            target_sid = coach_hint.get("_target_sid") or sid
+            coach_hint = {k: v for k, v in coach_hint.items() if k != "_target_sid"}
+            coach_hint["_target_sid"] = target_sid  # socket_server가 읽을 수 있도록 유지
             room_state.coach_triggered_at = time.time()
 
             if target_sid not in room_state.hint_history:

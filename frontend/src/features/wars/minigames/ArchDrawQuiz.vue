@@ -88,10 +88,19 @@
       </div>
 
       <!-- MISSION -->
-      <div class="mission" v-if="curQ">
-        <span class="m-ico">🎯</span>
-        <div class="m-txt"><strong>{{ curQ.title }}</strong><span>{{ curQ.description }}</span></div>
-        <div class="m-req"><span class="rl">NEED</span><span class="rn neon-c">{{ curQ.required.length }}</span></div>
+      <div class="mission-panel" v-if="curQ">
+        <!-- 타이틀 + NEED 카운트 -->
+        <div class="mission-header">
+          <span class="m-ico">🎯</span>
+          <strong class="m-title">{{ curQ.title }}</strong>
+          <div class="m-req"><span class="rl">NEED</span><span class="rn neon-c">{{ curQ.required.length }}</span></div>
+        </div>
+        <!-- 시나리오 -->
+        <div class="m-scenario" v-if="curQ.scenario">{{ curQ.scenario }}</div>
+        <!-- 미션 조건 목록 -->
+        <ul class="m-missions" v-if="curQ.missions && curQ.missions.length">
+          <li v-for="(m, i) in curQ.missions" :key="i">{{ m }}</li>
+        </ul>
       </div>
       <!-- [Multi-Agent] CoachAgent 힌트 표시 영역 (버튼 힌트 대체) -->
       <transition name="coach-slide">
@@ -331,7 +340,8 @@
           <PortfolioWriter
             game-type="arch"
             :mission-title="curQ?.title || ''"
-            :scenario="curQ?.description || ''"
+            :scenario="curQ?.scenario || ''"
+            :missions="curQ?.missions || []"
             :components="myFinalNodes"
             :arrow-count="myFinalArrows.length"
             :my-score="myScore"
@@ -347,7 +357,10 @@
             <div class="go-pf-preview" ref="archPortfolioCard">
               <div class="gpf-badge">🏗️ ARCH DESIGN</div>
               <div class="gpf-mission">{{ curQ?.title || '시스템 아키텍처 설계' }}</div>
-              <div class="gpf-desc">{{ curQ?.description || '실무 시나리오 기반 아키텍처 배치 및 연결 설계' }}</div>
+              <div class="gpf-scenario" v-if="curQ?.scenario">{{ curQ.scenario }}</div>
+              <div class="gpf-missions" v-if="curQ?.missions?.length">
+                <div v-for="(m, i) in curQ.missions.slice(0,2)" :key="i" class="gpf-mission-item">✅ {{ m }}</div>
+              </div>
               <div class="gpf-components">
                 <span v-for="n in myFinalNodes.slice(0, 6)" :key="n.id" class="gpf-comp">{{ n.icon }} {{ n.name }}</span>
                 <span v-if="myFinalNodes.length > 6" class="gpf-comp-more">+{{ myFinalNodes.length - 6 }}개</span>
@@ -1335,9 +1348,15 @@ watch(totalItems, (newVal) => {
 .tcell{flex:1;align-items:stretch;gap:2px}.ttrack{width:100%;height:5px;background:#0f172a;border-radius:3px;overflow:hidden}.tfill{height:100%;background:linear-gradient(90deg,#00f0ff,#38bdf8);border-radius:3px;transition:width 1s linear}.tcell.danger .tfill{background:linear-gradient(90deg,#ff2d75,#ef4444)}.tnum{font-family:'Orbitron',sans-serif;font-size:.65rem;color:#94a3b8;text-align:center}.tcell.danger .tnum{color:#ff2d75;animation:bla .5s infinite}
 .combo-pill{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;padding:.15rem .5rem;border:1px solid currentColor;border-radius:.25rem}
 /* MISSION */
-.mission{display:flex;align-items:center;gap:.6rem;margin:.4rem 1.2rem;padding:.5rem .8rem;background:rgba(8,12,30,.7);border:1px solid rgba(0,240,255,.08);border-radius:.6rem;font-size:.9rem}
-.m-ico{font-size:1.2rem}.m-txt{display:flex;flex-direction:column;flex:1;gap:.05rem}.m-txt span{font-size:.75rem;color:#64748b}
-.m-req{display:flex;flex-direction:column;align-items:center}.rl{font-size:.45rem;color:#475569;font-weight:700;letter-spacing:1.5px}.rn{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900}
+.mission-panel{margin:.4rem 1.2rem;padding:.55rem .9rem;background:rgba(8,12,30,.75);border:1px solid rgba(0,240,255,.12);border-radius:.7rem;display:flex;flex-direction:column;gap:.3rem}
+.mission-header{display:flex;align-items:center;gap:.5rem}
+.m-ico{font-size:1.1rem;flex-shrink:0}
+.m-title{flex:1;font-size:.9rem;color:#e0f2fe;font-weight:700}
+.m-req{display:flex;flex-direction:column;align-items:center;flex-shrink:0}.rl{font-size:.45rem;color:#475569;font-weight:700;letter-spacing:1.5px}.rn{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900}
+.m-scenario{font-size:.72rem;color:#64748b;line-height:1.5;border-left:2px solid rgba(0,240,255,.2);padding-left:.55rem}
+.m-missions{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.15rem}
+.m-missions li{font-size:.72rem;color:#94a3b8;padding-left:.6rem;position:relative;line-height:1.4}
+.m-missions li::before{content:'✅';position:absolute;left:0;font-size:.6rem;top:.05rem}
 /* [Multi-Agent] CoachAgent 힌트 토스트 */
 .coach-toast{display:flex;align-items:center;gap:.5rem;margin:.2rem 1.2rem 0;padding:.4rem .8rem;background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.2);border-radius:.4rem;font-size:.78rem;color:#a5f3fc;animation:coachPulse 4s ease-in-out infinite}
 .coach-icon{font-size:.9rem;flex-shrink:0}
@@ -1465,7 +1484,9 @@ watch(totalItems, (newVal) => {
 }
 .gpf-badge { font-size: .55rem; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 4px; background: rgba(0,240,255,.08); color: #00f0ff; border: 1px solid rgba(0,240,255,.2); display: inline-block; }
 .gpf-mission { font-size: .85rem; font-weight: 800; color: #f1f5f9; }
-.gpf-desc { font-size: .7rem; color: #64748b; line-height: 1.4; border-left: 2px solid rgba(0,240,255,.2); padding-left: .5rem; }
+.gpf-scenario { font-size: .7rem; color: #64748b; line-height: 1.5; border-left: 2px solid rgba(0,240,255,.2); padding-left: .5rem; }
+.gpf-missions { display: flex; flex-direction: column; gap: .15rem; }
+.gpf-mission-item { font-size: .65rem; color: #94a3b8; line-height: 1.4; }
 .gpf-components { display: flex; flex-wrap: wrap; gap: .3rem; }
 .gpf-comp { font-size: .65rem; padding: 2px 8px; background: rgba(0,240,255,.08); border: 1px solid rgba(0,240,255,.15); border-radius: 4px; color: #e0f2fe; }
 .gpf-comp-more { font-size: .65rem; padding: 2px 8px; color: #475569; }

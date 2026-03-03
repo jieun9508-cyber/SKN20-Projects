@@ -36,6 +36,7 @@ from core.views.pseudocode.pseudocode_execution import execute_python_code
 from core.views.pseudocode import pseudocode_evaluation
 from core.views import youtube_recommendation
 from core.views.architecture.architecture_view import ArchitectureEvaluationView, ArchitectureQuestionGeneratorView
+from core.views.wars.wars_mission_view import WarsMissionsView
 from core.views.coach.coach_view import AICoachView
 from core.views.interview import (
     InterviewVisionView,
@@ -93,6 +94,9 @@ urlpatterns = [
     # 9. Architecture API
     path('architecture/evaluate/', ArchitectureEvaluationView.as_view(), name='architecture_evaluate'),
     path('architecture/generate-questions/', ArchitectureQuestionGeneratorView.as_view(), name='architecture_generate_questions'),
+
+    # 9-1. Wars 미션 API (unit03 DB → Wars 포맷)
+    path('wars/missions/', WarsMissionsView.as_view(), name='wars_missions'),
 
     # 10. AI Coach Agent API
     path('ai-coach/chat/', AICoachView.as_view(), name='ai_coach_chat'),
