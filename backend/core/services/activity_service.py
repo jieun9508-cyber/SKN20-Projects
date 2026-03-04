@@ -1,7 +1,7 @@
 import logging
 from django.db.models import Sum, Max
 from django.db import transaction
-from core.models import UserActivity, UserSolvedProblem, UserProgress, PracticeDetail
+from core.models import UserActivity, UserSolvedProblem, UserProgress, PracticeDetail, UserWarsScore
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,20 @@ def save_user_problem_record(user_profile, detail_id, score, submitted_data):
             # [2026-02-18 상세] 2. 누적 포인트 업데이트
             # - 단순 합산이 아닌, 동일 문제에 대해 여러 번 기록이 있을 경우 '최고 점수'만 반영함
             # - values('practice_detail')로 그룹화하여 문제별 Max 점수를 구한 뒤 최종 합산(Sum)함
-            total_points_data = UserSolvedProblem.objects.filter(user=user_profile) \
+            practice_points_data = UserSolvedProblem.objects.filter(user=user_profile) \
                 .values('practice_detail') \
                 .annotate(max_score=Max('score')) \
                 .aggregate(total=Sum('max_score'))
-                
-            total_points = total_points_data['total'] or 0
+            practice_points = practice_points_data['total'] or 0
+
+            # [2026-03-04] Wars 게임 점수도 합산 (game_type별 최고점)
+            wars_points_data = UserWarsScore.objects.filter(user=user_profile) \
+                .values('game_type') \
+                .annotate(max_score=Max('score')) \
+                .aggregate(total=Sum('max_score'))
+            wars_points = wars_points_data['total'] or 0
+
+            total_points = practice_points + wars_points
             
             # [2026-02-18 상세] 유저 활동 정보(UserActivity) 갱신 또는 생성
             activity, _ = UserActivity.objects.get_or_create(user=user_profile)
