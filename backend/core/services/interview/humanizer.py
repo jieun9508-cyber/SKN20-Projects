@@ -76,6 +76,16 @@ def build_context(session, plan_slot: dict = None) -> dict:
         slot_key = "technical"
     current_bank = bank_questions.get(slot_key, [])
 
+    # [2026-03-01] 현재 슬롯에 해당하는 기출 질문 추출
+    #   interview_plan["bank_questions"]는 session_view.py에서 세션 생성 시 저장됨.
+    #   키: "motivation", "technical", "collaboration", "problem_solving", "growth"
+    #   technical_depth, technical_depth_2 등은 모두 "technical" 키로 통합됨.
+    bank_questions = session.interview_plan.get("bank_questions", {})
+    slot_key = session.current_slot
+    if slot_key.startswith("technical"):
+        slot_key = "technical"
+    current_bank = bank_questions.get(slot_key, [])
+
     return {
         "slot": session.current_slot,
         "topic": plan_slot.get("topic", session.current_slot),

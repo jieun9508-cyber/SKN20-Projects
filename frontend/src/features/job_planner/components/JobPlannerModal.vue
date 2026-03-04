@@ -259,6 +259,25 @@
               ⏳ 채용공고 분석이 백그라운드에서 진행 중입니다. 완료되면 자동으로 반영됩니다.
             </div>
 
+            <!-- 정보 부족 팝업 -->
+            <div v-if="showInsufficientPopup" class="insufficient-popup-overlay" @click.self="showInsufficientPopup = false">
+              <div class="insufficient-popup">
+                <div class="insufficient-popup-icon">⚠️</div>
+                <div class="insufficient-popup-title">공고 정보가 부족합니다</div>
+                <div class="insufficient-popup-body">
+                  <p>분석 결과 다음 정보가 부족합니다:</p>
+                  <div class="insufficient-popup-fields">
+                    <span v-for="field in missingFields" :key="field" class="missing-field-tag">{{ field }}</span>
+                  </div>
+                  <p class="insufficient-popup-hint">공고 입력 화면으로 돌아가서 이미지나 텍스트를 추가해 주세요.</p>
+                </div>
+                <div class="insufficient-popup-actions">
+                  <button class="btn-go-back" @click="showInsufficientPopup = false; currentStep = 'input'">공고 입력으로 돌아가기</button>
+                  <button class="btn-dismiss" @click="showInsufficientPopup = false">이대로 진행</button>
+                </div>
+              </div>
+            </div>
+
             <div class="profile-form">
               <!-- 서류 업로드 섹션 -->
               <div class="form-section document-upload-section">
@@ -513,7 +532,7 @@
                   {{ (analysisResult.experience_fit * 100).toFixed(1) }}%
                 </div>
               </div>
-              <div v-if="analysisResult.proficiency_score" class="score-card">
+              <div v-if="analysisResult.proficiency_score != null" class="score-card">
                 <div class="score-label">숙련도</div>
                 <div class="score-value" :class="getScoreClass(analysisResult.proficiency_score)">
                   {{ (analysisResult.proficiency_score * 100).toFixed(1) }}%
@@ -591,10 +610,10 @@
                       <div class="rec-company">{{ rec.company_name }}</div>
                     </div>
                     <div class="rec-match">
-                      <div class="rec-match-rate" :class="getScoreClass(rec.match_rate)">
-                        {{ (rec.match_rate * 100).toFixed(0) }}%
+                      <div class="rec-match-rate" :class="getScoreClass((rec.llm_score || rec.match_rate * 100) / 100)">
+                        {{ rec.llm_score != null ? rec.llm_score : (rec.match_rate * 100).toFixed(0) }}%
                       </div>
-                      <div class="rec-match-label">매칭률</div>
+                      <div class="rec-match-label">종합 적합도</div>
                     </div>
                   </div>
 
@@ -608,8 +627,8 @@
                       <span class="rec-value">{{ rec.source }}</span>
                     </div>
                     <div class="rec-info-row">
-                      <span class="rec-label">✅ 매칭:</span>
-                      <span class="rec-value">{{ rec.matched_count }} / {{ rec.total_skills }}개 스킬</span>
+                      <span class="rec-label">✅ 스킬:</span>
+                      <span class="rec-value">{{ rec.matched_count }} / {{ rec.total_skills }}개 매칭 ({{ (rec.match_rate * 100).toFixed(0) }}%)</span>
                     </div>
                   </div>
 
@@ -645,6 +664,14 @@
                   </a>
                 </div>
               </div>
+            </div>
+
+            <!-- No Recommendations -->
+            <div v-if="recommendationsSearched && recommendations.length === 0 && !isLoadingRecommendations" class="recommendations-section">
+              <h3 class="recommendations-title">💡 추천 채용공고</h3>
+              <p class="recommendations-subtitle" style="color: #888;">
+                현재 스킬과 매칭되는 유사한 공고를 찾지 못했습니다.
+              </p>
             </div>
 
             <!-- Loading Recommendations -->
@@ -854,28 +881,6 @@
                 </div>
               </div>
 
-              <!-- Interview Questions -->
-              <div class="interview-section">
-                <h4 class="section-subtitle">💬 예상 면접 질문 TOP 5</h4>
-                <div class="interview-questions-list">
-                  <div
-                    v-for="(q, idx) in finalReport.interview_questions"
-                    :key="'iq-' + idx"
-                    class="interview-question-card"
-                  >
-                    <div class="question-number-badge">Q{{ idx + 1 }}</div>
-                    <div class="question-content">
-                      <div class="question-title">{{ q.question }}</div>
-                      <div class="answer-guide">
-                        <strong>답변 가이드:</strong> {{ q.answer_guide }}
-                      </div>
-                      <div v-if="q.tips" class="tips">
-                        <strong>💡 Tip:</strong> {{ q.tips }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               <!-- Experience Packaging -->
               <div class="packaging-section">
@@ -1029,6 +1034,12 @@
                     <li v-for="(item, idx) in portfolioReview.missing" :key="'pm-' + idx">{{ item }}</li>
                   </ul>
                 </div>
+                <div class="review-section" v-if="portfolioReview.portfolio_structure?.length">
+                  <div class="review-section-title">📋 포트폴리오 구성 가이드</div>
+                  <ol class="review-list priority">
+                    <li v-for="(item, idx) in portfolioReview.portfolio_structure" :key="'pst-' + idx">{{ item }}</li>
+                  </ol>
+                </div>
                 <div class="review-section" v-if="portfolioReview.priority_actions?.length">
                   <div class="review-section-title">🚀 우선 실행 액션</div>
                   <ol class="review-list priority">
@@ -1081,6 +1092,32 @@ export default {
       supplementImagePreviews: [],
       supplementText: '',
       isSupplementParsing: false,
+      showInsufficientPopup: false,
+
+      // 서류 업로드
+      resumePdf: null,
+      coverLetterPdf: null,
+      portfolioPdf: null,
+      careerDescPdf: null,
+      resumeFileName: '',
+      coverLetterFileName: '',
+      portfolioFileName: '',
+      careerDescFileName: '',
+      isParsingDocuments: false,
+      documentParseSuccess: false,
+      // 서류 파싱 추가 데이터
+      parsedEmail: null,
+      parsedPhone: null,
+      parsedLanguages: [],
+      parsedAwards: [],
+      parsedStrengths: [],
+      parsedWorkExperience: [],
+      parsedKeyAchievements: [],
+      parsedProjects: [],
+      parsedGithubUrl: null,
+      parsedPortfolioUrl: null,
+      parsedTeamworkExperience: null,
+      parsedGrowthStory: null,
 
       // 서류 업로드
       resumePdf: null,
@@ -1115,9 +1152,14 @@ export default {
       userSkillsInput: '',
       skillLevels: {},  // {"Python": 4, "Django": 3}
       newSkillInput: '',
+      newSkillInput: '',
       education: '',
       certifications: [],
       certificationsInput: '',
+      training: [],
+      newTrainingName: '',
+      newTrainingInstitution: '',
+      newTrainingPeriod: '',
       training: [],
       newTrainingName: '',
       newTrainingInstitution: '',
@@ -1134,12 +1176,14 @@ export default {
       analysisResult: null,
 
       // Agent Report
+      // Agent Report
       finalReport: null,
       isGeneratingReport: false,
 
       // Recommendations
       recommendations: [],
       isLoadingRecommendations: false,
+      recommendationsSearched: false,
 
       // Cover Letter & Portfolio Review
       coverLetterQuestions: '',
@@ -1157,6 +1201,95 @@ export default {
   methods: {
     closeModal() {
       this.$emit('close');
+    },
+
+    clearPdf(type) {
+      if (type === 'resume') { this.resumePdf = null; this.resumeFileName = ''; }
+      else if (type === 'cover_letter') { this.coverLetterPdf = null; this.coverLetterFileName = ''; }
+      else if (type === 'portfolio') { this.portfolioPdf = null; this.portfolioFileName = ''; }
+      else if (type === 'career_description') { this.careerDescPdf = null; this.careerDescFileName = ''; }
+    },
+
+    handlePdfUpload(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (type === 'resume') {
+          this.resumePdf = e.target.result;
+          this.resumeFileName = file.name;
+        } else if (type === 'cover_letter') {
+          this.coverLetterPdf = e.target.result;
+          this.coverLetterFileName = file.name;
+        } else if (type === 'portfolio') {
+          this.portfolioPdf = e.target.result;
+          this.portfolioFileName = file.name;
+        } else if (type === 'career_description') {
+          this.careerDescPdf = e.target.result;
+          this.careerDescFileName = file.name;
+        }
+      };
+      reader.readAsDataURL(file);
+    },
+
+    async parseResumeDocuments() {
+      this.isParsingDocuments = true;
+      this.documentParseSuccess = false;
+      this.errorMessage = '';
+
+      try {
+        const payload = {};
+        if (this.resumePdf) payload.resume = this.resumePdf;
+        if (this.coverLetterPdf) payload.cover_letter = this.coverLetterPdf;
+        if (this.portfolioPdf) payload.portfolio = this.portfolioPdf;
+        if (this.careerDescPdf) payload.career_description = this.careerDescPdf;
+
+        const response = await axios.post('/api/core/job-planner/parse-resume/', payload);
+        const data = response.data;
+
+        // 기본 폼 자동 채우기
+        if (data.name) this.name = data.name;
+        if (data.current_role) this.currentRole = data.current_role;
+        if (data.education) this.education = data.education;
+        if (data.certifications?.length) {
+          this.certifications = data.certifications;
+          this.certificationsInput = data.certifications.join(', ');
+        }
+        if (data.training?.length) {
+          this.training = data.training;
+        }
+        if (data.career_goals) this.careerGoals = data.career_goals;
+        if (data.experience_years) this.experienceYears = data.experience_years;
+        if (data.user_skills?.length) {
+          this.userSkills = data.user_skills;
+          this.userSkillsInput = data.user_skills.join(', ');
+        }
+        if (data.skill_levels && Object.keys(data.skill_levels).length) {
+          this.skillLevels = data.skill_levels;
+        }
+
+        // 추가 데이터 저장
+        this.parsedEmail = data.email || null;
+        this.parsedPhone = data.phone || null;
+        this.parsedLanguages = data.languages || [];
+        this.parsedAwards = data.awards || [];
+        this.parsedStrengths = data.strengths || [];
+        this.parsedWorkExperience = data.work_experience || [];
+        this.parsedKeyAchievements = data.key_achievements || [];
+        this.parsedProjects = data.projects || [];
+        this.parsedGithubUrl = data.github_url || null;
+        this.parsedPortfolioUrl = data.portfolio_url || null;
+        this.parsedTeamworkExperience = data.teamwork_experience || null;
+        this.parsedGrowthStory = data.growth_story || null;
+
+        this.documentParseSuccess = true;
+      } catch (error) {
+        console.error('서류 분석 실패:', error);
+        this.errorMessage = error.response?.data?.error || '서류 분석 중 오류가 발생했습니다.';
+      } finally {
+        this.isParsingDocuments = false;
+      }
     },
 
     clearPdf(type) {
@@ -1270,6 +1403,10 @@ export default {
           // 기업 URL이 있으면 기업분석 백그라운드 실행
           if (this.companyUrl) {
             this.analyzeCompany(this.companyUrl);
+          }
+          // 분석 완료 후 정보 부족 + 내 정보 탭에 있으면 팝업
+          if (this.needsMoreInfo && this.currentStep !== 'input') {
+            this.showInsufficientPopup = true;
           }
         }
       }
@@ -1490,13 +1627,18 @@ export default {
           education: this.education,
           certifications: this.certifications,
           training: this.training,
+          training: this.training,
           career_goals: this.careerGoals,
           available_prep_days: this.availablePrepDays,
+
+          // 이력서 경력 사항
+          work_experience: this.parsedWorkExperience || [],
 
           // 채용공고 정보
           required_skills: this.jobData.required_skills,
           preferred_skills: this.jobData.preferred_skills,
           experience_range: this.jobData.experience_range,
+          position: this.jobData.position || '',
 
           // 필수/우대 요건 전체 텍스트 (추가 역량 추출용)
           required_qualifications: this.jobData.required_qualifications || '',
@@ -1506,6 +1648,9 @@ export default {
 
         this.analysisResult = response.data;
 
+        this.currentStep = 'result';
+        this.fetchRecommendations();
+        this.generateFinalReport();
         this.currentStep = 'result';
         this.fetchRecommendations();
         this.generateFinalReport();
@@ -1562,15 +1707,20 @@ export default {
           // 현재 분석 중인 공고 정보 (중복 제거용)
           current_job_url: this.urlInput || '',
           current_job_company: this.jobData?.company_name || '',
-          current_job_title: this.jobData?.position || ''
+          current_job_title: this.jobData?.position || '',
+          // 사용자 프로필 (LLM 2차 평가용)
+          work_experience: this.parsedWorkExperience || [],
+          projects: this.parsedProjects || [],
+          key_achievements: this.parsedKeyAchievements || [],
         });
 
         this.recommendations = response.data.recommendations || [];
+        this.recommendationsSearched = true;
 
       } catch (error) {
         console.error('추천 공고 로드 실패:', error);
-        // 실패해도 에러 메시지 표시하지 않음 (선택 기능)
         this.recommendations = [];
+        this.recommendationsSearched = true;
       } finally {
         this.isLoadingRecommendations = false;
       }
@@ -1676,9 +1826,11 @@ export default {
       this.supplementImagePreviews = [];
       this.supplementText = '';
       this.isSupplementParsing = false;
+      this.showInsufficientPopup = false;
       this.analysisResult = null;
       this.finalReport = null;
       this.recommendations = [];
+      this.recommendationsSearched = false;
       this.errorMessage = '';
       this.currentStep = 'input';
     },
@@ -1710,7 +1862,15 @@ export default {
       this.portfolioReview = null;
       try {
         const response = await axios.post('/api/core/job-planner/review-portfolio/', {
-          user_profile: this.analysisResult?.profile_summary || {},
+          user_profile: {
+            ...this.analysisResult?.profile_summary || {},
+            user_skills: this.userSkills,
+            work_experience: this.parsedWorkExperience || [],
+            projects: this.parsedProjects,
+            key_achievements: this.parsedKeyAchievements,
+            github_url: this.parsedGithubUrl,
+            portfolio_url: this.parsedPortfolioUrl,
+          },
           job_data: this.jobData,
         });
         this.portfolioReview = response.data;
@@ -1758,6 +1918,30 @@ export default {
       this.parsedTeamworkExperience = null;
       this.parsedGrowthStory = null;
 
+      // 서류 업로드 초기화
+      this.resumePdf = null;
+      this.coverLetterPdf = null;
+      this.portfolioPdf = null;
+      this.careerDescPdf = null;
+      this.resumeFileName = '';
+      this.coverLetterFileName = '';
+      this.portfolioFileName = '';
+      this.careerDescFileName = '';
+      this.isParsingDocuments = false;
+      this.documentParseSuccess = false;
+      this.parsedEmail = null;
+      this.parsedPhone = null;
+      this.parsedLanguages = [];
+      this.parsedAwards = [];
+      this.parsedStrengths = [];
+      this.parsedWorkExperience = [];
+      this.parsedKeyAchievements = [];
+      this.parsedProjects = [];
+      this.parsedGithubUrl = null;
+      this.parsedPortfolioUrl = null;
+      this.parsedTeamworkExperience = null;
+      this.parsedGrowthStory = null;
+
       // 프로필 초기화
       this.name = '';
       this.currentRole = '';
@@ -1768,6 +1952,7 @@ export default {
       this.education = '';
       this.certifications = [];
       this.certificationsInput = '';
+      this.training = [];
       this.training = [];
       this.careerGoals = '';
       this.availablePrepDays = null;
@@ -1780,6 +1965,7 @@ export default {
       this.analysisResult = null;
       this.finalReport = null;
       this.recommendations = [];
+      this.recommendationsSearched = false;
       this.coverLetterQuestions = '';
       this.generatedCoverLetter = null;
       this.portfolioReview = null;
@@ -2107,6 +2293,112 @@ export default {
   border-radius: 8px;
   color: #fbbf24;
   font-size: 14px;
+}
+
+/* 정보 부족 팝업 */
+.insufficient-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.insufficient-popup {
+  background: #1e293b;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+
+.insufficient-popup-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.insufficient-popup-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 16px;
+}
+
+.insufficient-popup-body {
+  color: #d1d5db;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.insufficient-popup-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.missing-field-tag {
+  padding: 4px 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 20px;
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.insufficient-popup-hint {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.insufficient-popup-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn-go-back {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-go-back:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-dismiss {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dismiss:hover {
+  border-color: #6b7280;
+  color: #d1d5db;
 }
 
 .btn-reset-job {
@@ -2461,13 +2753,13 @@ export default {
 
 .score-overview {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
   margin-bottom: 32px;
 }
 
 .score-card {
-  padding: 24px;
+  padding: 16px 12px;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
@@ -2475,14 +2767,14 @@ export default {
 }
 
 .score-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .score-value {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
 }
 
@@ -2568,6 +2860,12 @@ export default {
   color: #ef4444;
 }
 
+.skill-reason {
+  font-size: 12px;
+  color: #64748b;
+  margin-left: 4px;
+}
+
 .error-banner {
   padding: 16px;
   background: rgba(239, 68, 68, 0.1);
@@ -2585,6 +2883,123 @@ export default {
   background: rgba(15, 23, 42, 0.4);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
+}
+
+.document-upload-section {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.document-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.upload-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.upload-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.upload-row .upload-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-clear-btn {
+  flex-shrink: 0;
+  width: 28px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.upload-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+}
+
+.upload-label {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.upload-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 2px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.upload-btn:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #a5b4fc;
+}
+
+.upload-btn.uploaded {
+  border-color: rgba(34, 197, 94, 0.6);
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.btn-parse-resume {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-parse-resume:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-parse-resume:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.parse-success-msg {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  color: #86efac;
+  font-size: 13px;
 }
 
 .document-upload-section {
@@ -2780,10 +3195,140 @@ export default {
 .skill-level-item {
   display: grid;
   grid-template-columns: 150px 1fr auto auto;
+  grid-template-columns: 150px 1fr auto auto;
   align-items: center;
   gap: 16px;
   padding: 12px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.skill-delete-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.skill-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+}
+
+.skill-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.skill-add-row input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  color: #f1f5f9;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.skill-add-row input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.skill-add-btn {
+  padding: 8px 16px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  color: #60a5fa;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.skill-add-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.training-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.training-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+}
+
+.training-name {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+
+.training-meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.training-meta + .training-meta::before {
+  content: '·';
+  margin-right: 4px;
+}
+
+.training-delete-btn {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: #f87171;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.training-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.training-add-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.training-add-row input {
+  flex: 1;
+  min-width: 120px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  color: #f1f5f9;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.training-add-row input:focus {
+  outline: none;
+  border-color: #60a5fa;
 }
 
 .skill-delete-btn {
@@ -3284,6 +3829,16 @@ export default {
   color: #93c5fd;
 }
 
+.tech-blog-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.tech-blog-link:hover {
+  color: #93c5fd;
+}
+
 .growth-badge {
   padding: 4px 12px;
   background: rgba(100, 116, 139, 0.3);
@@ -3415,69 +3970,6 @@ export default {
   line-height: 1.6;
 }
 
-/* Interview Questions */
-.interview-section {
-  margin-bottom: 40px;
-}
-
-.interview-questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.interview-question-card {
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 12px;
-  display: flex;
-  gap: 16px;
-}
-
-.question-number-badge {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  border-radius: 12px;
-  color: white;
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.question-content {
-  flex: 1;
-}
-
-.question-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin-bottom: 12px;
-}
-
-.answer-guide {
-  font-size: 14px;
-  color: #cbd5e1;
-  line-height: 1.7;
-  margin-bottom: 8px;
-  padding: 12px;
-  background: rgba(139, 92, 246, 0.1);
-  border-radius: 8px;
-}
-
-.tips {
-  font-size: 13px;
-  color: #a78bfa;
-  line-height: 1.6;
-  padding: 8px 12px;
-  background: rgba(167, 139, 250, 0.1);
-  border-radius: 6px;
-}
 
 /* Experience Packaging */
 .packaging-section {
@@ -3987,61 +4479,194 @@ export default {
 /* 포트폴리오 분석 결과 */
 .portfolio-review-result {
   margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .review-section {
-  margin-bottom: 16px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
 }
 
 .review-section-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: #a78bfa;
-  margin-bottom: 8px;
+  color: #e2e8f0;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .review-list {
-  padding-left: 20px;
+  padding-left: 18px;
   margin: 0;
 }
 
 .review-list li {
   font-size: 13px;
-  color: #cbd5e1;
-  margin-bottom: 4px;
-  line-height: 1.5;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  line-height: 1.6;
 }
 
 .review-list.missing li {
-  color: #fca5a5;
+  color: #94a3b8;
 }
 
 .review-list.priority li {
-  color: #86efac;
+  color: #94a3b8;
+}
+
+.review-list.priority li::marker {
+  color: #60a5fa;
 }
 
 .improvement-card {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .imp-target {
-  font-weight: 700;
-  color: #c4b5fd;
-  margin-bottom: 4px;
+  font-weight: 600;
+  color: #e2e8f0;
 }
 
 .imp-issue {
-  color: #fbbf24;
-  margin-bottom: 4px;
+  color: #94a3b8;
 }
 
 .imp-suggestion {
-  color: #86efac;
+  color: #60a5fa;
 }
+
+/* AI 지원 도구 섹션 */
+.action-tools-section {
+  margin-top: 32px;
+  padding: 24px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 12px;
+}
+
+.action-tools-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #a78bfa;
+  margin: 0 0 16px 0;
+}
+
+.action-tools-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.btn-tool {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-tool:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.45);
+}
+
+.btn-tool:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 자기소개서 문항 입력 */
+.cover-letter-questions-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.questions-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 6px 0 10px;
+}
+
+.questions-textarea {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+  margin-bottom: 10px;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.questions-textarea:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+/* 자기소개서 결과 */
+.cover-letter-result {
+  margin-top: 20px;
+}
+
+.result-subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #c4b5fd;
+  margin: 0 0 12px 0;
+}
+
+.cover-letter-item {
+  margin-bottom: 20px;
+}
+
+.cl-question {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c4b5fd;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: rgba(124, 58, 237, 0.15);
+  border-left: 3px solid #7c3aed;
+  border-radius: 0 6px 6px 0;
+}
+
+.cover-letter-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 0;
+}
+
+/* 포트폴리오 분석 결과 */
 </style>

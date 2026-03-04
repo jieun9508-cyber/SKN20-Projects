@@ -36,24 +36,48 @@ def _embed_texts(texts: list):
         np.ndarray: shape (n, dim) — L2 정규화된 float32 벡터 행렬.
                     코사인 유사도를 내적(dot product)으로 계산할 수 있게 단위 벡터로 변환됨.
     """
+    """
+    텍스트 리스트를 OpenAI 임베딩 벡터로 변환 후 L2 정규화하여 반환.
+
+    Args:
+        texts (list): 임베딩할 문자열 리스트
+
+    Returns:
+        np.ndarray: shape (n, dim) — L2 정규화된 float32 벡터 행렬.
+                    코사인 유사도를 내적(dot product)으로 계산할 수 있게 단위 벡터로 변환됨.
+    """
     import numpy as np
     import openai as _openai
+
+    # 환경변수에서 OpenAI API 키를 읽어 클라이언트 생성
 
     # 환경변수에서 OpenAI API 키를 읽어 클라이언트 생성
     client = _openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     # text-embedding-3-small 모델로 배치 임베딩 요청
     # 여러 텍스트를 한 번의 API 호출로 처리 (비용·속도 효율)
+
+    # text-embedding-3-small 모델로 배치 임베딩 요청
+    # 여러 텍스트를 한 번의 API 호출로 처리 (비용·속도 효율)
     response = client.embeddings.create(model="text-embedding-3-small", input=texts)
+
+    # API 응답은 순서가 보장되지 않을 수 있으므로 index 기준으로 정렬 후 벡터 추출
 
     # API 응답은 순서가 보장되지 않을 수 있으므로 index 기준으로 정렬 후 벡터 추출
     vectors = [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
 
     # Python list → float32 numpy 배열로 변환 (shape: n x dim)
+
+    # Python list → float32 numpy 배열로 변환 (shape: n x dim)
     arr = np.array(vectors, dtype=np.float32)
 
     # 각 벡터의 L2 norm(크기) 계산, keepdims=True로 브로드캐스팅 가능하게 유지 (shape: n x 1)
+
+    # 각 벡터의 L2 norm(크기) 계산, keepdims=True로 브로드캐스팅 가능하게 유지 (shape: n x 1)
     norms = np.linalg.norm(arr, axis=1, keepdims=True)
+
+    # 각 벡터를 norm으로 나눠 단위 벡터로 정규화
+    # np.maximum(norms, 1e-8): norm이 0인 제로 벡터일 때 division by zero 방지
 
     # 각 벡터를 norm으로 나눠 단위 벡터로 정규화
     # np.maximum(norms, 1e-8): norm이 0인 제로 벡터일 때 division by zero 방지
@@ -182,7 +206,7 @@ class JobPlannerParseView(APIView):
 
 ## 추출 정보:
 1. 회사명과 포지션
-2. 주요 업무 (담당할 업무, 하게 될 일)
+2. 주요 업무 (담당할 업무, 하게 될 일, 담당 업무)
 3. 필수 요건 (자격 요건, 필수 조건) - **원문 그대로**
 4. 우대 조건 (우대 사항, 플러스 요소) - **원문 그대로**
 5. **기술 스택 (가장 중요!)** - 프로그래밍 언어, 프레임워크, 도구, DB, 클라우드 등 모두 추출
@@ -219,10 +243,14 @@ class JobPlannerParseView(APIView):
 6. **기술이 아닌 것 제외**: "팀워크", "성실성", "커뮤니케이션", "책임감" 등은 제외
 7. **최소 3개 이상** 추출 (있다면 최대한 많이)
 
+## position 추출 규칙:
+- 이미지에 직무명/포지션이 명시되어 있으면 그대로 사용 (예: "백엔드 개발자", "AI 엔지니어")
+- 명시되어 있지 않으면 업무내용과 요구 기술을 바탕으로 적절한 직무명을 추론 (예: Python/Django 백엔드 → "백엔드 개발자", React/Vue 프론트 → "프론트엔드 개발자", ML/DL 관련 → "AI 엔지니어")
+
 ## JSON 형식:
 {
   "company_name": "회사명",
-  "position": "포지션명",
+  "position": "직무명 (예: 백엔드 개발자, AI 엔지니어, 데이터 분석가)",
   "job_responsibilities": "주요 업무 내용 (원문 그대로, 줄바꿈 포함)",
   "required_qualifications": "필수 자격 요건 (원문 그대로, 줄바꿈 포함)",
   "preferred_qualifications": "우대 사항 (원문 그대로, 줄바꿈 포함)",
@@ -410,7 +438,7 @@ class JobPlannerParseView(APIView):
 
 위 텍스트를 바탕으로 아래 JSON 키를 채우세요. 텍스트에 없는 정보는 "" 또는 []로 두세요:
 - company_name: string
-- position: string
+- position: string (직무명이 명시되어 있으면 그대로, 없으면 업무내용/요구기술로 추론. 예: "백엔드 개발자", "AI 엔지니어")
 - job_responsibilities: string
 - required_qualifications: string
 - preferred_qualifications: string
@@ -475,7 +503,7 @@ class JobPlannerAnalyzeView(APIView):
     준비도 점수, 스킬 갭, 매칭 정보 등을 제공합니다.
 
     주요 기능:
-    1. 3단계 스킬 매칭 시스템 (정확 일치 → 동의어 → 임베딩 유사도)
+    1. LLM 기반 스킬 매칭 (동일 기술·대체 가능 기술·생태계 연관 기술 판단)
     2. 한영 스킬 정규화 (예: "파이썬" → "python")
     3. 준비도 점수 계산 (매칭률 + 경력 적합도 + 숙련도)
     4. 맞춤형 인사이트 생성
@@ -493,49 +521,107 @@ class JobPlannerAnalyzeView(APIView):
         '자바': 'java',
         '자바스크립트': 'javascript', 'js': 'javascript',
         '타입스크립트': 'typescript', 'ts': 'typescript',
-        'c++': 'cpp',
-        'c#': 'csharp', '씨샵': 'csharp',
+        'c++': 'cpp', '씨쁠쁠': 'cpp',
+        'c#': 'csharp', '씨샵': 'csharp', '씨샤프': 'csharp',
         '고': 'go', 'golang': 'go',
         '코틀린': 'kotlin',
         '스위프트': 'swift',
         '루비': 'ruby',
+        '러스트': 'rust',
+        '스칼라': 'scala',
+        'php': 'php', '피에이치피': 'php',
+        '다트': 'dart',
+        '펄': 'perl',
 
-        # 프레임워크/라이브러리
+        # 웹 프레임워크
         '장고': 'django',
         '플라스크': 'flask',
-        '스프링': 'spring', '스프링부트': 'springboot',
-        '리액트': 'react', 'reactjs': 'react',
-        '뷰': 'vue', 'vuejs': 'vue',
-        '앵귤러': 'angular',
+        '패스트에이피아이': 'fastapi', 'fast api': 'fastapi',
+        '스프링': 'spring',
+        '스프링부트': 'springboot', 'spring boot': 'springboot', '스프링 부트': 'springboot',
+        '리액트': 'react', 'reactjs': 'react', 'react.js': 'react',
+        '뷰': 'vue', 'vuejs': 'vue', 'vue.js': 'vue',
+        '앵귤러': 'angular', 'angularjs': 'angular',
         '노드': 'node', 'nodejs': 'node', 'node.js': 'node',
-        '익스프레스': 'express', 'expressjs': 'express',
+        '익스프레스': 'express', 'expressjs': 'express', 'express.js': 'express',
         '넥스트': 'next', 'nextjs': 'next', 'next.js': 'next',
-        '넥스트제이에스': 'next',
-        '넥스트js': 'next',
+        '넥스트제이에스': 'next', '넥스트js': 'next',
+        '네스트': 'nestjs', 'nestjs': 'nestjs', 'nest.js': 'nestjs', '네스트제이에스': 'nestjs',
+        '넉스트': 'nuxtjs', 'nuxtjs': 'nuxtjs', 'nuxt.js': 'nuxtjs',
+        '스벨트': 'svelte',
+        '플러터': 'flutter',
+        '라라벨': 'laravel',
+        '레일즈': 'rails', 'ruby on rails': 'rails',
+        '하이버네이트': 'hibernate',
+        '마이바티스': 'mybatis',
+
+        # 데이터 분석/과학 라이브러리
+        '판다스': 'pandas',
+        '넘파이': 'numpy',
+        '맷플롯립': 'matplotlib',
+        '사이킷런': 'sklearn', 'scikit-learn': 'sklearn',
+        '엑스지부스트': 'xgboost',
+        '라이트지비엠': 'lightgbm',
+        '오픈cv': 'opencv', 'open cv': 'opencv',
+        '엔엘티케이': 'nltk',
+        '스페이시': 'spacy',
 
         # 데이터베이스
         '마이에스큐엘': 'mysql',
-        '포스트그레': 'postgresql',
-        '몽고디비': 'mongodb',
+        '포스트그레': 'postgresql', 'postgres': 'postgresql', 'postgre sql': 'postgresql',
+        '몽고디비': 'mongodb', 'mongo': 'mongodb',
         '레디스': 'redis',
         '오라클': 'oracle',
+        '마리아디비': 'mariadb',
+        '에스큐엘서버': 'mssql', 'sql server': 'mssql', 'sqlserver': 'mssql',
+        '에스큐엘라이트': 'sqlite',
+        '엘라스틱서치': 'elasticsearch', '엘라스틱': 'elasticsearch',
+        '크로마': 'chromadb', 'chroma': 'chromadb', 'chroma db': 'chromadb',
+        '파인콘': 'pinecone',
+        '카산드라': 'cassandra',
+        '다이나모디비': 'dynamodb', 'dynamo db': 'dynamodb',
+        '파이어베이스': 'firebase',
+        '수파베이스': 'supabase',
 
         # 클라우드/인프라
-        '애저': 'azure',
-        '구글클라우드': 'gcp',
+        '아마존웹서비스': 'aws', 'amazon web services': 'aws',
+        '애저': 'azure', 'microsoft azure': 'azure',
+        '구글클라우드': 'gcp', 'google cloud': 'gcp', 'google cloud platform': 'gcp',
         '도커': 'docker',
         '쿠버네티스': 'kubernetes', 'k8s': 'kubernetes',
+        '테라폼': 'terraform',
+        '앤서블': 'ansible',
+        '젠킨스': 'jenkins',
+        '깃허브액션스': 'githubactions', 'github actions': 'githubactions',
+        '엔진엑스': 'nginx',
+        '아파치': 'apache',
+        '리눅스': 'linux',
+        '우분투': 'ubuntu',
+        '카프카': 'kafka', 'apache kafka': 'kafka',
+        '래빗엠큐': 'rabbitmq', 'rabbit mq': 'rabbitmq',
 
         # AI/ML
-        '텐서플로': 'tensorflow',
+        '텐서플로': 'tensorflow', '텐서플로우': 'tensorflow',
         '파이토치': 'pytorch',
         '케라스': 'keras',
-        '사이킷런': 'sklearn', 'scikit-learn': 'sklearn',
+        '랭체인': 'langchain',
+        '허깅페이스': 'huggingface', 'hugging face': 'huggingface',
+        '트랜스포머': 'transformers',
 
         # 도구
         '깃': 'git',
         '깃허브': 'github',
+        '깃랩': 'gitlab',
         '지라': 'jira',
+        '컨플루언스': 'confluence',
+        '노션': 'notion',
+        '슬랙': 'slack',
+        '포스트맨': 'postman',
+        '피그마': 'figma',
+        '태블로': 'tableau',
+        '파워비아이': 'powerbi', 'power bi': 'powerbi',
+        '그라파나': 'grafana',
+        '키바나': 'kibana',
     }
 
     def _normalize_skill(self, skill):
@@ -651,10 +737,14 @@ class JobPlannerAnalyzeView(APIView):
             career_goals = request.data.get('career_goals', '')
             available_prep_days = request.data.get('available_prep_days', None)
 
+            # 이력서 경력 사항 (관련 경력 연수 추출용)
+            work_experience = request.data.get('work_experience', [])
+
             # 채용공고 정보
             required_skills = request.data.get('required_skills', [])
             preferred_skills = request.data.get('preferred_skills', [])
             experience_range = request.data.get('experience_range', '')
+            position = request.data.get('position', '')
 
             # 필수/우대 요건 전체 텍스트 (추가 역량 추출용)
             required_qualifications = request.data.get('required_qualifications', '')
@@ -683,122 +773,26 @@ class JobPlannerAnalyzeView(APIView):
 
             print(f"📊 필수 스킬: {len(required_skills)}개 → {len(all_required_skills)}개 (텍스트 분석 추가)")
 
-            # 스킬 정규화 (한영 통일)
+            # 스킬 정규화 (한영 통일) — fallback 매칭 및 향후 활용을 위해 유지
             user_skills_normalized = [self._normalize_skill(s) for s in user_skills]
             required_skills_normalized = [self._normalize_skill(s) for s in all_required_skills]
 
-            matched_skills = []
-            missing_skills = []
-            matched_indices = set()  # 이미 매칭된 사용자 스킬 인덱스
-
-            # === 3단계 매칭 시스템 ===
-            # 각 필수 스킬에 대해 사용자 스킬 중 가장 적합한 것을 찾습니다.
-            # 단계별로 엄격한 기준부터 적용하여 정확도를 높입니다.
-            # Stage 1: 정확 일치 (100% 매칭)
-            # Stage 2: 동의어 매칭 (95% 매칭)
-            # Stage 3: 임베딩 유사도 (75%+ 매칭)
-
-            # Stage 3 배치 임베딩 캐시 (루프 시작 전에는 None, 첫 Stage 3 필요 시 일괄 계산)
-            user_embeddings_cache = None
-            req_embeddings_cache = None
-
-            for i, req_skill in enumerate(all_required_skills):
-                req_normalized = required_skills_normalized[i]
-                best_match = None
-                best_score = 0.0
-                best_idx = -1
-                match_type = None
-
-                # 1단계: 정확 일치 (정규화 후)
-                # 예: "Python" vs "python", "파이썬" vs "Python" (모두 "python"으로 정규화됨)
-                for j, user_skill in enumerate(user_skills):
-                    if j in matched_indices:
-                        continue  # 이미 다른 스킬과 매칭된 경우 스킵 (1:1 매칭 보장)
-                    user_normalized = user_skills_normalized[j]
-                    if user_normalized == req_normalized:
-                        best_match = user_skill
-                        best_score = 1.0  # 완벽한 매칭
-                        best_idx = j
-                        match_type = "exact"
-                        break
-
-                # 2단계: 동의어 매칭 (정확 일치 실패 시)
-                # 원본 스킬을 정규화했을 때 같은 값으로 변환되는지 확인
-                # 예: "Node.js" vs "Node", "React" vs "ReactJS"
-                if not best_match:
-                    for j, user_skill in enumerate(user_skills):
-                        if j in matched_indices:
-                            continue
-                        # 원본 스킬들이 동의어 사전을 통해 같은 값으로 정규화되는지 체크
-                        user_original_normalized = self._normalize_skill(user_skill)
-                        req_original_normalized = self._normalize_skill(req_skill)
-
-                        # 정규화 전에는 달랐지만, 정규화 후 같아지면 동의어로 간주
-                        if user_original_normalized == req_original_normalized and user_skill.lower() != req_skill.lower():
-                            best_match = user_skill
-                            best_score = 0.95  # 거의 완벽한 매칭
-                            best_idx = j
-                            match_type = "synonym"
-                            break
-
-                # 3단계: 임베딩 유사도 (높은 threshold)
-                # 의미론적 유사도를 통해 관련 스킬 매칭
-                # 예: "Flask" vs "Django" (둘 다 Python 웹 프레임워크)
-                if not best_match:
-                    # 첫 Stage 3 진입 시 모든 스킬을 한 번에 배치 인코딩
-                    if user_embeddings_cache is None:
-                        all_texts = user_skills_normalized + required_skills_normalized
-                        all_embs = _embed_texts(all_texts)
-                        user_embeddings_cache = all_embs[:len(user_skills_normalized)]
-                        req_embeddings_cache = all_embs[len(user_skills_normalized):]
-
-                    req_emb = req_embeddings_cache[i:i+1]
-
-                    for j, user_skill in enumerate(user_skills):
-                        if j in matched_indices:
-                            continue
-                        user_emb = user_embeddings_cache[j:j+1]
-                        # 코사인 유사도 계산 (정규화된 벡터의 내적)
-                        similarity = float((user_emb @ req_emb.T)[0][0])
-
-                        # 높은 threshold (0.85) - 정확한 매칭만 허용
-                        if similarity >= 0.85 and similarity > best_score:
-                            best_match = user_skill
-                            best_score = similarity
-                            best_idx = j
-                            match_type = "similar"
-
-                # 매칭 결과 저장
-                if best_match and best_score >= 0.85:  # 최소 85% 유사도 기준
-                    matched_skills.append({
-                        "required": req_skill,        # 채용공고의 필수 스킬
-                        "user_skill": best_match,     # 매칭된 사용자 스킬
-                        "similarity": round(best_score, 3),  # 유사도 점수 (0.85~1.0)
-                        "match_type": match_type      # 매칭 방식 (exact/synonym/similar)
-                    })
-                    matched_indices.add(best_idx)  # 중복 매칭 방지
-                else:
-                    # 매칭 실패 - missing_skills에 추가
-                    # 가장 가까운 스킬을 참고용으로 저장
-                    closest_user = user_skills[0] if user_skills else "없음"
-                    closest_score = 0.0
-                    if user_skills and best_idx >= 0:
-                        closest_user = user_skills[best_idx] if best_idx < len(user_skills) else user_skills[0]
-                        closest_score = best_score
-
-                    missing_skills.append({
-                        "required": req_skill,
-                        "closest_match": closest_user,
-                        "similarity": round(closest_score, 3)
-                    })
+            # === LLM 기반 스킬 매칭 (원본 스킬명 그대로 전달) ===
+            matched_skills, missing_skills = self._match_skills_with_llm(
+                all_required_skills, user_skills
+            )
 
             # === 점수 계산 ===
 
-            # 매칭률: 필수 스킬 중 얼마나 보유하고 있는지
-            match_rate = len(matched_skills) / len(all_required_skills) if all_required_skills else 0
+            # 매칭률: 필수 스킬 중 얼마나 보유하고 있는지 (0.0 ~ 1.0)
+            match_rate = min(len(matched_skills) / len(all_required_skills), 1.0) if all_required_skills else 0
 
-            # 경력 적합도: 요구 경력 범위와 사용자 경력 비교
-            exp_fit = self._calculate_exp_fit(experience_years, experience_range)
+            # 경력 적합도: work_experience에서 관련 경력만 추출하여 비교
+            relevant_years = self._extract_relevant_years(
+                work_experience, all_required_skills, position
+            )
+            print(f"📋 경력 정보: 총 {experience_years}년, 관련 경력 {relevant_years}년, work_experience {len(work_experience)}건, 요구 범위: {experience_range}")
+            exp_fit = self._calculate_exp_fit(experience_years, experience_range, relevant_years)
 
             # 숙련도 가중치 (스킬 레벨이 있으면 반영)
             # 단순히 스킬을 보유하는 것뿐 아니라 숙련도까지 고려
@@ -825,8 +819,8 @@ class JobPlannerAnalyzeView(APIView):
             # readiness가 1.0을 초과하지 않도록
             readiness = min(readiness, 1.0)
 
-            # skill_gap: 매칭되지 않은 비율
-            skill_gap = round(1.0 - match_rate, 3)
+            # skill_gap: 매칭되지 않은 비율 (0.0 ~ 1.0)
+            skill_gap = round(max(1.0 - match_rate, 0.0), 3)
 
             # 추가 인사이트
             insights = self._generate_insights(
@@ -861,24 +855,232 @@ class JobPlannerAnalyzeView(APIView):
                 "error": f"분석 중 오류 발생: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _calculate_exp_fit(self, years, req_range):
+    def _match_skills_with_llm(self, required_skills, user_skills):
+        """
+        LLM 기반 스킬 매칭.
+        단순 문자열 비교가 아닌 의미 기반으로 유사 기술을 판단합니다.
+
+        similarity 기준:
+            1.0        : 완전히 동일 (대소문자·한국어 표기 포함)
+            0.85~0.99  : 표기(구분자·축약)만 다른 동일 기술
+            0.70~0.84  : 같은 목적으로 대체 가능한 경쟁 기술 (Django ↔ Flask)
+            0.50~0.69  : 같은 생태계 내 연관 기술 (pandas ↔ Python)
+            0.30~0.49  : 간접 연관 (같은 도메인, 역할 다름)
+            0.30 미만  : 매칭 안 함 → missing_skills
+
+        LLM 호출 실패 시 _match_skills_fallback()으로 대체됩니다.
+
+        Returns:
+            matched_skills: [{required, user_skill, similarity, reason}]
+            missing_skills: [{required}]
+        """
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return self._match_skills_fallback(required_skills, user_skills)
+
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{
+                    "role": "user",
+                    "content": f"""IT 채용 전문가로서 채용공고 요구 스킬과 지원자 보유 스킬을 비교하세요.
+
+채용공고 요구 스킬: {json.dumps(required_skills, ensure_ascii=False)}
+지원자 보유 스킬: {json.dumps(user_skills, ensure_ascii=False)}
+
+similarity 기준:
+
+[1.0] 완전히 동일한 기술
+- 대소문자만 다른 경우 반드시 1.0: langchain ↔ LangChain, tensorflow ↔ TensorFlow
+- 한국어·영어 표기 차이: Python ↔ 파이썬, Docker ↔ 도커, API ↔ 에이피아이
+- 전체 이름 ↔ 약어: JavaScript ↔ JS, Kubernetes ↔ K8s
+
+[0.85~0.99] 표기만 다를 뿐 동일한 기술
+- 구분자·축약 차이만 있음: Node.js ↔ NodeJS, scikit-learn ↔ sklearn, TypeScript ↔ TS
+- 버전·세대 표기 차이: Python3 ↔ Python
+
+[0.70~0.84] 동일한 목적·역할로 대체 가능한 기술 (같은 카테고리 내 경쟁 기술)
+- 조건: 같은 문제를 해결하는 기술이어야 함. 단순히 같은 분야에서 쓰인다는 이유만으로는 해당 안 됨
+- Python 웹 프레임워크끼리: Django ↔ Flask ↔ FastAPI
+- JavaScript 프론트엔드 프레임워크끼리: React ↔ Vue ↔ Angular
+- 관계형 DB끼리: MySQL ↔ PostgreSQL ↔ MariaDB
+- NoSQL DB끼리: MongoDB ↔ CouchDB
+- 클라우드 플랫폼끼리: AWS ↔ GCP ↔ Azure
+- ❌ 목적이 다른 기술은 해당 안 됨: Elasticsearch(검색엔진) ↔ Django(웹프레임워크), Redis(캐시) ↔ PostgreSQL(RDBMS)
+
+[0.50~0.69] 같은 언어·생태계 내에서 함께 사용되는 기술 (대체 불가, 연관성 높음)
+- 조건: 직접 대체는 불가하지만 같은 생태계에서 함께 쓰이며 개념적 연관성이 높음
+- Python 데이터사이언스 생태계: pandas ↔ Python, pandas ↔ Scikit-learn, numpy ↔ Python
+- 언어 ↔ 해당 언어 기반 프레임워크: Java ↔ Spring, Python ↔ Django, JavaScript ↔ React
+- 유사 역할 언어끼리: Java ↔ Kotlin (JVM 기반), TypeScript ↔ JavaScript
+
+[0.30~0.49] 간접적으로 연관된 기술 (같은 도메인이지만 역할이 다름)
+- 조건: 같은 도메인(백엔드·ML 등)에 있지만 역할·목적이 다름
+- CI/CD 개념 ↔ 특정 도구: CI/CD ↔ GitHub Actions, 배포 ↔ Jenkins
+- 다른 패러다임의 언어: Python ↔ R
+- 다른 API 스타일: REST API ↔ GraphQL
+
+[0.30 미만] 매칭하지 않음 → missing_skills에 추가
+- 역할·목적·생태계가 모두 다른 기술: Elasticsearch ↔ Django, Redis ↔ React
+
+규칙:
+- 각 보유 스킬은 하나의 요구 스킬에만 매칭 (1:1)
+- 특정 라이브러리가 요구될 때, 지원자의 전체 보유 스킬 목록을 고려해 해당 라이브러리가 속한 언어·생태계를 보유하고 있으면 유사 기술로 판단 (예: pandas 요구 + Python·Scikit-learn 보유 → 0.50 이상)
+- 개별 스킬 쌍만 보지 말고 지원자의 전체 스킬 맥락을 함께 고려할 것
+- 단순히 같은 분야(백엔드, 프론트엔드 등)에서 쓰인다는 이유만으로 0.70 이상을 부여하지 말 것
+
+JSON으로만 반환:
+{{
+  "matched_skills": [{{"required": "요구스킬", "user_skill": "보유스킬", "similarity": 1.0, "reason": "매칭 이유"}}],
+  "missing_skills": [{{"required": "요구스킬"}}]
+}}"""
+                }],
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+
+            data = json.loads(response.choices[0].message.content)
+            matched = data.get("matched_skills", [])
+            missing = data.get("missing_skills", [])
+            print(f"✅ LLM 매칭 완료: {len(matched)}개 매칭, {len(missing)}개 미매칭")
+            return matched, missing
+
+        except Exception as e:
+            print(f"⚠️  LLM 매칭 실패, fallback 사용: {e}")
+            return self._match_skills_fallback(required_skills, user_skills)
+
+    def _match_skills_fallback(self, required_skills, user_skills):
+        """LLM 실패 시 정규화 기반 단순 매칭 (fallback)"""
+        user_normalized = {self._normalize_skill(s): s for s in user_skills}
+        matched, missing = [], []
+        used = set()
+
+        for req in required_skills:
+            req_norm = self._normalize_skill(req)
+            if req_norm in user_normalized and req_norm not in used:
+                matched.append({
+                    "required": req,
+                    "user_skill": user_normalized[req_norm],
+                    "similarity": 1.0,
+                    "reason": "정확히 일치"
+                })
+                used.add(req_norm)
+            else:
+                missing.append({"required": req})
+
+        return matched, missing
+
+    def _extract_relevant_years(self, work_experience, required_skills, position):
+        """
+        이력서 work_experience에서 공고 포지션/스킬과 관련된 경력 연수만 추출.
+
+        각 경력 항목의 role, description, skills를 공고의 required_skills, position과 비교하여
+        관련 있는 항목의 기간만 합산합니다.
+        work_experience가 없으면 None을 반환하여 총 경력으로 fallback합니다.
+        """
+        if not work_experience:
+            return None
+
+        import re
+
+        # 비교용 키워드 세트 (공고의 필수 스킬 + 포지션 키워드)
+        job_keywords = set()
+        for s in required_skills:
+            job_keywords.add(self._normalize_skill(s))
+        if position:
+            for word in re.split(r'[\s/·,]+', position.lower()):
+                if len(word) >= 2:
+                    job_keywords.add(word)
+
+        relevant_years = 0.0
+        print(f"  🔎 경력 관련성 판정 — job_keywords: {job_keywords}")
+
+        for entry in work_experience:
+            if not isinstance(entry, dict):
+                continue
+
+            # 경력 항목의 텍스트를 모아서 키워드 비교
+            entry_text = ' '.join([
+                entry.get('role', ''),
+                entry.get('description', ''),
+                ' '.join(entry.get('skills', [])),
+                ' '.join(entry.get('achievements', [])),
+            ]).lower()
+
+            # 경력 항목의 스킬을 정규화해서 비교
+            entry_skills = {self._normalize_skill(s) for s in entry.get('skills', [])}
+
+            # 관련성 판정: 스킬 겹침 또는 직무 키워드 포함
+            is_relevant = bool(entry_skills & job_keywords)
+            print(f"  📌 [{entry.get('role', '?')}] entry_skills={entry_skills}, is_relevant={is_relevant}, period={entry.get('period', '?')}, desc={entry.get('description', '')[:80]}")
+            if not is_relevant:
+                for kw in job_keywords:
+                    if kw in entry_text:
+                        is_relevant = True
+                        break
+
+            if is_relevant:
+                relevant_years += self._parse_period_years(entry.get('period', ''))
+
+        # work_experience가 있었으면 관련 경력이 0이라도 그대로 반환 (다른 도메인 경력)
+        # None은 work_experience 자체가 없을 때만 (fallback용)
+        return relevant_years
+
+    def _parse_period_years(self, period_str):
+        """
+        경력 기간 문자열에서 연수를 추출.
+        "2년 3개월" → 2.25, "2022.01 - 2024.06" → 2.42, "3년" → 3.0
+        """
+        import re
+        if not period_str:
+            return 0.0
+
+        # "N년 M개월" 패턴
+        ym = re.search(r'(\d+)\s*년\s*(\d+)?\s*개?월?', period_str)
+        if ym:
+            y = int(ym.group(1))
+            m = int(ym.group(2)) if ym.group(2) else 0
+            return y + m / 12.0
+
+        # "2022.01 - 2024.06" 또는 "2022-01 ~ 2024-06" 패턴
+        dates = re.findall(r'(\d{4})[.\-/](\d{1,2})', period_str)
+        if len(dates) >= 2:
+            start_y, start_m = int(dates[0][0]), int(dates[0][1])
+            end_y, end_m = int(dates[1][0]), int(dates[1][1])
+            return max(0.0, (end_y - start_y) + (end_m - start_m) / 12.0)
+
+        # "2022 - 2024" 패턴 (월 없이 연도만)
+        years_only = re.findall(r'(\d{4})', period_str)
+        if len(years_only) >= 2:
+            return max(0.0, int(years_only[1]) - int(years_only[0]))
+
+        # "N년" 패턴
+        y_only = re.search(r'(\d+)\s*년', period_str)
+        if y_only:
+            return float(y_only.group(1))
+
+        return 0.0
+
+    def _calculate_exp_fit(self, total_years, req_range, relevant_years=None):
         """
         경력 적합도 계산
 
-        채용공고의 요구 경력 범위와 사용자의 경력을 비교하여
-        적합도를 0.0~1.0 사이의 점수로 반환합니다.
+        work_experience에서 추출한 관련 경력 연수(relevant_years)가 있으면 그 값을 사용하고,
+        없으면 총 경력(total_years)으로 fallback합니다.
 
         Args:
-            years (int): 사용자의 경력 (년)
+            total_years (int): 총 경력 연수
             req_range (str): 요구 경력 범위 (예: "3-5년", "5년 이상", "신입")
+            relevant_years (float|None): 관련 도메인 경력 연수 (없으면 total_years 사용)
 
         Returns:
             float: 경력 적합도 점수 (0.0-1.0)
-                - 1.0: 요구 범위 내에 정확히 포함
-                - 0.7-1.0: 경력 초과 (경험 많음)
-                - 0.0-1.0: 경력 부족 (years/lo 비율)
         """
         import re
+
+        years = relevant_years if relevant_years is not None else total_years
+
         # 정규식으로 숫자 추출 (예: "3-5년" → [3, 5], "신입" → [])
         nums = re.findall(r'\d+', req_range)
         if not nums:
@@ -989,7 +1191,6 @@ class JobPlannerAgentReportView(APIView):
     """
     최종 종합 보고서 생성 API
     - SWOT 분석
-    - 면접 예상 질문 5개
     - 경험 포장 가이드
     - 실행 전략
     """
@@ -1031,7 +1232,7 @@ class JobPlannerAgentReportView(APIView):
                     "opportunities": ["성장 가능성이 있습니다"],
                     "threats": ["경쟁이 치열할 수 있습니다"]
                 },
-                "interview_questions": [],
+
                 "experience_packaging": [],
                 "execution_strategy": ""
             }
@@ -1117,11 +1318,7 @@ class JobPlannerAgentReportView(APIView):
    - Opportunities: 기회 2-3개
    - Threats: 위협 요소 1-2개
 
-2. **면접 예상 질문 5개**
-   - 해당 포지션/회사에 특화된 질문
-   - 답변 가이드 포함
-
-3. **경험 포장 가이드**
+2. **경험 포장 가이드**
    - 이력서/포트폴리오에서 강조할 점
    - 프로젝트 경험 어필 방법
    - 부족한 스킬을 보완하는 방법
@@ -1139,14 +1336,6 @@ JSON 형식:
     "opportunities": ["기회1", "기회2", ...],
     "threats": ["위협1", "위협2", ...]
   }},
-  "interview_questions": [
-    {{
-      "question": "질문 내용",
-      "answer_guide": "답변 가이드 (3-5문장)",
-      "tips": "추가 팁"
-    }},
-    ...5개
-  ],
   "experience_packaging": {{
     "resume_highlights": ["이력서에 강조할 점1", "강조할 점2", ...],
     "portfolio_tips": ["포트폴리오 팁1", "팁2", ...],
@@ -1186,7 +1375,7 @@ JSON 형식:
                     "opportunities": [],
                     "threats": []
                 },
-                "interview_questions": [],
+
                 "experience_packaging": {
                     "resume_highlights": [],
                     "portfolio_tips": [],
@@ -1257,6 +1446,11 @@ class JobPlannerRecommendView(APIView):
             readiness_score = float(request.data.get('readiness_score', 0.0))
             job_position = request.data.get('job_position', '개발자')
 
+            # 사용자 프로필 (LLM 2차 평가용)
+            work_experience = request.data.get('work_experience', [])
+            projects = request.data.get('projects', [])
+            key_achievements = request.data.get('key_achievements', [])
+
             # 원래 공고 정보 (유사도 기준 + 검색 키워드 보강)
             current_required_skills = request.data.get('current_required_skills', [])
             current_required_qualifications = request.data.get('current_required_qualifications', '')
@@ -1276,24 +1470,40 @@ class JobPlannerRecommendView(APIView):
             print(f"📍 원본 직무: '{job_position}'")
 
             # 직무명 + 필수 스킬 조합으로 검색 키워드 구성
-            search_keyword = self._build_search_keyword(job_position, current_required_skills)
+            search_keyword = self._build_search_keyword(job_position, current_required_skills, user_skills)
             print(f"🔍 검색 키워드: '{search_keyword}'")
 
             if current_job_url:
                 print(f"🚫 제외할 공고: {current_job_company} - {current_job_title}")
 
-            # 1. 사람인에서 공고 수집 (API 키 있으면 API, 없으면 크롤링)
+            # 1. 사람인에서 공고 수집 (복수 키워드 크롤링)
             job_listings = []
+            seen_urls = set()
 
-            api_key = os.environ.get('SARAMIN_API_KEY', '')
-            if api_key:
-                print(f"🔑 사람인 Open API 사용: '{search_keyword}' 검색")
-                saramin_jobs = self._crawl_saramin_api(search_keyword, limit=110)
-            else:
-                print(f"🔍 사람인 크롤링 사용 (API 키 없음): '{search_keyword}' 검색")
-                saramin_jobs = self._crawl_saramin(search_keyword, limit=40)
-            job_listings.extend(saramin_jobs)
-            print(f"✅ 사람인: {len(saramin_jobs)}개 공고")
+            # 메인 키워드 + 사용자 핵심 스킬로 추가 검색하여 후보 확대
+            search_keywords = [search_keyword]
+            position_only = self._simplify_job_position(job_position)
+            if position_only != search_keyword and position_only not in {'포지션명', '포지션', '직무명', '직무', '개발자', '담당자', '직책명', ''}:
+                search_keywords.append(position_only)
+
+            # 사용자의 대표 스킬로 추가 검색 (첫번째 검색어와 다른 스킬)
+            SEARCHABLE = {'python', 'java', 'javascript', 'typescript', 'react', 'vue', 'django',
+                          'fastapi', 'spring', 'node.js', 'pytorch', 'tensorflow', 'langchain', 'aws', 'docker'}
+            for skill in user_skills:
+                if skill.lower() in SEARCHABLE and skill.lower() not in search_keyword.lower():
+                    search_keywords.append(f"{skill} 개발자")
+                    break
+
+            for kw in search_keywords:
+                print(f"🔍 사람인 크롤링: '{kw}' 검색")
+                saramin_jobs = self._crawl_saramin(kw, limit=60)
+                for job in saramin_jobs:
+                    if job['url'] not in seen_urls:
+                        seen_urls.add(job['url'])
+                        job_listings.append(job)
+                print(f"  → {len(saramin_jobs)}개 수집 (누적 {len(job_listings)}개)")
+
+            print(f"✅ 사람인 총: {len(job_listings)}개 공고")
 
             if not job_listings:
                 return Response({
@@ -1307,24 +1517,69 @@ class JobPlannerRecommendView(APIView):
             )
             print(f"🔍 중복 제거 후: {len(filtered_listings)}개 공고")
 
-            # API 방식은 keyword 필드에 스킬이 이미 포함되어 있어 상세 파싱 불필요
-            if not api_key:
-                print(f"🔍 개별 공고 상세 파싱 시작 (5개씩 병렬)...")
-                filtered_listings = self._enrich_jobs_with_detail_skills(filtered_listings)
-                print(f"✅ 상세 파싱 완료")
-
-            # 원래 공고 텍스트 구성 (임베딩 유사도 기준용)
+            # 원래 공고 텍스트 구성
             current_job_text = ' '.join(current_required_skills) + ' ' + current_required_qualifications + ' ' + current_job_responsibilities
 
-            # 2. 임베딩 유사도 + 사용자 스킬 커버리지 기반 추천
+            # 1차: 스킬 매칭으로 후보 선별 (검색 결과 스킬 태그만으로 빠르게 필터)
             recommendations = self._match_jobs_with_skills(
                 filtered_listings, user_skills, skill_levels, readiness_score, current_job_text
             )
 
-            print(f"✅ 최종 추천: {len(recommendations)}개")
+            # 매칭률 40% 이상, 상위 15개 후보
+            candidates = [r for r in recommendations if r['match_rate'] >= 0.40][:15]
+            print(f"📋 1차 스킬 필터: {len(candidates)}개 후보 (40% 이상)")
+
+            if not candidates:
+                print(f"⚠️ 유사한 공고를 찾지 못했습니다.")
+                return Response({
+                    "recommendations": [],
+                    "message": "현재 스킬과 40% 이상 매칭되는 유사한 공고를 찾지 못했습니다."
+                }, status=status.HTTP_200_OK)
+
+            # 2차: 후보만 상세 크롤링 (전체가 아닌 후보만 → 빠름)
+            print(f"🔍 후보 {len(candidates)}개 상세 파싱 시작...")
+            candidate_jobs = [{'url': c['url'], 'skills': c['skills'], 'company_name': c['company_name'],
+                               'title': c['title'], 'source': c['source'], 'location': c['location']}
+                              for c in candidates]
+            enriched = self._enrich_jobs_with_detail(candidate_jobs)
+            # 상세 텍스트를 candidates에 반영
+            url_to_detail = {j['url']: j.get('detail_text', '') for j in enriched}
+            for c in candidates:
+                c['detail_text'] = url_to_detail.get(c['url'], '')
+            print(f"✅ 상세 파싱 완료")
+
+            # 3차: LLM으로 상세 적합도 평가
+            if candidates:
+                # 사용자 프로필 구성
+                exp_summary = '; '.join(
+                    f"{e.get('company', '')} {e.get('role', '')} ({e.get('period', '')}): {e.get('description', '')}"
+                    for e in work_experience
+                ) if work_experience else '정보 없음'
+                proj_summary = '; '.join(
+                    p if isinstance(p, str) else p.get('name', '') + ': ' + p.get('description', '')
+                    for p in projects
+                ) if projects else '정보 없음'
+                achievements_summary = '; '.join(
+                    a if isinstance(a, str) else str(a)
+                    for a in key_achievements
+                ) if key_achievements else '정보 없음'
+
+                user_profile = {
+                    'skills': user_skills,
+                    'experience_summary': exp_summary,
+                    'projects_summary': proj_summary,
+                    'achievements_summary': achievements_summary,
+                }
+                print(f"🤖 LLM 2차 평가 시작 ({len(candidates)}개)...")
+                candidates = self._evaluate_with_llm(candidates, user_profile)
+                print(f"✅ LLM 평가 완료")
+
+            # detail_text는 응답에서 제외 (프론트에 불필요)
+            for c in candidates:
+                c.pop('detail_text', None)
 
             return Response({
-                "recommendations": recommendations[:5],  # 매칭률 상위 5개
+                "recommendations": candidates[:5],
                 "total_found": len(job_listings),
                 "total_recommendations": len(recommendations)
             }, status=status.HTTP_200_OK)
@@ -1363,12 +1618,17 @@ class JobPlannerRecommendView(APIView):
 
         return filtered
 
-    def _build_search_keyword(self, job_position: str, required_skills: list) -> str:
+    def _build_search_keyword(self, job_position: str, required_skills: list, user_skills: list = None) -> str:
         """
         검색 키워드 구성.
-        포지션명 + 핵심 기술 스킬 1개를 조합해 관련성 높은 공고를 수집.
+        포지션명이 유효하면 포지션 + 기술 스킬 조합.
+        포지션명이 의미없으면 사용자 스킬 기반으로 검색어 생성.
         """
         position = self._simplify_job_position(job_position)
+
+        # 의미없는 직무명 감지
+        INVALID_POSITIONS = {'포지션명', '포지션', '직무명', '직무', '개발자', '담당자', '직책명', ''}
+        is_valid_position = position not in INVALID_POSITIONS
 
         # 사람인 검색에서 인식되는 대표 기술 스킬 목록
         SEARCHABLE_SKILLS = [
@@ -1376,12 +1636,37 @@ class JobPlannerRecommendView(APIView):
             'React', 'Vue', 'Angular', 'Django', 'FastAPI', 'Flask',
             'Spring', 'Node.js', 'Next.js', 'Docker', 'Kubernetes',
             'AWS', 'GCP', 'MySQL', 'PostgreSQL', 'MongoDB', 'TensorFlow', 'PyTorch',
+            'LangChain', 'Spark', 'Airflow',
         ]
+
+        # 필수 스킬에서 검색 가능한 기술 찾기
+        matched_tech = None
         for skill in required_skills:
             for ts in SEARCHABLE_SKILLS:
                 if ts.lower() == skill.lower() or ts.lower() in skill.lower():
-                    return f"{ts} {position}"
-        return position
+                    matched_tech = ts
+                    break
+            if matched_tech:
+                break
+
+        if is_valid_position:
+            return f"{matched_tech} {position}" if matched_tech else position
+
+        # 직무명이 의미없으면 사용자 스킬에서 대표 기술을 찾아 검색어 생성
+        all_skills = required_skills + (user_skills or [])
+        tech_found = []
+        for skill in all_skills:
+            for ts in SEARCHABLE_SKILLS:
+                if ts.lower() == skill.lower() or ts.lower() in skill.lower():
+                    if ts not in tech_found:
+                        tech_found.append(ts)
+                    break
+            if len(tech_found) >= 2:
+                break
+
+        if tech_found:
+            return f"{tech_found[0]} 개발자"
+        return '개발자'
 
     def _simplify_job_position(self, job_position: str) -> str:
         """
@@ -1461,88 +1746,10 @@ class JobPlannerRecommendView(APIView):
 
         return simplified.strip() if simplified.strip() else '개발자'
 
-    def _crawl_saramin_api(self, keyword, limit=30):
-        """
-        사람인 Open API로 채용공고 조회
-
-        환경변수 SARAMIN_API_KEY가 설정되어 있을 때 사용합니다.
-        한 번에 최대 110개까지 조회 가능하며, 크롤링보다 빠르고 안정적입니다.
-
-        Args:
-            keyword (str): 검색 키워드
-            limit (int): 최대 수집 공고 수 (기본값: 30, 최대 110)
-
-        Returns:
-            list: 채용공고 리스트
-        """
-        import xml.etree.ElementTree as ET
-
-        api_key = os.environ.get('SARAMIN_API_KEY', '')
-        if not api_key:
-            return []
-
-        jobs = []
-        count = min(limit, 110)  # 사람인 API 한 번에 최대 110개
-
-        params = {
-            'access-key': api_key,
-            'keywords': keyword,
-            'count': count,
-            'start': 0,
-            'sr': 'ac',  # 정확도순
-        }
-
-        try:
-            response = requests.get(
-                'https://oapi.saramin.co.kr/job-search',
-                params=params,
-                timeout=10
-            )
-            response.raise_for_status()
-
-            root = ET.fromstring(response.text)
-
-            for job_elem in root.findall('.//job'):
-                try:
-                    # 마감된 공고 제외 (active=0)
-                    if job_elem.findtext('active', '1') == '0':
-                        continue
-
-                    title = (job_elem.findtext('position/title') or '채용 공고').strip()
-                    company = (job_elem.findtext('company/name') or '알 수 없음').strip()
-                    url = (job_elem.findtext('url') or '').strip()
-                    location = (job_elem.findtext('position/location') or '').strip()
-                    keyword_text = (job_elem.findtext('keyword') or '').strip()
-
-                    # keyword 필드에서 스킬 추출 (쉼표 구분)
-                    skills = [s.strip() for s in keyword_text.split(',') if s.strip()]
-
-                    print(f"  [사람인 API] {company} - 추출된 스킬: {skills if skills else '없음'}")
-
-                    jobs.append({
-                        'source': '사람인',
-                        'company_name': company,
-                        'title': title,
-                        'url': url,
-                        'skills': skills,
-                        'location': location,
-                        'conditions': [],
-                        'description': f"{title} - {company}",
-                    })
-
-                except Exception as e:
-                    print(f"⚠️ 사람인 API 아이템 파싱 실패: {e}")
-                    continue
-
-        except Exception as e:
-            print(f"⚠️ 사람인 API 호출 실패: {e}")
-
-        return jobs
-
-    def _crawl_saramin(self, job_position, limit=40):
+    def _crawl_saramin(self, job_position, limit=60):
         """
         사람인 검색 결과 다중 페이지 크롤링 (병렬).
-        페이지당 약 20개 × 2페이지 = 최대 40개 수집 후 상세 크롤링.
+        페이지당 약 20개 × 3페이지 = 최대 60개 수집 후 상세 크롤링.
         """
         import urllib.parse
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1574,7 +1781,17 @@ class JobPlannerRecommendView(APIView):
 
                         skills_elem = item.select('.job_sector a')
                         skills = [s.get_text(strip=True) for s in skills_elem]
+                        title_elem = item.select_one('.job_tit a')
+                        if not title_elem:
+                            continue
+                        title = title_elem.get_text(strip=True)
+                        job_url = 'https://www.saramin.co.kr' + title_elem['href'] if title_elem.get('href') else ''
 
+                        skills_elem = item.select('.job_sector a')
+                        skills = [s.get_text(strip=True) for s in skills_elem]
+
+                        conditions = item.select('.job_condition span')
+                        conditions_text = [c.get_text(strip=True) for c in conditions]
                         conditions = item.select('.job_condition span')
                         conditions_text = [c.get_text(strip=True) for c in conditions]
 
@@ -1599,10 +1816,10 @@ class JobPlannerRecommendView(APIView):
                 print(f'⚠️ 사람인 {page}페이지 크롤링 실패: {e}')
                 return []
 
-        # 2페이지 병렬 요청
+        # 3페이지 병렬 요청
         jobs = []
-        with ThreadPoolExecutor(max_workers=2) as ex:
-            futures = [ex.submit(fetch_page, p) for p in range(1, 3)]
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            futures = [ex.submit(fetch_page, p) for p in range(1, 4)]
             for f in as_completed(futures):
                 jobs.extend(f.result())
 
@@ -1617,11 +1834,11 @@ class JobPlannerRecommendView(APIView):
         print(f'  사람인 크롤링 총 {len(unique_jobs)}개 수집')
         return unique_jobs[:limit]
 
-    def _fetch_job_detail_skills(self, url):
-        """개별 공고 페이지 전문에서 기술 키워드 추출"""
+    def _fetch_job_detail(self, url):
+        """개별 공고 페이지에서 기술 키워드 + 상세 텍스트 추출"""
         import re
         if not url:
-            return []
+            return {'skills': [], 'detail_text': ''}
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -1629,37 +1846,70 @@ class JobPlannerRecommendView(APIView):
             response = requests.get(url, headers=headers, timeout=8)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
-            text = soup.get_text()
 
+            # 상세 텍스트 추출 (공고 본문 영역)
+            detail_text = ''
+            detail_area = soup.select_one('.user_content') or soup.select_one('.wrap_jv_cont') or soup.select_one('.jv_detail')
+            if detail_area:
+                detail_text = detail_area.get_text(separator='\n', strip=True)
+            if not detail_text:
+                detail_text = soup.get_text(separator='\n', strip=True)
+            # 너무 길면 앞부분만 (LLM 토큰 절약)
+            if len(detail_text) > 2000:
+                detail_text = detail_text[:2000]
+
+            # 기술 키워드 추출
+            text = soup.get_text()
             tech_keywords = [
+                # 언어
                 'Python', 'Java', 'JavaScript', 'TypeScript', 'C\\+\\+', 'C#', 'Go', 'Kotlin',
-                'Swift', 'Ruby', 'PHP', 'Rust', 'Scala',
-                'Django', 'Flask', 'FastAPI', 'Spring', 'SpringBoot', 'React', 'Vue',
-                'Angular', 'Next\\.js', 'Nuxt', 'Express', 'Node\\.js', 'Nest\\.js',
+                'Swift', 'Ruby', 'PHP', 'Rust', 'Scala', 'Dart', 'Perl', 'R',
+                # 웹 프레임워크
+                'Django', 'Flask', 'FastAPI', 'Spring', 'SpringBoot', 'Spring Boot',
+                'React', 'Vue', 'Angular', 'Next\\.js', 'Nuxt', 'Express', 'Node\\.js',
+                'Nest\\.js', 'Svelte', 'Flutter', 'Laravel', 'Rails',
+                # 데이터/ML
+                'pandas', 'NumPy', 'scikit-learn', 'TensorFlow', 'PyTorch', 'Keras',
+                'OpenCV', 'Matplotlib', 'XGBoost', 'LightGBM', 'Spark', 'Hadoop',
+                'Airflow', 'dbt', 'Tableau', 'Power BI',
+                # AI/LLM
+                'LangChain', 'HuggingFace', 'Hugging Face', 'OpenAI', 'GPT',
+                'LLM', 'RAG', 'Transformers',
+                # DB
                 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Oracle', 'MariaDB',
-                'Elasticsearch', 'DynamoDB',
+                'Elasticsearch', 'DynamoDB', 'Cassandra', 'SQLite', 'Firebase',
+                'Supabase', 'Pinecone', 'ChromaDB',
+                # 인프라/DevOps
                 'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Jenkins',
-                'Git', 'Linux', 'REST', 'GraphQL', 'gRPC', 'Kafka', 'RabbitMQ',
+                'Terraform', 'Ansible', 'Nginx', 'Apache',
+                'GitHub Actions', 'GitLab', 'ArgoCD', 'Prometheus', 'Grafana',
+                # 메시징/통신
+                'Kafka', 'RabbitMQ', 'gRPC', 'GraphQL', 'REST',
+                # 기타
+                'Git', 'Linux', 'Selenium', 'Celery', 'Jira', 'Figma',
             ]
             found = []
             for kw in tech_keywords:
                 display = kw.replace('\\+\\+', '++').replace('\\.', '.')
                 if re.search(r'(?<![a-zA-Z])' + kw + r'(?![a-zA-Z])', text, re.IGNORECASE):
                     found.append(display)
-            return found
+            return {'skills': found, 'detail_text': detail_text}
         except Exception:
-            return []
+            return {'skills': [], 'detail_text': ''}
 
-    def _enrich_jobs_with_detail_skills(self, jobs):
-        """개별 공고 페이지를 5개씩 병렬 파싱하여 기술 스킬 보완"""
+    def _enrich_jobs_with_detail(self, jobs):
+        """개별 공고 페이지를 5개씩 병렬 파싱하여 스킬 + 상세 텍스트 보완"""
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def enrich_one(job):
-            detail_skills = self._fetch_job_detail_skills(job.get('url', ''))
-            if detail_skills:
+            detail = self._fetch_job_detail(job.get('url', ''))
+            # 스킬 보완
+            if detail['skills']:
                 existing_lower = {s.lower() for s in job.get('skills', [])}
-                new_skills = [s for s in detail_skills if s.lower() not in existing_lower]
+                new_skills = [s for s in detail['skills'] if s.lower() not in existing_lower]
                 job['skills'] = job.get('skills', []) + new_skills
+            # 상세 텍스트 저장
+            job['detail_text'] = detail['detail_text']
             return job
 
         enriched = []
@@ -1675,11 +1925,18 @@ class JobPlannerRecommendView(APIView):
 
     def _match_jobs_with_skills(self, job_listings, user_skills, skill_levels, readiness_score, current_job_text=''):
         """
-        실제 스킬 overlap 기반 매칭.
-        상세 크롤링으로 얻은 스킬과 사용자 스킬을 직접 비교.
+        SKILL_SYNONYMS 기반 스킬 매칭.
+        정규화(동의어 사전)를 통해 표기가 다른 동일 기술도 매칭.
+        예: "React.js" ↔ "리액트", "Node.js" ↔ "nodejs"
         match_rate = 매칭된 스킬 수 / 공고 요구 스킬 수 (공고 커버리지)
         """
-        user_skills_normalized = {self._normalize_skill(s) for s in user_skills}
+        # 사용자 스킬을 {정규화값: 원본명} 매핑으로 구성
+        user_skills_map = {}
+        for s in user_skills:
+            norm = self._normalize_skill(s)
+            if norm not in user_skills_map:
+                user_skills_map[norm] = s
+
         recommendations = []
 
         for job in job_listings:
@@ -1687,18 +1944,16 @@ class JobPlannerRecommendView(APIView):
             if not job_skills:
                 continue
 
-            job_skills_normalized = [self._normalize_skill(s) for s in job_skills]
-
             matched_skills = []
             matched_norms = set()
-            for i, job_skill in enumerate(job_skills):
-                norm = job_skills_normalized[i]
-                if norm in user_skills_normalized and norm not in matched_norms:
+            for job_skill in job_skills:
+                norm = self._normalize_skill(job_skill)
+                if norm in user_skills_map and norm not in matched_norms:
                     matched_skills.append({
                         'job_skill': job_skill,
-                        'user_skill': job_skill,
+                        'user_skill': user_skills_map[norm],
                         'similarity': 1.0,
-                        'match_type': 'exact'
+                        'match_type': 'synonym' if job_skill.lower() != user_skills_map[norm].lower() else 'exact'
                     })
                     matched_norms.add(norm)
 
@@ -1720,6 +1975,7 @@ class JobPlannerRecommendView(APIView):
                 'matched_skills': matched_skills,
                 'matched_count': matched_count,
                 'total_skills': total_job_skills,
+                'detail_text': job.get('detail_text', ''),
                 'reason': self._generate_recommendation_reason(matched_count, total_job_skills)
             })
 
@@ -1735,6 +1991,77 @@ class JobPlannerRecommendView(APIView):
             return f"요구 스킬 {matched_count}/{total_skills}개 보유 중. 부족한 스킬을 보완하면 충분히 지원 가능합니다."
         else:
             return f"같은 분야 공고로, 스킬을 보완하면 도전 가능한 포지션입니다."
+
+    def _evaluate_with_llm(self, candidates, user_profile):
+        """
+        LLM으로 후보 공고와 사용자 프로필의 종합 적합도 평가.
+        스킬 1차 필터를 통과한 상위 15개 후보에 대해서만 호출.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+        llm_client = openai.OpenAI(api_key=api_key)
+
+        def evaluate_one(candidate):
+            detail_text = candidate.get('detail_text', '')
+            if not detail_text:
+                # 상세 텍스트 없으면 스킬 매칭 점수 그대로 사용
+                return candidate
+
+            prompt = f"""당신은 채용 적합도 평가 전문가입니다.
+
+아래 [채용공고]와 [지원자 프로필]을 비교하여 적합도를 평가하세요.
+
+[채용공고]
+회사: {candidate['company_name']}
+제목: {candidate['title']}
+상세내용:
+{detail_text}
+
+[지원자 프로필]
+보유 스킬: {', '.join(user_profile.get('skills', []))}
+경력: {user_profile.get('experience_summary', '정보 없음')}
+프로젝트: {user_profile.get('projects_summary', '정보 없음')}
+핵심 성과: {user_profile.get('achievements_summary', '정보 없음')}
+
+다음 기준으로 평가하세요:
+1. 기술 스택 일치도 (스킬이 공고 요구사항과 얼마나 맞는지)
+2. 경력 적합도 (경력 내용이 공고 업무와 관련 있는지)
+3. 프로젝트 관련성 (수행한 프로젝트가 공고 업무에 도움이 되는지)
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{{"score": 0~100 정수, "reason": "적합하다고 추천한 이유를 구체적인 근거를 기반으로 작성"}}"""
+
+            try:
+                response = llm_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0,
+                    max_tokens=150,
+                )
+                result = json.loads(response.choices[0].message.content)
+                candidate['llm_score'] = result.get('score', 0)
+                candidate['reason'] = result.get('reason', candidate.get('reason', ''))
+                print(f"  🤖 {candidate['company_name']} | LLM 적합도: {candidate['llm_score']}점")
+            except Exception as e:
+                print(f"  ⚠️ LLM 평가 실패 ({candidate['company_name']}): {e}")
+                candidate['llm_score'] = int(candidate.get('match_rate', 0) * 100)
+            return candidate
+
+        # 최대 5개 병렬 평가
+        evaluated = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(evaluate_one, c): c for c in candidates}
+            for future in as_completed(futures):
+                try:
+                    evaluated.append(future.result())
+                except Exception:
+                    evaluated.append(futures[future])
+
+        # LLM 점수 기준으로 정렬
+        evaluated.sort(key=lambda x: x.get('llm_score', 0), reverse=True)
+        return evaluated
 
 
 JOB_SITE_DOMAINS = [
@@ -1793,6 +2120,31 @@ class JobPlannerCompanyAnalyzeView(APIView):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
+
+        # 채용 사이트 → BeautifulSoup 방식
+        if any(domain in url for domain in JOB_SITE_DOMAINS):
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            for tag in soup(["script", "style"]):
+                tag.decompose()
+            text = soup.get_text(separator='\n', strip=True)
+
+            # 결과가 너무 짧으면 trafilatura로 fallback
+            if len(text) < 200:
+                import trafilatura
+                fallback = trafilatura.extract(response.text)
+                if fallback:
+                    return fallback
+
+            return text
+
+        # 일반 사이트(회사 홈페이지, 뉴스, 블로그 등) → trafilatura
+        import trafilatura
+        downloaded = trafilatura.fetch_url(url)
+        text = trafilatura.extract(downloaded)
+        if not text:
+            raise Exception("URL에서 텍스트를 추출할 수 없습니다.")
 
         # 채용 사이트 → BeautifulSoup 방식
         if any(domain in url for domain in JOB_SITE_DOMAINS):
@@ -2050,7 +2402,7 @@ JSON 형식:
   "languages": [{{"language": "언어명", "level": "수준 (예: 비즈니스, 일상, 원어민)"}}],
   "awards": ["수상 경력 목록"],
   "experience_years": 총 경력 연수(숫자) 또는 null,
-  "work_experience": [{{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약"}}],
+  "work_experience": [{{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약", "skills": ["해당 업무에서 사용한 기술/도구"]}}],
   "projects": [{{"name": "프로젝트명", "description": "설명", "skills": ["사용기술"], "achievements": ["성과/결과"]}}],
   "training": [{{"name": "교육명", "institution": "기관명 또는 null", "period": "기간 또는 null"}}],
   "github_url": "GitHub URL 또는 null",
@@ -2127,7 +2479,7 @@ JSON 형식:
   "languages": [{{"language": "언어명", "level": "수준"}}],
   "awards": ["수상 경력 목록"],
   "experience_years": 총 경력 연수(숫자) 또는 null,
-  "work_experience": [{{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약"}}],
+  "work_experience": [{{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약", "skills": ["해당 업무에서 사용한 기술/도구"]}}],
   "projects": [{{"name": "프로젝트명", "description": "설명", "skills": ["사용기술"], "achievements": ["성과 또는 결과"]}}],
   "training": [{{"name": "교육명", "institution": "기관명 또는 null", "period": "기간 또는 null"}}],
   "key_achievements": ["핵심 성과 목록"],
@@ -2213,7 +2565,7 @@ JSON 형식:
   "languages": [{"language": "언어명", "level": "수준 (예: 비즈니스, 일상, 원어민)"}],
   "awards": ["수상 경력 목록"],
   "experience_years": 총 경력 연수(숫자) 또는 null,
-  "work_experience": [{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약"}],
+  "work_experience": [{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약", "skills": ["해당 업무에서 사용한 기술/도구"]}],
   "projects": [{"name": "프로젝트명", "description": "설명", "skills": ["사용기술"], "achievements": ["성과/결과"]}],
   "training": [{"name": "교육명", "institution": "기관명 또는 null", "period": "기간 또는 null"}],
   "github_url": "GitHub URL 또는 null",
@@ -2235,7 +2587,7 @@ JSON 형식:
   "languages": [{"language": "언어명", "level": "수준"}],
   "awards": ["수상 경력 목록"],
   "experience_years": 총 경력 연수(숫자) 또는 null,
-  "work_experience": [{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약"}],
+  "work_experience": [{"company": "회사명", "role": "직책", "period": "재직기간", "description": "담당업무 요약", "skills": ["해당 업무에서 사용한 기술/도구"]}],
   "projects": [{"name": "프로젝트명", "description": "설명", "skills": ["사용기술"], "achievements": ["성과 지표 (예: MAU 10만, 응답시간 50% 개선)"]}],
   "training": [{"name": "교육명", "institution": "기관명 또는 null", "period": "기간 또는 null"}],
   "key_achievements": ["핵심 성과 목록"],
@@ -2434,43 +2786,82 @@ class JobPlannerReviewPortfolioView(APIView):
         try:
             client = openai.OpenAI(api_key=api_key)
 
+            # 지원자 경력/프로젝트 정보 구성
+            work_exp = user_profile.get('work_experience', [])
+            work_exp_text = '\n'.join(
+                f"  - {e.get('company', '')} | {e.get('role', '')} ({e.get('period', '')}): {e.get('description', '')}"
+                for e in work_exp
+            ) if work_exp else '  정보 없음'
+
+            projects = user_profile.get('projects', [])
+            projects_text = '\n'.join(
+                f"  - {p}" if isinstance(p, str) else f"  - {p.get('name', '')}: {p.get('description', '')}"
+                for p in projects
+            ) if projects else '  정보 없음'
+
+            achievements = user_profile.get('key_achievements', [])
+            achievements_text = '\n'.join(f"  - {a}" for a in achievements) if achievements else '  정보 없음'
+
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
-                        "content": "당신은 IT 취업 포트폴리오 전문 컨설턴트입니다. 채용공고 기준으로 포트폴리오의 강점과 개선점을 구체적으로 분석합니다."
+                        "content": """당신은 IT 취업 포트폴리오 전문 컨설턴트입니다.
+채용공고의 구체적인 요구사항과 지원자의 실제 경험을 1:1로 대조하여 분석합니다.
+뻔한 조언이 아닌, 이 공고와 이 지원자에게만 해당되는 맞춤 피드백을 제공합니다."""
                     },
                     {
                         "role": "user",
-                        "content": f"""아래 채용공고와 지원자 포트폴리오를 분석하여 개선점을 알려주세요.
+                        "content": f"""아래 채용공고와 지원자 정보를 1:1 대조 분석하여 포트폴리오 작성 가이드를 제공하세요.
 
-채용공고:
-- 회사: {job_data.get('company_name', '')}
-- 포지션: {job_data.get('position', '')}
-- 필수 스킬: {', '.join(job_data.get('required_skills', []))}
-- 우대 스킬: {', '.join(job_data.get('preferred_skills', []))}
-- 주요 업무: {job_data.get('job_responsibilities', '')}
+=== 채용공고 ===
+회사: {job_data.get('company_name', '')}
+포지션: {job_data.get('position', '')}
+주요 업무:
+{job_data.get('job_responsibilities', '정보 없음')}
+필수 요건:
+{job_data.get('required_qualifications', '정보 없음')}
+필수 스킬: {', '.join(job_data.get('required_skills', []))}
+우대 스킬: {', '.join(job_data.get('preferred_skills', []))}
+우대 사항:
+{job_data.get('preferred_qualifications', '정보 없음')}
 
-지원자 포트폴리오:
-- 보유 스킬: {', '.join(user_profile.get('user_skills', []))}
-- 프로젝트: {json.dumps(user_profile.get('projects', []), ensure_ascii=False)}
-- 핵심 성과: {', '.join(user_profile.get('key_achievements', []))}
-- GitHub: {user_profile.get('github_url', '없음')}
-- 포트폴리오 사이트: {user_profile.get('portfolio_url', '없음')}
+=== 지원자 정보 ===
+보유 스킬: {', '.join(user_profile.get('user_skills', []))}
+경력:
+{work_exp_text}
+프로젝트:
+{projects_text}
+핵심 성과:
+{achievements_text}
+GitHub: {user_profile.get('github_url', '없음')}
+포트폴리오 사이트: {user_profile.get('portfolio_url', '없음')}
+
+=== 분석 기준 ===
+1. 공고의 각 요구사항(업무, 필수요건, 우대사항)을 지원자 경험과 구체적으로 대조
+2. 지원자의 프로젝트/경력 중 이 공고에 어필할 수 있는 포인트 발굴
+3. 포트폴리오에 어떤 내용을 어떻게 작성해야 하는지 실행 가능한 가이드 제공
 
 JSON으로 반환하세요:
 {{
-  "strengths": ["이 공고에 맞는 포트폴리오 강점 (구체적으로)"],
+  "strengths": [
+    "공고의 어떤 요구사항에 대해, 지원자의 어떤 경험이 강점인지 구체적으로 (최소 3개)"
+  ],
   "improvements": [
     {{
-      "target": "개선 대상 (예: 프로젝트명 또는 항목)",
-      "issue": "현재 문제점",
-      "suggestion": "구체적 개선 방법"
+      "target": "개선 대상 (지원자의 특정 프로젝트명 또는 경력)",
+      "issue": "이 공고 기준으로 부족한 점",
+      "suggestion": "포트폴리오에 어떻게 보완하여 작성할지 구체적 방법 (예: 어떤 내용을 추가하고, 어떤 키워드를 포함하고, 어떤 구조로 정리할지)"
     }}
   ],
-  "missing": ["공고 요건 대비 포트폴리오에 없는 것들"],
-  "priority_actions": ["우선순위 높은 액션 3가지"]
+  "missing": [
+    "공고에서 요구하지만 지원자에게 없는 경험/스킬과, 이를 포트폴리오에서 대체할 수 있는 방법"
+  ],
+  "portfolio_structure": [
+    "이 공고에 맞는 포트폴리오 구성 순서와 각 섹션에 담을 핵심 내용 (예: '1. 프로젝트A를 메인으로 배치 - OO 업무 경험 강조')"
+  ],
+  "priority_actions": ["지금 당장 실행할 수 있는 우선순위 높은 액션 3가지"]
 }}"""
                     }
                 ],

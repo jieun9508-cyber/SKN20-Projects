@@ -9,6 +9,16 @@ interviewer.py -- L4 Interviewer (대화 생성기 + 말투 보정 통합)
   - _build_interviewer_prompt()에 [실제 면접 기출 질문] 섹션 추가.
     humanizer_context["bank_questions"]에서 현재 슬롯의 기출 질문을 가져와
     시스템 프롬프트에 주입. LLM이 실제 면접 데이터를 참고하여 질문을 생성하도록 함.
+interviewer.py -- L4 Interviewer (대화 생성기 + 말투 보정 통합)
+
+수정일: 2026-03-01
+설명: LLM 1번 호출. intent + humanizer_context -> 자연스러운 면접관 질문 생성.
+      L4와 L5는 LLM 호출 1번으로 처리한다.
+
+[2026-03-01 변경사항]
+  - _build_interviewer_prompt()에 [실제 면접 기출 질문] 섹션 추가.
+    humanizer_context["bank_questions"]에서 현재 슬롯의 기출 질문을 가져와
+    시스템 프롬프트에 주입. LLM이 실제 면접 데이터를 참고하여 질문을 생성하도록 함.
 """
 import openai
 from django.conf import settings
@@ -83,6 +93,11 @@ def generate_question_sync(intent: str, humanizer_context: dict, previous_answer
 
 
 def _build_interviewer_prompt(intent: str, ctx: dict) -> str:
+    """Interviewer 프롬프트 생성 (L4 + L5 통합)
+
+    [2026-03-01] bank_questions가 ctx에 포함되어 있으면
+    [실제 면접 기출 질문] 섹션을 시스템 프롬프트에 추가한다.
+    """
     """Interviewer 프롬프트 생성 (L4 + L5 통합)
 
     [2026-03-01] bank_questions가 ctx에 포함되어 있으면
@@ -249,7 +264,7 @@ def _build_interviewer_prompt(intent: str, ctx: dict) -> str:
 - "좋습니다/훌륭합니다" 같은 과도한 칭찬 금지
 - 평가나 점수 관련 언급 금지
 - 절대로 지원자가 말하지 않은 내용을 '~라고 하셨는데'처럼 언급하지 마라.
-- 기출 질문은 주제 참고용일 뿐, 지원자 답변에 없는 내용은 전제로 삼지 마라.{covered_ban}
+- 기출 질문은 주제 참고용일 뿐, 지원자 답변에 없는 내용은 전제로 삼지 마라.
 
 [출력 형식]
 자연스러운 면접관 말투의 질문 문장만 출력하라. JSON이나 마크다운 사용 금지."""
