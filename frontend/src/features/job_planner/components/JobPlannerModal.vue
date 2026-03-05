@@ -938,9 +938,18 @@
                   </div>
                   <div class="review-section" v-if="portfolioReview.missing?.length">
                     <div class="review-section-title">❌ 부족한 부분</div>
-                    <ul class="review-list missing">
-                      <li v-for="(item, idx) in portfolioReview.missing" :key="'pm-' + idx">{{ item }}</li>
-                    </ul>
+                    <div v-for="(item, idx) in portfolioReview.missing" :key="'pm-' + idx">
+                      <!-- 구조화된 객체 형태 -->
+                      <div v-if="typeof item === 'object'" class="missing-card">
+                        <div class="missing-header">
+                          <span class="missing-skill">{{ item.skill }}</span>
+                          <span v-if="item.importance" class="missing-badge" :class="item.importance === '필수' ? 'badge-required' : 'badge-preferred'">{{ item.importance }}</span>
+                        </div>
+                        <div class="missing-compensation">💡 {{ item.compensation }}</div>
+                      </div>
+                      <!-- 레거시 문자열 형태 -->
+                      <ul v-else class="review-list missing"><li>{{ item }}</li></ul>
+                    </div>
                   </div>
                   <div class="review-section" v-if="portfolioReview.portfolio_structure?.length">
                     <div class="review-section-title">📋 포트폴리오 구성 가이드</div>
@@ -4665,6 +4674,50 @@ export default {
 
 .comp-content {
   color: #cbd5e1;
+}
+
+/* 부족한 부분 카드 */
+.missing-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.missing-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.missing-skill {
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.missing-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.badge-required {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.badge-preferred {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+.missing-compensation {
+  color: #94a3b8;
 }
 
 /* AI 지원 도구 섹션 */
