@@ -12,7 +12,8 @@ export const useAuthStore = defineStore('auth', {
         userProteinShakes: 0, // 비로그인 시 기본값
         userAvatarUrl: null,    // [수정일: 2026-02-06] 나노바나나 아바타 URL
         userRank: 'BRONZE',     // [수정일: 2026-02-06] 현재 등급
-        user: null              // [수정일: 2026-02-06] 전체 유저 데이터 (프로필 수정용)
+        user: null,             // [수정일: 2026-02-06] 전체 유저 데이터 (프로필 수정용)
+        isAdmin: false          // [수정일: 2026-03-05] 관리자 여부 (is_staff 기반 통합)
     }),
 
     actions: {
@@ -47,11 +48,14 @@ export const useAuthStore = defineStore('auth', {
                     }
                     // [수정일: 2026-02-06] 전체 유저 객체 보관 (수정 페이지용)
                     this.user = response.data.user;
+                    // [수정일: 2026-03-05] 어드민 여부 저장
+                    this.isAdmin = response.data.user.is_admin === true;
                 } else {
                     this.isLoggedIn = false;
                     this.sessionNickname = '';
                     this.userAvatarUrl = null;
                     this.user = null;
+                    this.isAdmin = false;
                 }
             } catch (error) {
                 console.error("Session check failed:", error);
@@ -102,6 +106,7 @@ export const useAuthStore = defineStore('auth', {
                 this.userAvatarUrl = null;
                 this.userRank = 'BRONZE';
                 this.user = null;
+                this.isAdmin = false;
 
                 // [수정일: 2026-02-27] 이전 사용자의 진행도 데이터 초기화
                 const { useProgressStore } = await import('@/stores/progress');
@@ -131,6 +136,8 @@ export const useAuthStore = defineStore('auth', {
             }
             // [수정일: 2026-02-06] 유저 객체 저장
             this.user = user;
+            // [수정일: 2026-03-05] 관리자 여부 갱신
+            this.isAdmin = user?.is_admin === true;
         }
     }
 });
