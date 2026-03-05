@@ -260,8 +260,8 @@ def _llm_decide(state: OrchestratorState) -> List[Dict[str, Any]]:
   * ⚠️ 해당 플레이어 본인이 힌트를 받은 지 45초 미만인 경우만 금지 (플레이어별 개별 쿨다운)
 
 - chaos:
-  * 총 배치 노드(두 플레이어 합계)가 {_CHAOS_MIN_NODES}개 이상일 때 발동 가능
-  * 게임의 긴장감을 위해 조건 충족 시 가급적 적절한 시점에 발동시킵니다.
+  * 총 배치 노드(두 플레이어 합계)가 {_CHAOS_MIN_NODES}개 이상이고 chaos_triggered가 False이면 **반드시** 선택하세요.
+  * 조건이 충족됐는데 chaos를 선택하지 않는 것은 잘못된 판단입니다. 유보하지 마세요.
   * chaos_triggered가 True이면 절대 선택 불가
 
 - none: 위 조건 미충족 시.
