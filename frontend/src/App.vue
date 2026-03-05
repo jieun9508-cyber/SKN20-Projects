@@ -40,9 +40,10 @@
             class="user-avatar-header" 
             v-if="auth.isLoggedIn"
           />
-          <button class="btn-history" @click="router.push('/my-records')">My Records</button>
-          <button class="btn-coach" @click="router.push('/coach')">AI Coach</button>
-          <button v-if="auth.user?.is_superuser" class="btn-mgmt" @click="router.push('/management/progress')">Management</button>
+          <button v-if="!auth.isAdmin" class="btn-history" @click="router.push('/my-records')">My Records</button>
+          <button v-if="!auth.isAdmin" class="btn-coach" @click="router.push('/coach')">AI Coach</button>
+          <!-- [수정일: 2026-03-05] 어드민 통합 (isAdmin) -->
+          <button v-if="auth.isAdmin" class="btn-mgmt" @click="router.push('/management/users')">Management</button>
           <button class="btn-profile-settings" @click="ui.isProfileSettingsModalOpen = true">Setting</button>
           <button class="btn-logout-v2" @click="auth.logout">Logout</button>
         </div>
@@ -204,6 +205,7 @@ const isPracticePage = computed(() => {
     'BugBubbleMonster',
     'GrowthReport',
     'Management',
+    'UserManagement',
     'MyRecords',
     'AICoach',
     'MockInterview',

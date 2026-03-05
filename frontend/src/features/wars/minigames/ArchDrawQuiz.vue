@@ -13,8 +13,8 @@
     <div v-if="phase === 'lobby'" class="intro-screen">
       <div class="intro-box">
         <div class="intro-badge">SYSTEM ARCHITECTURE BATTLE</div>
-        <h1 class="logo glitch" data-text="BLUEPRINT">BLUEPRINT</h1>
-        <p class="sub-logo">실시간 시스템 설계 서바이벌</p>
+        <h1 class="logo glitch" data-text="ARCHDRAW">ARCHDRAW</h1>
+        <p class="sub-logo">실시간 시스템 아키텍처 설계 대결</p>
 
         <div class="team-select">
           <p class="team-label" style="margin-top: 0.5rem;">방 관리 (1대1 경쟁)</p>
@@ -48,28 +48,31 @@
         </div>
 
         <div class="lobby-info" v-if="!ds.connected.value">연결 중...</div>
-        <button v-if="ds.isReady.value" @click="beginGame" class="btn-start blink-border">▶ GAME START</button>
-        <button v-else-if="!ds.connected.value" class="btn-start" disabled>연결 중...</button>
+        <div class="lobby-btn-row">
+          <button v-if="ds.isReady.value" @click="beginGame" class="btn-start blink-border">▶ GAME START</button>
+          <button v-else class="btn-start" disabled>{{ ds.connected.value ? '상대 대기 중...' : '연결 중...' }}</button>
+          <button @click="$router.push('/practice/wars')" class="btn-exit-lobby">← 나가기</button>
+        </div>
         <div class="game-guide-container">
           <div class="guide-item">
             <div class="gi-num">01</div>
             <div class="gi-content">
-              <strong>주문서 분석</strong>
-              <p>상단의 클라이언트 요구사항을 확인하세요.</p>
+              <strong>미션 확인</strong>
+              <p>상단의 시나리오와 필요한 컴포넌트를 파악하세요.</p>
             </div>
           </div>
           <div class="guide-item">
             <div class="gi-num">02</div>
             <div class="gi-content">
-              <strong>블루프린트 구축</strong>
-              <p>필요한 시스템 부품을 설계판에 배치하세요.</p>
+              <strong>노드 배치</strong>
+              <p>인벤토리에서 컴포넌트를 드래그해 설계판에 놓으세요.</p>
             </div>
           </div>
           <div class="guide-item">
             <div class="gi-num">03</div>
             <div class="gi-content">
-              <strong>데이터 흐름 연결</strong>
-              <p>부품 간의 이동 경로를 화살표로 이으세요.</p>
+              <strong>연결 & 제출</strong>
+              <p>노드를 화살표로 연결하고 SUBMIT으로 평가받으세요.</p>
             </div>
           </div>
         </div>
@@ -167,6 +170,29 @@
             </div>
             <div class="chaos-footer">
               <button class="btn-chaos-ack" @click="acknowledgeChaos">UNDERSTOOD</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- [추가 2026-03-05] Chaos 리마인더 배지 - UNDERSTOOD 후에도 조건 표시 -->
+      <transition name="chaos-fade">
+        <div class="chaos-reminder" v-if="!chaosActive && chaosData?.required_component && phase === 'play'">
+          <span class="cr-ico">⚡</span>
+          <span class="cr-comp">{{ chaosData.required_component.toUpperCase() }}</span>
+          <span class="cr-bonus">+20</span>
+          <span class="cr-sep">/</span>
+          <span class="cr-penalty">-10</span>
+          <!-- 툴팁 -->
+          <div class="cr-tooltip">
+            <div class="crt-title">{{ chaosData.title }}</div>
+            <div class="crt-desc">{{ chaosData.description }}</div>
+            <div class="crt-hint" v-if="chaosData.hint">
+              <span class="crt-hint-label">RECOVERY:</span> {{ chaosData.hint }}
+            </div>
+            <div class="crt-rule">
+              <span class="crt-ok">✅ {{ chaosData.required_component.toUpperCase() }} 배치 시 +20점</span>
+              <span class="crt-fail">❌ 미배치 시 -10점</span>
             </div>
           </div>
         </div>
@@ -615,16 +641,6 @@ const paletteComps = computed(() => {
   return result
 })
 
-// ── CoachHint 소켓 리스너 등록 함수
-const registerCoachHint = (sock) => {
-  if (!sock) return
-  sock.on('coach_hint', (data) => {
-    if (coachTimer) clearTimeout(coachTimer)
-    coachMsg.value = data.message
-    coachTimer = setTimeout(() => { coachMsg.value = '' }, 6000)
-  })
-}
-
 // ── 소켓 연결 (onMounted 1개로 통합) ──
 onMounted(async () => { 
   // [추가 2026-03-03] Race Condition 방어: 소켓 접속 전 유저 정보(uid) 확실히 확보
@@ -637,27 +653,11 @@ onMounted(async () => {
   ds.connect(currentRoomId.value, userName.value, userId.value, auth.userAvatarUrl)
   window.addEventListener('keydown', handleGlobalKey)
 
-  // CoachHint 리스너 — 소켓 준비 후 등록
-  if (ds.socket.value) {
-    registerCoachHint(ds.socket.value)
-  } else {
-    const unwatch = watch(() => ds.socket.value, (sock) => {
-      if (sock) { registerCoachHint(sock); unwatch() }
-    })
-  }
-
   // 게임 시작 핸들러
   ds.onGameStart.value = (data) => {
     console.log('[ArchDraw] Game start signal received:', data)
     myScore.value = 0; oppScore.value = 0; combo.value = 0; bestCombo.value = 0; round.value = 0
   }
-
-// [수정일: 2026-03-03] Chaos 장애 확인 및 서버 보고
-function acknowledgeChaos() {
-  if (!chaosActive.value) return
-  chaosActive.value = false
-  ds.emitChaosComplete(currentRoomId.value)
-}
 
 // ChaosEvent 핸들러
 ds.onChaosEvent.value = (data) => {
@@ -673,22 +673,23 @@ ds.onChaosEvent.value = (data) => {
 }
 
 // [추가 2026-03-03] CoachAgent 힌트 수신
+// [수정 2026-03-05] 중복 힌트 방지: 이전 타이머 취소 후 교체
+let coachMsgTimer = null
 ds.onCoachHint.value = (data) => {
   console.log('💡 [ArchDraw] Coach Hint Received:', data)
   if (data && data.message) {
-    coachMsg.value = data.message
-    setTimeout(() => {
-      if (coachMsg.value === data.message) coachMsg.value = ''
-    }, 8000)
+    // 동일 메시지 연속 수신 무시 (Poll + canvas_sync 이중 트리거 방어)
+    if (coachMsg.value === data.message) return
 
-    // ✅ [Agent 행동] 팔레트 하이라이트 — Coach가 직접 지정한 컴포넌트 꺜빡임
+    if (coachMsgTimer) clearTimeout(coachMsgTimer)
+    coachMsg.value = data.message
+    coachMsgTimer = setTimeout(() => { coachMsg.value = '' }, 8000)
+
+    // ✅ [Agent 행동] 팔레트 하이라이트
     if (data.highlight_component) {
       if (highlightTimer) clearTimeout(highlightTimer)
       highlightedComponent.value = data.highlight_component
-      console.log('🟢 [Coach] 팔레트 하이라이트:', data.highlight_component)
-      highlightTimer = setTimeout(() => {
-        highlightedComponent.value = null
-      }, 6000)
+      highlightTimer = setTimeout(() => { highlightedComponent.value = null }, 6000)
     }
   }
 }
@@ -698,6 +699,13 @@ ds.onChaosRecovered.value = () => {
   if (chaosActive.value) chaosActive.value = false
 }
 })
+
+// [수정 2026-03-05] onMounted 밖으로 이동 — 템플릿에서 접근 가능하도록
+function acknowledgeChaos() {
+  if (!chaosActive.value) return
+  chaosActive.value = false
+  ds.emitChaosComplete(currentRoomId.value)
+}
 
 // Agent 트리거용 실시간 설계 동기화 (디바운스 적용)
 // [수정일: 2026-03-03] mousemove마다 emit하던 문제 해결 — 300ms 디바운스
@@ -1388,6 +1396,58 @@ watch(() => ds.roomPlayers.value, (players) => {
 .chaos-fade-enter-active, .chaos-fade-leave-active { transition: opacity 0.3s; }
 .chaos-fade-enter-from, .chaos-fade-leave-to { opacity: 0; }
 
+/* [추가 2026-03-05] Chaos 리마인더 배지 */
+.chaos-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 1.2rem 0.2rem;
+  padding: 4px 12px;
+  background: rgba(255, 45, 117, 0.08);
+  border: 1px solid rgba(255, 45, 117, 0.4);
+  border-radius: 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  animation: reminderPulse 2.5s infinite;
+  width: fit-content;
+}
+.cr-ico { font-size: 0.75rem; }
+.cr-comp { color: #fff; letter-spacing: 1px; }
+.cr-bonus { color: #39ff14; }
+.cr-sep { color: #475569; }
+.cr-penalty { color: #ff2d75; }
+@keyframes reminderPulse {
+  0%, 100% { border-color: rgba(255,45,117,0.4); box-shadow: none; }
+  50% { border-color: rgba(255,45,117,0.8); box-shadow: 0 0 8px rgba(255,45,117,0.3); }
+}
+/* Chaos 리마인더 툴팁 */
+.chaos-reminder { position: relative; cursor: default; }
+.cr-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 300;
+  width: 280px;
+  background: #0a0f1e;
+  border: 1px solid #ff2d75;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 0 20px rgba(255,45,117,0.25);
+  text-align: left;
+  pointer-events: none;
+}
+.chaos-reminder:hover .cr-tooltip { display: flex; flex-direction: column; gap: 8px; animation: tooltipIn 0.15s ease; }
+@keyframes tooltipIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
+.crt-title { font-family: 'Orbitron', sans-serif; font-size: 0.75rem; font-weight: 900; color: #fff; letter-spacing: 0.5px; }
+.crt-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.5; }
+.crt-hint { font-size: 0.75rem; color: #e0f2fe; background: rgba(0,240,255,0.05); border-left: 2px solid #00f0ff; padding: 6px 8px; border-radius: 3px; }
+.crt-hint-label { color: #00f0ff; font-weight: 700; margin-right: 4px; font-size: 0.65rem; }
+.crt-rule { display: flex; flex-direction: column; gap: 3px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08); }
+.crt-ok { font-size: 0.72rem; color: #39ff14; }
+.crt-fail { font-size: 0.72rem; color: #ff2d75; }
+
 .hl{font-size:.5rem;font-weight:700;color:#475569;letter-spacing:2px}
 .hv{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900}
 .dim{color:#334155;font-size:.7rem}
@@ -1533,6 +1593,9 @@ watch(() => ds.roomPlayers.value, (players) => {
 @keyframes blinkB { 50%{border-color:rgba(255,230,0,.3)} }
 .lobby-info { margin-top:.75rem; font-size:.85rem; color:#64748b; }
 .sub-logo { color:#64748b; letter-spacing:1px; margin-bottom:1.5rem; font-size:.95rem; }
+.lobby-btn-row { display:flex; align-items:center; justify-content:center; gap:1rem; margin-top:1rem; flex-wrap:wrap; }
+.btn-exit-lobby { padding:.6rem 1.4rem; font-family:'Orbitron',sans-serif; font-size:.7rem; font-weight:700; background:transparent; border:1px solid #334155; color:#64748b; border-radius:.5rem; cursor:pointer; letter-spacing:1px; transition:all .2s; white-space:nowrap; }
+.btn-exit-lobby:hover { border-color:#ff2d75; color:#ff2d75; }
 .canvas-hint,.opp-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#1e293b;font-size:.85rem;pointer-events:none}
 .arrow-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .aline{stroke:#00f0ff;stroke-width:2;opacity:.7}.aline.drawing{stroke-dasharray:6 4;opacity:.5}
@@ -1600,7 +1663,7 @@ watch(() => ds.roomPlayers.value, (players) => {
 .rc-tag{font-family:'Orbitron',sans-serif;font-size:.55rem;font-weight:700;padding:2px 8px;border-radius:3px}
 .rc-score{font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900}
 .rc-vs{font-family:'Orbitron',sans-serif;color:#334155;font-weight:900;align-self:center;margin-top:20px}
-.rc-header{font-family:'Orbitron',sans-serif;font-size:0.55rem;font-weight:700;color:#00f0ff;letter-spacing:1px;margin:8px 0 4px;opacity:0.8;min-height:24px;display:flex;align-items:flex-end;justify-content:center;text-align:center;word-break:keep-all;}
+.rc-header{font-family:'Orbitron',sans-serif;font-size:0.48rem;font-weight:700;color:#00f0ff;letter-spacing:0.5px;margin:8px 0 4px;opacity:0.8;min-height:18px;display:flex;align-items:flex-end;justify-content:center;text-align:center;white-space:nowrap;}
 .rc-checks{text-align:left;font-size:.65rem;width:100%}
 .chk{padding:.1rem .3rem;border-radius:.2rem;margin:.1rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chk-ok{color:#39ff14;background:rgba(57,255,20,.04)}.chk-ok-opp{color:#ff2d75;background:rgba(255,45,117,.04)}.chk-miss{color:#334155;background:rgba(51,65,85,.04)}
 .btn-next{width:100%;padding:.6rem;font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;background:transparent;border:2px solid #00f0ff;color:#00f0ff;border-radius:.5rem;cursor:pointer;letter-spacing:2px;transition:all .2s;margin-top:.5rem}

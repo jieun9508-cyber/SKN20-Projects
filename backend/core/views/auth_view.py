@@ -84,6 +84,7 @@ class LoginView(APIView):
                     'username': user.username,
                     'email': user.email,
                     'nickname': nickname,
+                    'is_admin': user.is_staff or user.is_superuser,
                     'activity': activity_data,
                     'user_detail': user_detail_data,
                     'active_avatar': {
@@ -155,6 +156,7 @@ class SessionCheckView(APIView):
                 }
 
             # [수정일: 2026-02-10] 세션 체크 시 프로필/활동 정보가 없는 경우에 대한 예외 처리 강화 (Antigravity)
+            # [수정일: 2026-03-05] is_admin 여부 추가
             return Response({
                 'isAuthenticated': True,
                 'user': {
@@ -162,6 +164,7 @@ class SessionCheckView(APIView):
                     'username': user.username,
                     'email': user.email,
                     'nickname': nickname,
+                    'is_admin': user.is_staff or user.is_superuser,
                     'activity': activity_data,
                     'user_detail': user_detail_data,
                     'active_avatar': {
