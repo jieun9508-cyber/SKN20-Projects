@@ -26,12 +26,12 @@ from core.views import (
     JobPlannerRecommendView,
     JobPlannerParseResumeView,
     JobPlannerReviewPortfolioView,
-    AdminLoginView,
     AdminLogView,
     AdminLogSaveView,
     AdminLogArchiveListView,
     AdminLogArchiveDetailView,
-    AdminServerStatusView
+    AdminServerStatusView,
+    UserManagementView
 )
 from core.views.pseudocode.pseudocode_execution import execute_python_code
 from core.views.pseudocode import pseudocode_evaluation
@@ -134,7 +134,9 @@ urlpatterns = [
     
 
     # [수정일: 2026-02-26] 관리자 로그 뷰어 API 추가
-    path('admin/login/', AdminLoginView.as_view(), name='admin_login'),
+    # [수정일: 2026-03-05] AdminLoginView 라우트 삭제 및 관리자 통합 뷰 추가
+    path('admin/users/', UserManagementView.as_view(), name='admin_users'),
+    path('admin/users/<str:username>/', UserManagementView.as_view(), name='admin_users_detail'),
     path('admin/logs/', AdminLogView.as_view(), name='admin_logs'),
     path('admin/logs/save/', AdminLogSaveView.as_view(), name='admin_logs_save'),
     path('admin/logs/archives/', AdminLogArchiveListView.as_view(), name='admin_logs_archives'),

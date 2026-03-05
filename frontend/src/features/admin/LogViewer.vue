@@ -1,42 +1,14 @@
 <template>
   <div class="log-viewer-container bg-gray-50 min-h-screen text-gray-800 font-sans">
-    <div v-if="!isLoggedIn" class="login-modal flex items-center justify-center min-h-screen">
-      <div class="login-box bg-white border border-gray-200 p-8 rounded-xl shadow-lg w-96 max-w-full">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Admin Console</h2>
-        
-        <form @submit.prevent="handleLogin" class="space-y-5">
-          <div>
-            <label class="block text-gray-600 text-sm font-bold mb-2">Admin Email</label>
-            <input 
-              v-model="username" 
-              type="text" 
-              class="w-full bg-gray-100 text-gray-800 border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:bg-white transition-colors" 
-              placeholder="admin@admin.com" 
-              required
-            />
-          </div>
-          <div>
-            <label class="block text-gray-600 text-sm font-bold mb-2">Password</label>
-            <input 
-              v-model="password" 
-              type="password" 
-              class="w-full bg-gray-100 text-gray-800 border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:bg-white transition-colors" 
-              placeholder="Password" 
-              required
-            />
-          </div>
-          <p v-if="loginError" class="text-red-500 text-sm mt-2">{{ loginError }}</p>
-          <div class="mt-6">
-            <button 
-              type="submit" 
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors shadow-sm"
-              :disabled="isLoggingIn"
-            >
-              {{ isLoggingIn ? 'Authenticating...' : 'Sign In' }}
-            </button>
-          </div>
-        </form>
-      </div>
+    <div v-if="!authStore.isAdmin" class="login-modal flex flex-col items-center justify-center min-h-screen">
+       <div class="text-center">
+         <Shield class="w-16 h-16 mx-auto text-red-500 mb-4" />
+         <h2 class="text-3xl font-bold text-gray-800 mb-2">Access Denied</h2>
+         <p class="text-gray-500 mb-6">관리자 권한이 필요한 페이지입니다.</p>
+         <button @click="router.push('/')" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+            메인으로 돌아가기
+         </button>
+       </div>
     </div>
 
     <!-- 로그 뷰어 대시보드 화면 -->
@@ -209,15 +181,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import axios from 'axios'
-import { AlertCircle, Activity, BarChart2, Terminal, Archive, FileText, RefreshCw, LogOut } from 'lucide-vue-next'
+import { AlertCircle, Activity, BarChart2, Terminal, Archive, FileText, RefreshCw, LogOut, Shield } from 'lucide-vue-next'
 import Chart from 'chart.js/auto'
 
-const isLoggedIn = ref(false)
-const username = ref('')
-const password = ref('')
-const loginError = ref('')
-const isLoggingIn = ref(false)
+const router = useRouter()
+const authStore = useAuthStore()
 
 const logs = ref('')
 const logsError = ref('')
@@ -246,13 +217,16 @@ const chartCanvas = ref(null)
 const chartInstance = ref(null)
 const isLoadingStatus = ref(false)
 
-// 이미 세션/로컬에 저장된 토큰이 있는지 확인
+// [수정일: 2026-03-05] 전역 로그인 상태 사용
 onMounted(() => {
-  const savedToken = sessionStorage.getItem('adminToken')
-  if (savedToken) {
-    authToken.value = savedToken
-    isLoggedIn.value = true
+  if (authStore.isAdmin) {
     initDashboard()
+  } else {
+    authStore.checkSession().then(() => {
+        if (authStore.isAdmin) {
+            initDashboard()
+        }
+    })
   }
 })
 
@@ -278,54 +252,19 @@ const refreshAll = () => {
   fetchServerStatus()
 }
 
-const handleLogin = async () => {
-  loginError.value = ''
-  isLoggingIn.value = true
-  
-  try {
-    const response = await axios.post('/api/core/admin/login/', {
-      username: username.value,
-      password: password.value
-    })
-    
-    if (response.data.token) {
-      authToken.value = response.data.token
-      sessionStorage.setItem('adminToken', response.data.token)
-      isLoggedIn.value = true
-      nextTick(() => {
-        initDashboard()
-      })
-    }
-  } catch (err) {
-    loginError.value = err.response?.data?.error || '로그인에 실패했습니다.'
-  } finally {
-    isLoggingIn.value = false
-  }
-}
-
 const logout = () => {
-  authToken.value = ''
-  sessionStorage.removeItem('adminToken')
-  isLoggedIn.value = false
-  logs.value = ''
-  if (chartInstance.value) {
-    chartInstance.value.destroy()
-    chartInstance.value = null
-  }
+  authStore.logout()
+  router.push('/')
 }
 
 const fetchLogs = async () => {
-  if (!authToken.value) return
+  if (!authStore.isAdmin) return
   
   isLoading.value = true
   logsError.value = ''
   
   try {
-    const response = await axios.get('/api/core/admin/logs/', {
-      headers: {
-        Authorization: `Bearer ${authToken.value}`
-      }
-    })
+    const response = await axios.get('/api/core/admin/logs/')
     
     logs.value = response.data.logs
     highlightedLine.value = -1 // 하이라이트 초기화
@@ -351,13 +290,11 @@ const fetchLogs = async () => {
 }
 
 const fetchArchiveList = async () => {
-  if (!authToken.value) return
+  if (!authStore.isAdmin) return
   isLoadingArchives.value = true
   
   try {
-    const response = await axios.get('/api/core/admin/logs/archives/', {
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
+    const response = await axios.get('/api/core/admin/logs/archives/')
     archives.value = response.data.archives
   } catch (err) {
     console.error("아카이브 목록 조실패:", err)
@@ -367,14 +304,12 @@ const fetchArchiveList = async () => {
 }
 
 const fetchArchiveDetail = async (filename) => {
-  if (!authToken.value) return
+  if (!authStore.isAdmin) return
   isLoading.value = true
   logsError.value = ''
   
   try {
-    const response = await axios.get(`/api/core/admin/logs/archives/${filename}/`, {
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
+    const response = await axios.get(`/api/core/admin/logs/archives/${filename}/`)
     
     logs.value = response.data.logs
     viewingMode.value = 'archive'
@@ -397,13 +332,11 @@ const fetchArchiveDetail = async (filename) => {
 }
 
 const saveCurrentLog = async () => {
-  if (!authToken.value || isSaving.value) return
+  if (!authStore.isAdmin || isSaving.value) return
   isSaving.value = true
   
   try {
-    const response = await axios.post('/api/core/admin/logs/save/', {}, {
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
+    const response = await axios.post('/api/core/admin/logs/save/')
     
     saveSuccessMsg.value = `정상적으로 보관되었습니다 (${response.data.archive_filename})`
     setTimeout(() => { saveSuccessMsg.value = '' }, 3000)
@@ -448,13 +381,11 @@ const scrollToLogLine = (searchPrefix) => {
 }
 
 const fetchServerStatus = async () => {
-  if (!authToken.value) return
+  if (!authStore.isAdmin) return
   isLoadingStatus.value = true
   
   try {
-    const response = await axios.get(`/api/core/admin/server-status/?range=${timeRange.value}`, {
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
+    const response = await axios.get(`/api/core/admin/server-status/?range=${timeRange.value}`)
     
     renderChart(response.data)
   } catch (err) {

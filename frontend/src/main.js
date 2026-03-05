@@ -33,6 +33,7 @@ import BugBubbleMonster from './features/wars/minigames/BugBubbleMonster.vue'
 
 // [수정일: 2026-02-26] 로그 뷰어화면 임포트
 import LogViewer from './features/admin/LogViewer.vue'
+import UserManagement from './features/admin/UserManagement.vue'
 
 
 const routes = [
@@ -90,6 +91,11 @@ const routes = [
     path: '/management/progress',
     name: 'Management',
     component: ManagementView
+  },
+  {
+    path: '/management/users',
+    name: 'UserManagement',
+    component: UserManagement
   },
   {
     path: '/management/logs',

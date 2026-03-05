@@ -25,11 +25,12 @@ from .job_planner.job_planner_view import (
     JobPlannerReviewPortfolioView,
 )
 # [수정일: 2026-02-26] 로그 뷰어 관리자 기능 추가
+# [수정일: 2026-03-05] UserManagementView 추가 및 AdminLoginView 제거
 from .admin_views import (
-    AdminLoginView,
     AdminLogView,
     AdminLogSaveView,
     AdminLogArchiveListView,
     AdminLogArchiveDetailView,
-    AdminServerStatusView
+    AdminServerStatusView,
+    UserManagementView
 )
