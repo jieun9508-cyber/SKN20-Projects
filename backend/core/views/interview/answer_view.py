@@ -20,6 +20,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] AI throttle
 
 from core.models import UserProfile, InterviewSession, InterviewTurn, InterviewFeedback
 from core.services.interview.analyst import extract_evidence
@@ -261,6 +262,9 @@ def _stream_answer(session, answer: str, old_turn: InterviewTurn):
 class InterviewAnswerView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request, pk):
         """답변 제출 + SSE 스트리밍으로 다음 질문 반환"""

@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] AI throttle
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
@@ -70,6 +71,9 @@ class JobPlannerParseView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         input_type = request.data.get('type')  # 'url', 'image', 'text'
@@ -487,6 +491,9 @@ class JobPlannerAnalyzeView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     # 한영 스킬 동의어 사전
     # 다양한 표기를 통일된 형태로 정규화하기 위한 매핑 테이블
@@ -1216,6 +1223,9 @@ class JobPlannerAgentReportView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         try:
@@ -1486,6 +1496,9 @@ class JobPlannerRecommendView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     # JobPlannerAnalyzeView와 동일한 스킬 동의어 사전 재사용
     SKILL_SYNONYMS = JobPlannerAnalyzeView.SKILL_SYNONYMS
@@ -2220,6 +2233,9 @@ class JobPlannerCompanyAnalyzeView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         try:
@@ -2418,6 +2434,9 @@ class JobPlannerParseResumeView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         from concurrent.futures import ThreadPoolExecutor
@@ -2831,6 +2850,9 @@ class JobPlannerReviewPortfolioView(APIView):
     """채용공고 기준 포트폴리오 개선점 분석 API (파싱된 데이터 기반)"""
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         job_data = request.data.get('job_data', {})

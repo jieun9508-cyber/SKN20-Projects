@@ -29,6 +29,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] AI throttle
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,9 @@ class PseudocodeAgentView(APIView):
     정답이나 점수는 제공하지 않습니다.
     """
     permission_classes = [IsAuthenticated]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         user_logic = request.data.get('user_logic', '').strip()

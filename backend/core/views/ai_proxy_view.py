@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] AI throttle
 
 # [수정일: 2026-02-08] AI Proxy View 추가 (Antigravity)
 @method_decorator(csrf_exempt, name='dispatch')
@@ -17,6 +18,9 @@ class AIProxyView(APIView):
     """
     authentication_classes = []
     permission_classes = [AllowAny]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         try:

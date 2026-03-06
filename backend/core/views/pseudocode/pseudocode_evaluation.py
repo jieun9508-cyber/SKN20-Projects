@@ -12,8 +12,14 @@
 
 import logging
 import re
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes as throttle_classes_decorator
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import UserRateThrottle  # [수정일: 2026-03-06] AI throttle
+
+
+# [수정일: 2026-03-06] 함수형 뷰용 AI throttle (ScopedRateThrottle은 클래스형 뷰 전용)
+class AIRateThrottle(UserRateThrottle):
+    scope = 'ai'
 from rest_framework.response import Response
 from rest_framework import status
 from core.services.activity_service import save_user_problem_record
@@ -80,6 +86,7 @@ def normalize_quest_id(quest_id):
 # ============================================================================
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes_decorator([AIRateThrottle])  # [수정일: 2026-03-06] AI throttle (10회/분)
 def evaluate_pseudocode_5d(request):
     """
     [POST] /api/core/pseudocode/evaluate-5d/

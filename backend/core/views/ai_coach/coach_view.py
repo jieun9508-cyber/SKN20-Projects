@@ -17,6 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] AI throttle
 from rest_framework.views import APIView
 
 from core.models import UserProfile, CoachConversation, CoachMessage
@@ -131,6 +132,9 @@ class AICoachView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    # [수정일: 2026-03-06] AI API 요청 제한 (OpenAI 비용 보호, 10회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai'
 
     def post(self, request):
         user_message = request.data.get("message", "").strip()

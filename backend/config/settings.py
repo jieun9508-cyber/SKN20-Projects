@@ -140,6 +140,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # DRF & Swagger 설정
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # [수정일: 2026-03-06] API 요청 횟수 제한 (DDoS, 브루트포스, AI 비용 폭증 방지)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/minute',       # 비로그인 사용자: 분당 30회
+        'user': '100/minute',      # 로그인 사용자: 분당 100회
+        'ai': '10/minute',         # AI API (OpenAI 호출): 분당 10회
+        'login': '5/minute',       # 로그인 시도: 분당 5회
+    },
 }
 
 # [수정일: 2026-01-22] 로그인 유지 문제 해결을 위한 CORS 및 세션 설정 (Antigravity)

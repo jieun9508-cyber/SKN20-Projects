@@ -11,6 +11,7 @@ from core.models import UserProfile # [수정일: 2026-01-22] 프로필 정보 �
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.utils.decorators import method_decorator
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.throttling import ScopedRateThrottle  # [수정일: 2026-03-06] 로그인 throttle
 from core.models import UserProfile, UserActivity # [수정일: 2026-02-06] UserActivity 추가
 
 # [2026-01-21] CSRF 토큰을 쿠키에 설정하기 위해 ensure_csrf_cookie 데코레이터 사용
@@ -20,6 +21,9 @@ class LoginView(APIView):
     # [수정일: 2026-01-22] 로그인 시에는 CSRF를 요구하지 않도록 복구 (Antigravity)
     # 로그인 성공 후 생성되는 세션에 대해 나중에 CSRF 검증이 이루어집니다.
     authentication_classes = []
+    # [수정일: 2026-03-06] 로그인 시도 제한 (브루트포스 방지, 5회/분)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
     def post(self, request):
         # [2026-01-21] 이메일과 비밀번호 기반 로그인 로직 구현
