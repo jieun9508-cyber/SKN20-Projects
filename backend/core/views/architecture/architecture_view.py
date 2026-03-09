@@ -283,8 +283,8 @@ def generate_rubric_prompt(problem, architecture_context, user_explanation, deep
 - **각 기둥별로 정확히 1개 점수만 부여** (0-100)
 - **루브릭 등급에 따라 점수 부여**:
   - Excellent: 90-100점
-  - Good: 72-89점 (수정: 75 -> 72)
-  - Fair: 55-71점 (수정: 60 -> 55)
+  - Good: 72-89점 
+  - Fair: 55-71점 
   - Poor: 40-54점
   - Failing: 0-39점
 
