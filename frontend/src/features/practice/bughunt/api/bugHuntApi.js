@@ -6,7 +6,7 @@
  * [수정내용: 행동 기반 검증 API 추가 (Docker 샌드박스)]
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/core';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/core';
 
 /**
  * 행동 기반 코드 검증 함수
@@ -183,7 +183,7 @@ export async function interviewBugHunt(stepContext, conversation, turn, candidat
  * @param {string} candidateName
  * @param {(token: string) => void} onToken
  */
-export async function interviewBugHuntStream(stepContext, conversation, turn, candidateName = '', onToken = () => {}) {
+export async function interviewBugHuntStream(stepContext, conversation, turn, candidateName = '', onToken = () => { }) {
     // [수정일: 2026-03-06] credentials 추가 (IsAuthenticated 인증용 세션 쿠키 전송)
     const response = await fetch(`${API_BASE_URL}/ai-bughunt-interview/`, {
         method: 'POST',
