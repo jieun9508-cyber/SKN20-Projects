@@ -149,7 +149,7 @@ Canvas → JSON → Mermaid → LLM 평가 파이프라인으로 처리됩니다
 - **2인 대전 비교 분석**: `gpt-4o-mini`가 양측 설계의 전략 차이를 분석하여 `my_analysis`(자기 분석) + `versus`(상대 비교) 제공
 - **등급 기준**: 우수(90+) / 양호(72+) / 보통(55+) / 미흡(40+) / 부족(40 미만)
 
-### 4. Coduck Wars — 실시간 멀티플레이
+### 4. Battle Game — 실시간 멀티플레이
 
 > 사용 모델: `gpt-4o-mini` (ChaosAgent · EvalAgent) · **Rule Engine** (CoachAgent)
 
